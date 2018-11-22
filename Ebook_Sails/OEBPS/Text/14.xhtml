@@ -1,0 +1,663 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">14    Real time with WebSockets</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   Understanding WebSockets</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Using the Sails WebSocket client</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Implementing a chat system in Brushfire</p>
+
+    <p class="cosummarybulletcxsplast">·   Incorporating Resourceful PubSub into chat</p>
+
+    <p class="body">Brushfire users want to communicate with each other about the videos that they are watching. We satisfy this requirement by implementing a chat system where each video will have its own persistent chat “room”. Making the chat persistent, meaning storing the chats, will give users the flexibility to interact synchronously(at the same time) or asynchronously (leaving a question that can be answered later).</p>
+
+    <p class="body">In this chapter we will differentiate WebSocket <span class="italics">events</span> from the HTTP request/response scheme we have used in prior chapters. We will show Sails “virtual” request integration that makes WebSockets “work” like regular ole requests but with access to the WebSocket via the <span><code class="codeintext">req</code></span> dictionary. With access to the user agent’s WebSocket we will introduce the concept of using rooms to organize those connected to the Sails WebSocket server and currently viewing a particular video. We’ll enable the user agents to chat using lower level methods like <span><code class="codeintext">sails.sockets.join()</code></span>, and <span><code class="codeintext">sails.sockets.broadcast()</code></span> on the back end and <span><code class="codeintext">io.socket.on()</code></span> on the front end. Next, we’ll transition to Sails <span class="italics">Resourceful PubSub</span> methods replacing <span><code class="codeintext">sails.sockets.join()</code></span> with <span><code class="codeintext">Video.subscribe()</code></span>and <span><code class="codeintext">sails.sockets.broadcast()</code></span> with <span><code class="codeintext">Video.publishUpdate()</code></span> on the back end. Finally, we will take a closer look at using Resourceful PubSub with Blueprint: CRUD actions, which have added features regarding WebSockets. If that seems like a lot of material, don’t worry. We take each topic step-by-step with examples. So let’s get started.</p>
+
+    <h2 class="head" id="heading_id_3">14.1   Obtaining the example materials for this chapter</h2>
+
+    <p class="body">If you followed along in chapter 13 with an existing project, you can continue to use that project in this chapter. If you want to start from this chapter and move forward, clone the following repo: <a class="pcalibre8 pcalibre5" href="https://github.com/sailsinaction/brushfire-ch13-end">https://github.com/sailsinaction/brushfire-ch13-end</a>. After cloning the repo, install the Node module dependencies via <span><code class="codeintext">npm install</code></span>. You will also want to add the <span><code class="codeintext">local.js</code></span> file we created in chapter 11. In Sublime, copy and paste your <span><code class="codeintext">local.js</code></span> file we created in chapter 13 or create a new file in <span><code class="codeintext">brushfire/config/local.js</code></span> and add the following code in listing 14.1.</p>
+
+    <p class="codelistingcaption">Listing 14.1 Adding to the local.js file</p><code class="codebcxspfirst">module.exports.blueprints = {</code> <code class="codebcxspmiddle">  shortcuts: true,</code> <code class="codebcxspmiddle">  prefix: '/bp',</code> <code class="codebcxspmiddle">};</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports.connections = {</code> <code class="codebcxspmiddle">  myPostgresqlServer: {</code> <code class="codebcxspmiddle">    adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">    host: 'localhost',</code> <code class="codebcxspmiddle">    database: 'brushfire'</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle">};</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports.mailgun =  {</code> <code class="codebcxspmiddle">  apiKey: 'ADD YOUR MAILGUN API KEY HERE',</code> <code class="codebcxspmiddle">  domain: 'ADD YOUR MAILGUN DOMAIN HERE',</code> <code class="codebcxspmiddle">  baseUrl: 'http://localhost:1337'</code><code class="codebcxsplast">};</code>
+
+    <h2 class="head" id="heading_id_4">14.2   Understanding WebSockets</h2>
+
+    <p class="body">A WebSocket is an enhancement to the HTTP protocol and can run side by side with HTTP.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">By making the process of connecting to a WebSocket server similar to an HTTP request, a WebSocketserver can listen for both HTTP requests and WebSocket connection requests on the same port.</p>
+    </div>
+
+    <p class="body">Unlike HTTP, once a client connects to the WebSocketserver and establishes a WebSocket <span><code class="codeintext">id</code></span>, the server can send events to “listening” clients with a matching <span><code class="codeintext">id</code></span> and vice versa. This is in contrast to HTTP where the client must first make a request, which briefly opens a connection before the server can respond and close it. Once the server responds, the connection is closed and the server can no longer initiate communication with the client until another request is received. Figure 14.1 illustrates this important difference between HTTP and WebSockets communication.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.1  An HTTP request is necessary for a server to respond. The <span class="codeannotationcueballs">① </span>  request creates an open connection between the client and server. Once the <span class="codeannotationcueballs">② </span>  server responds, the connection is closed and another request is needed before the server can again respond to the client. With WebSockets once <span class="codeannotationcueballs">① </span>  a client makes a connection, the server can <span class="codeannotationcueballs">② </span>  send a message to it at any time so long as the connection remains open.</p>
+
+    <p class="body">So the Sails HTTP/WebSocket server is listening for both HTTP requests and upgraded WebSocket events.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Often you’ll encounter the terms: events, messages, and notifications, used interchangeably with WebSockets. For clarity, we’ll use the term <span class="italics1">event</span> to specify the thing the Sails WebSocket server and client send to each other. Events can have names like <span><code class="codeintext1">chat</code></span> and their contents are referred to as the <span><code class="codeintext1">message</code></span><span class="italics1">.</span></p>
+    </div>
+
+    <p class="body">After establishing a connection with the Sails server, the user-agent is given an <span><code class="codeintext">id</code></span>. Let’s build an example that will demonstrate these concepts in the next section.</p>
+
+    <h3 class="head1" id="heading_id_5">14.2.1   Establishing a socket connection</h3>
+
+    <p class="body">Overall, Sails uses WebSocket<span><code class="codeintext">.io</code></span> for the lower level WebSocket communication between the client and server.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Socket.io is a JavaScript library that enables access to WebSockets in Node.</p>
+    </div>
+
+    <p class="body">By default, Sails creates a WebSocket server on the back end when the Sails server starts via <span><code class="codeintext">sails lift</code></span>. The Sails WebSocket <span class="italics">client</span>, located in <span><code class="codeintext">brushfire/assets/js/dependencies/sails.io.js</code></span> is a tiny client-side library on the front end that’s bundled by default in new Sails apps.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">You can of course choose not to use the library by deleting the file in the <span><code class="codeintext1">assets/</code></span> folder.</p>
+    </div>
+
+    <p class="body">The Sails WebSocket client is a lightweight wrapper that sits on top of the WebSocket<span><code class="codeintext">.io</code></span> client whose purpose is to make simple the sending and receiving of events from your Sails backend. In fact, we have connected to the WebSocket server via the client throughout the book. For example, restart Sails using <span><code class="codeintext">sails lift</code></span> and navigate your browser to <span class="italics">localhost:1337</span> with the browser’s console window open. You should see a browser console log message indicating that a connection was established as shown in figure 14.2.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.2  Each time Sails responds with a server rendered view, a new WebSocket connection is created.</p>
+
+    <p class="body">This message is coming from the Sails WebSocket client and is automatic as long as you utilize the default <span><code class="codeintext">sails.io.js.</code></span> Now that we’ve established a connection between the client and the Sails WebSocket, we can build requests on the front end and add methods to controller/actions on the back end.  This allows you to create and join rooms, send events to connected WebSockets, and more.</p>
+
+    <h3 class="head1" id="heading_id_6">14.2.2   Virtual requests</h3>
+
+    <p class="body">Let’s create a quick Sails app to solidify the distinction between an HTTP request and a Sails WebSocket “virtual” request. From the command line create a new Sails application named WebSocket <span><code class="codeintext">Example</code></span>.</p><code class="codebcxspfirst">~ $ sails new WebSocketExample</code> <code class="codebcxsplast">info: Created a new Sails app `socketExample`!</code>
+
+    <p class="body">After changing into the WebSocket <span><code class="codeintext">Example</code></span> folder<span class="italics">,</span> create a controller and name it <span><code class="codeintext">example</code></span>.</p><code class="codebcxspfirst">~/socketExample $ sails generate controller example</code> <code class="codebcxsplast">info: Created a new controller ("example") at api/controllers/ExampleController.js!</code>
+
+    <p class="body">We’ll start on the back end by creating an action that can be accessed by both an HTTP request and a WebSocket virtual request.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We use the qualifier “virtual” request because WebSockets don’t make plain HTTP requests. Instead the Sails WebSocket client a.k.a. <span><code class="codeintext1">sails.io.js</code></span>, contains methods that allow us to access HTTP actions as if we were using AJAX. The Sails back end then takes care of transforming the WebSocket event into a virtual request that routes the request to the appropriate controller/action with a <span><code class="codeintext1">req</code></span> dictionary that contains a body, headers, etc.</p>
+    </div>
+
+    <p class="body">In Sublime, open WebSocket <span><code class="codeintext">Example/api/controllers/ExampleController.js</code></span> and add the following <span><code class="codeintext">helloWorld</code></span> action similar to listing 14.2.</p>
+
+    <p class="codelistingcaption">Listing 14.2 Adding an action that will be accessed by both HTTP and WebSockets</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">helloWorld: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (req.isSocket) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.json({</code> <code class="codebcxspmiddle"> WebSocketId: sails.sockets.getId(req),<span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        hello: 'world'</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    return res.json({</code> <code class="codebcxspmiddle">      hello: 'world'</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> An added Sails property to the <span><code class="codeintext1">req</code></span> dictionary, <span><code class="codeintext1">isSocket</code></span> indicates whether the request originated from a WebSocket connection</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> Gets the <span><code class="codeintext1">id</code></span> of a WebSocket request</p>
+
+    <p class="body">If we make an HTTP <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/example/helloWorld</code></span> the back end will respond with a dictionary that contains the key/value pair <span><code class="codeintext">hello</code></span> and <span><code class="codeintext">world</code></span>. If we use the Sails WebSocket client and make a Sails WebSocket <span class="italics">virtual</span> request to <span><code class="codeintext">helloWorld</code></span>, the back end will respond with a dictionary that also contains the WebSocket <span><code class="codeintext">id</code></span>. So how do we access the Sails WebSocket client to use the virtual requests? </p>
+
+    <p class="body">Sails provides a familiar AJAX-like interface for communicating with the Sails WebSocket server. Through the client you have access to CRUD methods like <span><code class="codeintext">io.socket.get()</code></span><span class="italics">,</span> <span><code class="codeintext">.post()</code></span><span class="italics">,</span> <span><code class="codeintext">.put()</code></span>, and <span><code class="codeintext">.delete()</code></span>. Let’s take a look at this in action. Make sure Sails is running via <span><code class="codeintext">sails lift</code></span> and make a <span><code class="codeintext">GET</code></span> request in Postman to <span class="italics">localhost:1337/example/helloWorld</span> similar to figure 14.3.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.3  Making a <span class="codeannotationcueballs">① </span> <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">localhost:1337/example/helloWorld</code></span> returns the dictionary without the WebSocket <span><code class="codeintext1">Id</code></span> property and formatted as JSON.</p>
+
+    <p class="body">Our Postman HTTP request to the <span><code class="codeintext">helloWorld</code></span> action is not a WebSocket request and thus does not have access to request’s WebSocket <span><code class="codeintext">Id</code></span>.  It responds solely with the JSON dictionary. Now we’ll make a WebSocket virtual request using the Sails WebSocket client. Since the homepage view loads the Sails WebSocket client via <span><code class="codeintext">sails.io.js</code></span> we have access to its methods from the browser console. Navigate your browser to <span class="italics">localhost:1337</span> with the console window open. From the browser console window, copy and paste the following code snippet in listing 14.3 on the command line.</p>
+
+    <p class="codelistingcaption">Listing 14.3 Making a WebSocket request  using the Sails WebSocket client</p><code class="codebcxspfirst">io.socket.get('/example/helloWorld', function(resData, jwres){</code> <code class="codebcxspmiddle">  console.log(resData);</code><code class="codebcxsplast">});</code>
+
+    <p class="body">When executed, the browser console should return something like figure 14.4.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.4  Using  <span class="codeannotationcueballs">① </span> <span><code class="codeintext1">io.socket.get()</code></span> to make a request triggers a WebSocket virtual <span><code class="codeintext1">GET</code></span> request that matches a Blueprint actions route and executes the <span><code class="codeintext1">helloWorld</code></span> action that responds with <span class="codeannotationcueballs">② </span>  the WebSocket <span><code class="codeintext1">id</code></span> via the WebSocket <span><code class="codeintext1">Id</code></span> property.</p>
+
+    <p class="body">So unlike the HTTP request, the Sails WebSocket virtual request yields the WebSocket <span><code class="codeintext">id</code></span>. The WebSocket <span><code class="codeintext">id</code></span> is used to differentiate between requesting clients. Sails abstracts away the need to worry about the WebSocket <span><code class="codeintext">id</code></span>, the same way it does with HTTP by simply making it part of the <span><code class="codeintext">req</code></span> dictionary.</p>
+
+    <p class="body">Figure 14.5 illustrates that the function signature of the Sails virtual <span><code class="codeintext">get</code></span>, <span><code class="codeintext">post</code></span>, <span><code class="codeintext">put</code></span>, and <span><code class="codeintext">delete</code></span> WebSocket methods is similar to an AJAX request.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.5  The function signature of the <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">get</code></span> WebSocket method should look familiar to anyone whose used an AJAX equivalent method. The function takes the <span class="codeannotationcueballs">② </span>  URL as the first argument and the callback as the second argument. Within the callback we can get access to <span class="codeannotationcueballs">③ </span>  the response data as JSON and the <span class="codeannotationcueballs">④ </span>  JSON WebSocket Response dictionary.</p>
+
+    <p class="body">The callback to the virtual methods contain two arguments: <span><code class="codeintext">resData</code></span> and <span><code class="codeintext">jwres</code></span>. The <span><code class="codeintext">resData</code></span> argument contains any data passed back from the request as JSON. Optionally we can get access to the JSON WebSocket Response (<span><code class="codeintext">jwres</code></span>), which contains a dictionary of response headers, body and the status code of the response similar to what you would get with a standard HTTP request. Depending upon the type of application we can also get a reduction in the latency (elapsed time) between the request and response using WebSockets. But clearly the biggest advantage is we can now create features that allow the server to send events to clients without the client having to make a request. Let’s expand what we’ve learned and implement the chat features of Brushfire.</p>
+
+    <h2 class="head" id="heading_id_7">14.3   Implementing chat</h2>
+
+    <p class="body">Figure 14.6 illustrates the Video player page locals, parameters and endpoints that relate to chat.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.6  Specific to chat, the <span class="italics1">Video player page</span> endpoint will pass 7 locals to the view, 4 of which will be displayed :<span><code class="codeintext1">gravatarURL</code></span> and <span><code class="codeintext1">username</code></span> from the <span><code class="codeintext1">user</code></span> model, <span><code class="codeintext1">message</code></span> and <span><code class="codeintext1">created</code></span> from the <span><code class="codeintext1">chat</code></span> model. The view also contains a single outgoing parameter: <span><code class="codeintext1">message</code></span> sent within a request: <span class="italics1">Send chat</span>.</p>
+
+    <p class="body">The API reference provides the seven locals that will be sent to the view. Table 14.1 describes each locals attribute.</p>
+
+    <p class="tablecaption pcalibre7">Table 14.1  The locals dictionary: <span><code class="codeintext1">chats</code></span> for the <span class="italics1">Video player page</span></p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="17%" class="sgc238" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">locals attribute</p>
+          </div>
+        </td>
+
+        <td char="21%" class="sgc137" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Chat model attribute</p>
+          </div>
+        </td>
+
+        <td char="60%" class="sgc239 pcalibre7" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Description</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc240" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">message</code></span></p>
+        </td>
+
+        <td char="21%" class="sgc241" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">message</code></span></p>
+        </td>
+
+        <td char="60%" class="sgc242" valign="top">
+          <p class="tablebody2cxsplast">The text of the message a user can send to the <span><code class="codeintext">video</code></span> room.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc240" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">sender</code></span></p>
+        </td>
+
+        <td char="21%" class="sgc241" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">sender</code></span></p>
+        </td>
+
+        <td char="60%" class="sgc242" valign="top">
+          <p class="tablebody2cxsplast">The model association attribute that contains the <span><code class="codeintext">id</code></span> of the <span><code class="codeintext">user</code></span> that sent the <span><code class="codeintext">chat</code></span>.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc240" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">video</code></span></p>
+        </td>
+
+        <td char="21%" class="sgc241" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">video</code></span></p>
+        </td>
+
+        <td char="60%" class="sgc242" valign="top">
+          <p class="tablebody2cxsplast">The model association attribute that contains the <span><code class="codeintext">id</code></span> of the <span><code class="codeintext">video</code></span> that’s related to the <span><code class="codeintext">chat</code></span>.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc240" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">id</code></span></p>
+        </td>
+
+        <td char="21%" class="sgc241" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">id</code></span></p>
+        </td>
+
+        <td char="60%" class="sgc242" valign="top">
+          <p class="tablebody2cxsplast">The <span><code class="codeintext">id</code></span> of the record in the <span><code class="codeintext">chat</code></span> model.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc240" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">created</code></span></p>
+        </td>
+
+        <td char="21%" class="sgc241" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">createdAt</code></span></p>
+        </td>
+
+        <td char="60%" class="sgc242" valign="top">
+          <p class="tablebody2cxsplast">The date and time the <span><code class="codeintext">chat</code></span> record was created.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc240" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">username</code></span></p>
+        </td>
+
+        <td char="21%" class="sgc241" valign="top">
+          <p class="tablebody2cxspmiddle">n/a</p>
+        </td>
+
+        <td char="60%" class="sgc242" valign="top">
+          <p class="tablebody2cxsplast">The <span><code class="codeintext">username</code></span> attribute of the <span><code class="codeintext">user</code></span> who created the <span><code class="codeintext">chat</code></span>. The <span><code class="codeintext">username</code></span> is not stored in the <span><code class="codeintext">chat</code></span> model but through the <span><code class="codeintext">sender</code></span> model association attribute we can populate <span><code class="codeintext">sender</code></span> to get the <span><code class="codeintext">username</code></span>.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc243" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">gravatarURL</code></span></p>
+        </td>
+
+        <td char="21%" class="sgc141" valign="top">
+          <p class="tablebody2cxspmiddle">n/a</p>
+        </td>
+
+        <td char="60%" class="sgc244" valign="top">
+          <p class="tablebody2cxsplast">The <span><code class="codeintext">gravatarURL</code></span> attribute of the user who created the <span><code class="codeintext">chat</code></span>. The <span><code class="codeintext">gravatarURL</code></span> is not stored in the <span><code class="codeintext">chat</code></span> model but through the <span><code class="codeintext">sender</code></span> model association attribute we can populate <span><code class="codeintext">sender</code></span> to get the <span><code class="codeintext">gravatarURL</code></span>.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Notice that not all of the locals will be stored in the <span><code class="codeintext">chat</code></span> model. Instead we’ll take advantage of Sails associations to provide the necessary locals from other models. Figure 14.7 illustrates the relationships between the <span><code class="codeintext">chat</code></span>, <span><code class="codeintext">user</code></span>, and <span><code class="codeintext">video</code></span> models.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.7 A <span class="codeannotationcueballs">① </span>  user can have many chats but a chat can only have one user. A <span class="codeannotationcueballs">② </span>  video record can have many chats but a chat can only have one video.</p>
+
+    <h3 class="head1" id="heading_id_8">14.3.1   Creating a chat API</h3>
+
+    <p class="body">Our first step in implementing chat function in Brushfire is to create an API for the <span><code class="codeintext">chat</code></span> resource. From the root of the project in command line create a new <span><code class="codeintext">chat</code></span> API by typing:</p><code class="codebcxspfirst">~ $ sails generate api chat</code> <code class="codebcxsplast">info: Created a new api!</code>
+
+    <p class="body">Now, let’s configure the attributes of the new <span><code class="codeintext">chat</code></span> model and other related models. Figure 14.8 illustrates the association relationships we’ll need between the <span><code class="codeintext">user</code></span>, <span><code class="codeintext">video</code></span>, and <span><code class="codeintext">chat</code></span> models.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.8  The model associations between the <span><code class="codeintext1">user</code></span>, <span><code class="codeintext1">video</code></span> and <span><code class="codeintext1">chat</code></span> models. The <span><code class="codeintext1">user</code></span> model has <span class="codeannotationcueballs">① </span>  a <span><code class="codeintext1">chats</code></span> association attribute configured as a collection with the <span><code class="codeintext1">chat</code></span> model that uses via. The <span><code class="codeintext1">video</code></span> model has <span class="codeannotationcueballs">② </span>  a <span><code class="codeintext1">chats</code></span> association attribute configured as a collection with the <span><code class="codeintext1">chat</code></span> model that uses via. The <span><code class="codeintext1">chat</code></span> model has <span class="codeannotationcueballs">③ </span>  a <span><code class="codeintext1">sender</code></span> association attribute configured as a model with the <span><code class="codeintext1">user</code></span>. The <span><code class="codeintext1">chat</code></span> model also has <span class="codeannotationcueballs">④ </span>  a <span><code class="codeintext1">video</code></span> association attribute configured as a model with the <span><code class="codeintext1">video</code></span>.</p>
+
+    <p class="body">In Sublime, open <span><code class="codeintext">brushfire/api/models/Chat.js</code></span> and add the following attributes in listing 14.3.</p>
+
+    <p class="codelistingcaption">Listing 14.3 The <span><code class="codeintext1">chat</code></span> model attributes</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  attributes: {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    message: {</code> <code class="codebcxspmiddle">      type: 'string'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    sender: {</code> <code class="codebcxspmiddle">      model: 'user'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    video: {</code> <code class="codebcxspmiddle">      model: 'video'</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle">};</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Next, we’ll add the <span><code class="codeintext">chats</code></span> association attribute to the <span><code class="codeintext">user</code></span> model. This attribute, when populated contains all of the <span><code class="codeintext">chat</code></span> records created by this user. In Sublime, open <span><code class="codeintext">brushfire/api/models/User.js</code></span> and add the following attributes in listing 14.4.</p>
+
+    <p class="codelistingcaption">Listing 14.4 The <span><code class="codeintext1">user</code></span> model attributes</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">following: {</code> <code class="codebcxspmiddle">      collection: 'user',</code> <code class="codebcxspmiddle">      via: 'followers'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    chats: {</code> <code class="codebcxspmiddle">      collection: 'chat',</code> <code class="codebcxspmiddle">      via: 'sender'</code> <code class="codebcxspmiddle">    },</code><code class="codebcxsplast">    ...</code>
+
+    <p class="body">Finally, we’ll add a <span><code class="codeintext">chats</code></span> association attribute to the <span><code class="codeintext">video</code></span> model. This attribute, when populated, contains all of the <span><code class="codeintext">chat</code></span> records made about the <span><code class="codeintext">video</code></span> record.  In Sublime, open <span><code class="codeintext">brushfire/api/models/Video.js</code></span> and add the following attributes in listing 14.5.</p>
+
+    <p class="codelistingcaption">Listing 14.5 The <span><code class="codeintext1">video</code></span> model attributes</p><code class="codebcxspfirst">    ...</code> <code class="codebcxspmiddle">tutorialAssoc: {</code> <code class="codebcxspmiddle">      model: 'tutorial'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    chats: {</code> <code class="codebcxspmiddle">      collection: 'chat',</code> <code class="codebcxspmiddle">      via: 'video'</code> <code class="codebcxspmiddle">    }</code><code class="codebcxsplast">    ...</code>
+
+    <p class="body">Now that we have the models configured, let’s implement the <span class="italics">Video player page</span> and specifically the <span><code class="codeintext">showVideo</code></span> action.</p>
+
+    <h3 class="head1" id="heading_id_9">14.3.2   Adding chat to an existing page</h3>
+
+    <p class="body">The <span><code class="codeintext">showVideo</code></span> action is responsible for displaying the <span class="italics">Video player page</span> with the appropriately formatted locals. We are currently using an array of dictionaries that simulate chat records: <span><code class="codeintext">FAKE_CHAT</code></span> as well as a dictionary: <span><code class="codeintext">video</code></span> to simulate a <span><code class="codeintext">video</code></span> record. Let’s replace the simulated chat records with the real thing. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/PageController.js</code></span> and add the following code to the <span><code class="codeintext">showVideo</code></span> action to first find the <span><code class="codeintext">video</code></span> to play in listing 14.6.</p>
+
+    <p class="codelistingcaption">Listing 14.6  Finding the video to play</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">Video.findOne({   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  id: +req.param('id')</code> <code class="codebcxspmiddle">})</code> <code class="codebcxspmiddle">  .populate('chats')  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">  .exec(function (err, foundVideo){</code> <code class="codebcxspmiddle">    if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle"> if (!foundVideo) return res.notFound();</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Find the <span><code class="codeintext1">video</code></span> from the provided <span><code class="codeintext1">id.</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> Use <span><code class="codeintext1">.populate()</code></span> to add the video’s <span><code class="codeintext1">chats</code></span> array.</p>
+
+    <p class="body">In addition to finding the particular video we <span class="italics">populated</span> the <span><code class="codeintext">chats</code></span> association attribute so that we have access to an array of <span><code class="codeintext">chat</code></span> dictionaries related to the <span><code class="codeintext">video</code></span> model. Next, we’ll iterate through each <span><code class="codeintext">chat</code></span> and format its properties based upon the requirements in the Brushfire API reference. In Sublime, add the following code in listing 14.7.</p>
+
+    <p class="codelistingcaption">Listing 14.7  Iterate through the chats array and format each video’s <span><code class="codeintext1">chat</code></span> record</p><code class="codebcxspfirst">      ...</code> <code class="codebcxspmiddle">async.each(foundVideo.chats, function(chat, next){   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        User.findOne({  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">          id: chat.sender</code> <code class="codebcxspmiddle">        }).exec(function (err, foundUser){</code> <code class="codebcxspmiddle">          if (err) return next(err);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">          chat.username = foundUser.username;        <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">          chat.created = DatetimeService.getTimeAgo({date: chat.createdAt});    <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">          chat.gravatarURL = foundUser.gravatarURL;  <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">          return next();</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      }, function(err) {</code> <code class="codebcxspmiddle">        if (err) return res.negotiate(err);</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Iterate through each of the video’s chats.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Find the <span><code class="codeintext1">sender</code></span> of the <span><code class="codeintext1">chat</code></span> using the association parameter <span><code class="codeintext1">id.</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span> Add a <span><code class="codeintext1">username</code></span> property to the <span><code class="codeintext1">chat.</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span> Add a <span><code class="codeintext1">created</code></span> property with the formatted time ago value of <span><code class="codeintext1">createdAt.</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span> Add a <span><code class="codeintext1">gravatarURL</code></span> property to the <span><code class="codeintext1">chat.</code></span></p>
+
+    <p class="body">Finally, we’ll respond based upon the user’s authenticated state. If the user is not authenticated, then respond with the <span><code class="codeintext">me</code></span> dictionary set to <span><code class="codeintext">null</code></span>, the found video information for the page, the tutorial <span><code class="codeintext">id</code></span><span class="italics">,</span> and the chat information. In Sublime, add the response if the user is not authenticated similar to listing 14.8.</p>
+
+    <p class="codelistingcaption">Listing 14.8  The response if the user is not authenticated</p><code class="codebcxspfirst">      ...</code> <code class="codebcxspmiddle">      if (!req.session.userId) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">          return res.view('show-video', {  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">            me: null,</code> <code class="codebcxspmiddle">            video: foundVideo,</code> <code class="codebcxspmiddle">            tutorialId: req.param('tutorialId'),</code> <code class="codebcxspmiddle">            chats: foundVideo.chats</code> <code class="codebcxspmiddle">          });</code> <code class="codebcxspmiddle">        }</code><code class="codebcxsplast">        ...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> If the <span><code class="codeintext1">user</code></span> is not authenticated</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> Render the <span><code class="codeintext1">show-video</code></span> view with the <span><code class="codeintext1">me</code></span> property set to <span><code class="codeintext1">null.</code></span></p>
+
+    <p class="body">If the user is authenticated we’ll add the required information about the authenticated user to the <span><code class="codeintext">me</code></span> property as well as related <span><code class="codeintext">chat</code></span> information. In Sublime, add the response if the user is authenticated similar to listing 14.9.</p>
+
+    <p class="codelistingcaption">Listing 14.9  The response if the <span><code class="codeintext1">user</code></span> is authenticated</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">User.findOne({  <span class="codeannotationcueballs1">❶ </span>  </code> <code class="codebcxspmiddle">  id: +req.session.userId</code> <code class="codebcxspmiddle">}).exec(function (err, foundUser) {</code> <code class="codebcxspmiddle">  if (err) {</code> <code class="codebcxspmiddle">    return res.negotiate(err);</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (!foundUser) {  <span class="codeannotationcueballs1">❷ </span>   </code> <code class="codebcxspmiddle">    sails.log.verbose('Session refers to a user who no longer exists');</code> <code class="codebcxspmiddle">    return res.view('show-video', {</code> <code class="codebcxspmiddle">      me: null,</code> <code class="codebcxspmiddle">      video: foundVideo,</code> <code class="codebcxspmiddle">      tutorialId: req.param('tutorialId'),</code> <code class="codebcxspmiddle">      chats: foundVideo.chats</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  return res.view('show-video', {  <span class="codeannotationcueballs1">❸</span> </code> <code class="codebcxspmiddle">    me: {</code> <code class="codebcxspmiddle">      username: foundUser.username,</code> <code class="codebcxspmiddle">      gravatarURL: foundUser.gravatarURL,</code> <code class="codebcxspmiddle">      admin: foundUser.admin</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle">    video: foundVideo,</code> <code class="codebcxspmiddle">    tutorialId: req.param('tutorialId'),</code> <code class="codebcxspmiddle">    chats: foundVideo.chats</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Find the currently authenticated user.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Handle if the <span><code class="codeintext1">user</code></span> is not found.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span> Render the <span><code class="codeintext1">show-video</code></span> view.</p>
+
+    <p class="body">Now that we are adding real chat records to the Video player page, we need to be able to chat! We’ll start to implement that next.</p>
+
+    <h3 class="head1" id="heading_id_10">14.3.3   Subscribing a socket to a room</h3>
+
+    <p class="body">Each <span><code class="codeintext">chat</code></span> is associated with a particular <span><code class="codeintext">video</code></span> and a particular <span><code class="codeintext">user</code></span>. When the rendered <span><code class="codeintext">brushfire/views/show-video.ejs</code></span> view loads, we display any existing chats associated with the <span><code class="codeintext">video</code></span>. We will need a way to send new chats created for the period between page refreshes. To accomplish this task we will send an event as each new chat is created. However, we don’t want to send the event to all connected WebSockets. Instead we want to limit sending the event to those WebSockets that are currently on the <span class="italics">Video player page</span> of a particular <span><code class="codeintext">video</code></span> record. We can accomplish this by creating a room unique to that <span><code class="codeintext">video</code></span> record, join the WebSockets that are on this page to the room, and then send an event to the room. But what room are we talking about?</p>
+
+    <p class="body">Socket.io uses the metaphor of a “room” to group WebSockets together. From the back end we can then broadcast messages to the room. We can also subscribe and unsubscribe WebSockets from the room. There’s actually no need to create a room explicitly. The first user that joins a room, automatically, creates the room in the process. So by loading the <span><code class="codeintext">show-video</code></span> view, the front-end Angular controller makes a <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/videos/2/join</code></span>. This in turn triggers the <span><code class="codeintext">joinChat</code></span> action, which we’ll implement now. In Sublime open <span><code class="codeintext">brushfire/api/controllers/VideoController.js</code></span> and add the following to the <span><code class="codeintext">joinChat</code></span> action in listing 14.10.</p>
+
+    <p class="codelistingcaption">Listing 14.10  Joining the <span><code class="codeintext1">video</code></span> room</p><code class="codebcxspfirst">joinChat: function (req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (!req.isSocket) {   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.badRequest();</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  sails.sockets.join(req, 'video'+req.param('id'));   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">   return res.ok();</code><code class="codebcxsplast">},</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Assure that this is a WebSocket request.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> Join the current WebSocket (<span><code class="codeintext1">req</code></span>) to a <span><code class="codeintext1">video</code></span> room.</p>
+
+    <p class="body">The <span><code class="codeintext">sails.sockets.join()</code></span>method is one of the low level methods Sails provides that allows real time communication with the front end. The method has two required arguments:  a WebSocket and a <span><code class="codeintext">roomName</code></span>. The WebSocket refers to the client WebSocket that has made the request and the <span><code class="codeintext">roomName</code></span> is the name of the room to join. We’ll pass the <span><code class="codeintext">req</code></span> dictionary as the first argument and use a combination of the word <span><code class="codeintext">video</code></span> with the <span><code class="codeintext">id</code></span> of the video record to create a unique room name for each <span><code class="codeintext">video</code></span> as the second argument. Now that we’ve joined the WebSocket to the <span><code class="codeintext">video</code></span> room, let’s set up a mechanism for sending a <span><code class="codeintext">chat</code></span>.</p>
+
+    <h3 class="head1" id="heading_id_11">14.3.4   Sending a chat notification</h3>
+
+    <p class="body">Now we want to send the contents of the input field of the chat form in the <span><code class="codeintext">show-video</code></span> view to the back end <span class="italics">Send chat</span> endpoint<span class="italics">.</span> When the user clicks the <span class="italics">Send</span> button the <span><code class="codeintext">chat</code></span> action is triggered. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/VideoController.js</code></span> and add the following to the <span><code class="codeintext">chat</code></span> action in listing 14.11.</p>
+
+    <p class="codelistingcaption">Listing 14.11 Saving the chat  and then broadcasting  it to the video room</p><code class="codebcxspfirst">    Chat.create({    <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      message: req.param('message'),</code> <code class="codebcxspmiddle">      sender: req.session.userId,</code> <code class="codebcxspmiddle">      video: +req.param('id')</code> <code class="codebcxspmiddle">    }).exec(function (err, createdChat){</code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      User.findOne({  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        id: req.session.userId</code> <code class="codebcxspmiddle">      }).exec(function (err, foundUser){</code> <code class="codebcxspmiddle">        if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">        if (!foundUser) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        sails.sockets.broadcast('video'+req.param('id'), 'chat', {  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">          message: req.param('message'),</code> <code class="codebcxspmiddle">          username: foundUser.username,</code> <code class="codebcxspmiddle">          created: 'just now',</code> <code class="codebcxspmiddle">          gravatarURL: foundUser.gravatarURL</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">        return res.ok();</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶   </span>Create a <span><code class="codeintext1">chat</code></span> record.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷   </span>Find the currently authenticated user.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸   </span>Broadcast the <span><code class="codeintext1">chat</code></span> event to the <span><code class="codeintext1">video</code></span> room.</p>
+
+    <p class="body">Initially, the <span><code class="codeintext">chat</code></span> record is created. Next we’ll query for the currently authenticated <span><code class="codeintext">user</code></span> using the <span><code class="codeintext">userId</code></span> found in the session. We’ll use a combination of the results of our created <span><code class="codeintext">chat</code></span> record and <span><code class="codeintext">user</code></span> query as the required Brushfire API reference values in the chat event that we will send to the room. To accomplish this we send the event using another Sails low level WebSocket method: <span><code class="codeintext">sails.sockets.broadcast()</code></span><span class="italics">.</span> This method can be executed with three different function signatures shown in figure 14.9.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.9 The broadcast method can be executed using <span class="codeannotationcueballs">① </span>  the <span><code class="codeintext1">roomName</code></span>,  <span><code class="codeintext1">eventName</code></span>, and <span><code class="codeintext1">data</code></span> as arguments, <span class="codeannotationcueballs">② </span>  without the <span><code class="codeintext1">eventName</code></span>, in which case the default event name is used: <span><code class="codeintext1">message</code></span>, plus the currently requesting <span><code class="codeintext1">WebSocket</code></span> can be omitted by adding the WebSocket <span><code class="codeintext1">ToOmit</code></span> argument (<span><code class="codeintext1">req</code></span>) or <span class="codeannotationcueballs">③ </span>  with all four arguments.</p>
+
+    <p class="body">If an <span><code class="codeintext">eventName</code></span> isn’t provided, a default event name of <span><code class="codeintext">message</code></span> is used. We want the requesting WebSocket to be included in those WebSockets that will receive the event, so we will leave out the WebSocket <span><code class="codeintext">ToOmit</code></span> argument<span class="italics">.</span> The final step is adding an event listener on the front end configured for the <span><code class="codeintext">chat</code></span> event.</p>
+
+    <h3 class="head1" id="heading_id_12">14.3.5   Adding a chat event listener to the front-end</h3>
+
+    <p class="body">Although we are concentrating on the back end, it’s important to review what is being incorporated into the front end regarding WebSocket requests. Figure 14.10 illustrates an overview of the significant exchanges between the front end and back end as it relates to chat.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.10  The significant interactions between the front end and back end relating to chat.</p>
+
+    <p class="body">When the user agent clicks on a <span><code class="codeintext">video</code></span>, <span class="codeannotationcueballs">① </span>  the <span><code class="codeintext">showVideo</code></span> action is triggered which finds and displays any existing chats <span><code class="codeintext">Video.findOne()</code></span> and populates the <span><code class="codeintext">chats</code></span> to the view on the back end. When the rendered view is displayed on the browser <span class="codeannotationcueballs">② </span>  the user agent connects to the Sails WebSocket server automatically via a link to <span><code class="codeintext">sails.io.js</code></span> in the <span><code class="codeintext">show-video</code></span> view. The <span class="codeannotationcueballs">③ </span>  Angular controller also joins the newly created WebSocket to a unique <span><code class="codeintext">video</code></span> room. When <span class="codeannotationcueballs">④ </span> , a user, clicks the send button on the chat form, <span class="codeannotationcueballs">⑤ </span> , the back end, broadcasts the <span><code class="codeintext">chatmessage</code></span> to any listening WebSockets in the <span><code class="codeintext">video</code></span> room. The listening WebSocket can “hear” the broadcasted event because of <span class="codeannotationcueballs">⑥ </span> , an event listener, in the <span><code class="codeintext">showVideoPageController.js</code></span> controller file and displayed in listing 14.12.</p>
+
+    <p class="codelistingcaption">Listing 14.12The<span><code class="codeintext1">chat</code></span> event listener</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">io.socket.on('chat', function (e) { <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    console.log('new chat received!', e);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $scope.chats.push({  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      created: e.created,</code> <code class="codebcxspmiddle">      username: e.username,</code> <code class="codebcxspmiddle">      message: e.message,</code> <code class="codebcxspmiddle">      gravatarURL: e.gravatarURL</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">$scope.$apply();  <span class="codeannotationcueballs1">❸ </span></code><code class="codebcxsplast">  });</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶   </span>Listen for a <span><code class="codeintext1">chat</code></span> event.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷   </span>Add the new <span><code class="codeintext1">chat</code></span> to the <span><code class="codeintext1">chats</code></span> array.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸   </span>The $<span class="italics1">apply</span> method is required so that Angular realizes the <span><code class="codeintext1">$scope</code></span> is dirty.</p>
+
+    <p class="body">When a <span><code class="codeintext">chat</code></span> event is sent to the client, an event handler is triggered and the newly created <span><code class="codeintext">chat</code></span> is added to the <span><code class="codeintext">chats</code></span> array on the Angular <span><code class="codeintext">$scope,</code></span> which updates the UI displaying the <span><code class="codeintext">chat</code></span> similar to figure 14.11.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.11  The <span><code class="codeintext1">chat</code></span> event listener <span class="codeannotationcueballs">① </span>  displays the chat event message contents.</p>
+
+    <p class="body">Our old friend Chad had an additional request for the chat. He wants a user to know when another user is typing in the message field of the chat form. We’ll implement this last piece of chat functionality in the next section.</p>
+
+    <h2 class="head" id="heading_id_13">14.4   Sending “typing” and “stoppedTyping” notifications</h2>
+
+    <p class="body">Figure 14.12 provides an overview of the typing message feature we’re going to implement.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_12.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.12  The steps the front end and back end must fulfill in order to display a message when a user is typing in the message field of the chat window.</p>
+
+    <p class="body">When <span class="codeannotationcueballs">① </span> , a <span><code class="codeintext">user,</code></span> is typing in the <span><code class="codeintext">message</code></span> field of the <span><code class="codeintext">chat</code></span> window, we want the front end to make <span class="codeannotationcueballs">② </span>  a <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/videos/:id/typing</code></span>. That request <span class="codeannotationcueballs">③ </span>  matches a route that triggers <span class="codeannotationcueballs">④ </span> , the <span><code class="codeintext">typing</code></span> action, in the <span><code class="codeintext">video</code></span> controller that broadcasts a <span><code class="codeintext">typing</code></span> event. A <span class="codeannotationcueballs">⑤ </span> , event handler, listens for the typing event, which triggers <span class="codeannotationcueballs">⑥ </span> , display of the typing animation. Reviewing the API reference reveals that this feature will require the following on the back end:</p>
+
+    <p class="listbulletcxspfirst">·   a <span><code class="codeintext">typing</code></span> action that broadcasts a <span><code class="codeintext">typing</code></span> event to all WebSocket members of the <span><code class="codeintext">video</code></span> room</p>
+
+    <p class="listbulletcxspmiddle">·   a <span><code class="codeintext">stoppedTyping</code></span> action that broadcasts a <span><code class="codeintext">stopTyping</code></span> event to all WebSocket members of the <span><code class="codeintext">video</code></span> room</p>
+
+    <p class="listbulletcxspmiddle">·   a route connecting a <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/videos/:id/typing</code></span> to the <span><code class="codeintext">typing</code></span> action</p>
+
+    <p class="listbulletcxsplast">·   a route connecting a <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/videos/:id/stoppedTyping</code></span> to the <span><code class="codeintext">stoppedTyping</code></span> action</p>
+
+    <p class="body">On the front end, we’ll need to generate two requests when the user starts typing in the message input field and stops typing, as well as event handlers to listen for the <span><code class="codeintext">typing</code></span> and <span><code class="codeintext">stoppedTyping</code></span> events. Let’s get busy.</p>
+
+    <h3 class="head1" id="heading_id_14">14.4.1   Listening for different kinds of notifications</h3>
+
+    <p class="body">First, let’s add the two requests for typing and stopped typing states. Remember we’re now dealing with the front-end and not the back-end API. In Sublime, <span><code class="codeintext">open brushfire/assets/js/controllers/showVideoPageController.js</code></span> and add the <span><code class="codeintext">whenTyping</code></span> and <span><code class="codeintext">whenNotTyping</code></span> methods in listing 14.13.</p>
+
+    <p class="body"> </p>
+
+    <p class="codelistingcaption">Listing 14.13  Adding the <span><code class="codeintext1">whenTyping</code></span> and <span><code class="codeintext1">WhenNotTyping</code></span> methods</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  $scope.whenTyping = function (event) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    io.socket.request({</code> <code class="codebcxspmiddle">      url: '/videos/'+$scope.fromUrlVideoId+'/typing',</code> <code class="codebcxspmiddle">      method: 'put'</code> <code class="codebcxspmiddle">    }, function (data, JWR){</code> <code class="codebcxspmiddle">        // If something went wrong, handle the error.</code> <code class="codebcxspmiddle">        if (JWR.statusCode !== 200) {</code> <code class="codebcxspmiddle">          console.error(JWR);</code> <code class="codebcxspmiddle">          return;</code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  };</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  $scope.whenNotTyping = function (event) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    io.socket.request({</code> <code class="codebcxspmiddle">      url: '/videos/'+$scope.fromUrlVideoId+'/stoppedTyping',</code> <code class="codebcxspmiddle">      method: 'put'</code> <code class="codebcxspmiddle">    }, function (data, JWR){</code> <code class="codebcxspmiddle">        // If something went wrong, handle the error.</code> <code class="codebcxspmiddle">        if (JWR.statusCode !== 200) {</code> <code class="codebcxspmiddle">          console.error(JWR);</code> <code class="codebcxspmiddle">          return;</code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  };</code><code class="codebcxsplast">}]);</code>
+
+    <p class="body">We’re using the <span><code class="codeintext">io.socket.request()</code></span> method, which provides us with lower-level access to the request headers, parameters, method, and URL of the request. Both methods are triggered within the show-video view in <span><code class="codeintext">brushfire/views/show-view.ejs</code></span> using a combination of <span><code class="codeintext">ng-blur</code></span>, <span><code class="codeintext">ng-focus</code></span>, and <span><code class="codeintext">ng-keypress</code></span>. Now let’s add the event handlers that will listen for the <span><code class="codeintext">typing</code></span> and <span><code class="codeintext">stoppedTyping</code></span> events. Back in Sublime, <span><code class="codeintext">open brushfire/assets/js/controllers/showVideoPageController.js,</code></span> and add the event handlers for the <span><code class="codeintext">typing</code></span> and <span><code class="codeintext">stoppedTyping</code></span> events in listing 14.14.</p>
+
+    <p class="codelistingcaption">Listing 14.14 Adding the event handler’s for <span><code class="codeintext1">typing</code></span> and <span><code class="codeintext1">stoppedTyping</code></span> events</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  io.socket.on('typing', function (e) {</code> <code class="codebcxspmiddle">    console.log('typing!', e);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $scope.usernameTyping = e.username;</code> <code class="codebcxspmiddle">    $scope.typing = true;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $scope.$apply();</code> <code class="codebcxspmiddle">  });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  io.socket.on('stoppedTyping', function (e) {</code> <code class="codebcxspmiddle">    console.log('stoppedTyping!', e);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $scope.typing = false;</code> <code class="codebcxspmiddle">    $scope.$apply();</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">  ...</code>
+
+    <h3 class="head1" id="heading_id_15">14.4.2   Excluding the sender from a broadcast</h3>
+
+    <p class="body">Now that we have the front end implemented, let’s start with back-end implementation of the two routes that will <span><code class="codeintext">trigger</code></span> the typing and <span><code class="codeintext">stoppedTyping</code></span> actions. In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> and add the two routes in listing 14.15.</p>
+
+    <p class="codelistingcaption">Listing 14.15  Add the two routes that trigger the <span><code class="codeintext1">typing</code></span> and <span><code class="codeintext1">stoppedTyping</code></span> actions</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  'PUT /videos/:id/join': 'VideoController.joinChat',</code> <code class="codebcxspmiddle">  'PUT /videos/:id/typing': 'VideoController.typing',</code> <code class="codebcxspmiddle">  'PUT /videos/:id/stoppedTyping': 'VideoController.stoppedTyping', </code><code class="codebcxsplast">  ...</code>
+
+    <p class="body">Next, let’s implement the <span><code class="codeintext">typing</code></span> action. In Sublime, <span><code class="codeintext">open brushfire/api/controllers/VideoController.js</code></span> and add the <span><code class="codeintext">typing</code></span> action in listing 14.16.</p>
+
+    <p class="codelistingcaption">Listing 14.16  Broadcasting a <span class="italics1">typing</span> event excluding the sender’s WebSocket</p><code class="codebcxspfirst"> </code> <code class="codebcxspmiddle">typing: function(req, res) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    if (!req.isSocket) {</code> <code class="codebcxspmiddle">      return res.badRequest();</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.findOne({  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      id: req.session.userId</code> <code class="codebcxspmiddle">    }).exec(function (err, foundUser){</code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">      if (!foundUser) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      sails.sockets.broadcast('video'+req.param('id'), 'typing', {  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        username: foundUser.username</code> <code class="codebcxspmiddle">      }, (req.isSocket ? req : undefined) );  <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.ok();</code> <code class="codebcxspmiddle">    });</code><code class="codebcxsplast">  },</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Only socket requests should hit this endpoint.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Find the currently authenticated user.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span> Send the <span><code class="codeintext1">typing</code></span> event to all users in the video chat room.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span> Adding the sender’s WebSocket <span class="italics1">id</span> prevents the sender from receiving the event.</p>
+
+    <p class="body">Earlier we used the <span><code class="codeintext">sails.sockets.broadcast()</code></span> method without sending an optional WebSocket to be omitted. It’s not necessary for the user who’s typing in the chat window to receive the typing event. We’ll pass the requesting WebSocket as the WebSocket to be omitted from receiving the event. Lastly, we’ll implement the action that will stop the animation. The <span><code class="codeintext">stoppedTyping</code></span> action does not require a query to the <span><code class="codeintext">user</code></span> model since we’re not displaying a message that a particular user stopped typing.  In Sublime, open <span><code class="codeintext">brushfire/api/controllers/VideoController.js</code></span> and add the <span><code class="codeintext">stopTyping</code></span> action in listing 14.17.</p>
+
+    <p class="codelistingcaption">Listing 14.17 Broadcasting a stoppedT<span class="italics1">yping</span> event excluding the sender’s WebSocket</p><code class="codebcxspfirst">  stoppedTyping: function(req, res) {</code> <code class="codebcxspmiddle">    if (!req.isSocket) {</code> <code class="codebcxspmiddle">      return res.badRequest();</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    sails.sockets.broadcast('video'+req.param('id'),</code> <code class="codebcxspmiddle">      'stoppedTyping', (req.isSocket ? req : undefined) );</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    return res.ok();</code><code class="codebcxsplast">  }</code>
+
+    <p class="body">Let’s see this in action. Restart Sails via <span><code class="codeintext">sails lift</code></span>, and navigate two different authenticated browsers, one in regular mode and one in incognito mode to the same video. You can use the users that were created by the bootstrap file, <span><code class="codeintext">nikolatesla</code></span> and <span><code class="codeintext">sailsinaction,</code></span> both of which have the password <span><code class="codeintext">abc123</code></span>. Use Shift it to line up the browsers side-by-side. Browse to the same video, for example, <a class="pcalibre8 pcalibre5" href="http://localhost:1337/tutorials/1/videos/1/show">http://localhost:1337/tutorials/1/videos/1/show</a>. Begin typing in one of the chat windows and you should see something similar to figure 14.13.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/14_13.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 14.13  When two user agents are on the same video and <span class="codeannotationcueballs">① </span>  one begins to type a chat message, the other user-agent <span class="codeannotationcueballs">② </span>  has a typing message displayed.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We used an incognito browser, which creates a browser with a different session cookie than the regular browser. If we used two regular browsers, the same session cookie would be used and therefore both browsers would access the same authenticated user.</p>
+    </div>
+
+    <p class="body">Typing in the <span><code class="codeintext">message</code></span> input field triggers a <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/videos/:id/typing</code></span> which triggers the <span><code class="codeintext">typing</code></span> action. Within this action we are broadcasting a <span><code class="codeintext">typing</code></span> event to any WebSocket <span><code class="codeintext">ids</code></span> that have joined the <span><code class="codeintext">video</code></span> room (<span><code class="codeintext">'video' + video id</code></span>) and have an event handler listening for a <span><code class="codeintext">typing</code></span> event.</p>
+
+    <h3 class="head1" id="heading_id_16">14.4.3   Other useful methods in <span><code class="codeintext1">sails.sockets</code></span></h3>
+
+    <p class="body">Brushfire doesn’t require using all of back-end low-level WebSocket methods, so let’s take a quick look at the remaining methods:</p>
+
+    <p class="listbulletcxspfirst">·   <span><code class="codeintext">.addRoomMembersToRooms(sourceRoom, destRooms, cb)</code></span> - subscribes all members of a room to one or more additional rooms.</p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">sails.sockets.blast(data)</code></span>- sends a message/event to all WebSockets connected to the Sails WebSocket server regardless of what rooms they’ve joined.</p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">sails.sockets.leave(socket, roomName)</code></span> - Unsubscribes a WebSocket from a room.</p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">sails.sockets.leaveAll(roomName, cb)</code></span> - Unsubscribes all members of a room from that room and every other room they are currently subscribed.</p>
+
+    <p class="listbulletcxsplast">·   <span><code class="codeintext">.removeRoomMembersFromRooms()</code></span> - Unsubscribes all members of a room from one or more other rooms.</p>
+
+    <p class="body">For a complete reference to each method head over to <a class="pcalibre8 pcalibre5" href="http://sailsjs.org/documentation/reference/web-sockets/sails-sockets">http://sailsjs.org/documentation/reference/web-sockets/sails-sockets</a>.</p>
+
+    <h2 class="head" id="heading_id_17">14.5   Understanding Resourceful PubSub (RPS)</h2>
+
+    <p class="body">In addition to the WebSocket client and low-level back-end WebSocket methods, Sails provides an automation layer called <span class="italics">Resourceful PubSub</span>. Every model, also referred to as a <span class="italics">resource</span>, is automatically equipped with methods for joining connected WebSockets to event notifications when records are created, updated and/or deleted. In Brushfire, we want each <span><code class="codeintext">video</code></span> record to have its own unique room such as <span><code class="codeintext">video1</code></span>. Currently, we’re creating the room name by concatenating the word <span><code class="codeintext">video</code></span> with the <span><code class="codeintext">id</code></span> of each record. When the browser user-agent’s WebSocket accesses a particular <span class="italics">Video player page</span> we join the WebSocket to the room with the concatenated name.</p>
+
+    <p class="body">  Resourceful PubSub methods create and maintain the room names for us. Resourceful PubSub rooms also add an additional layer of detail. In addition to using a model record’s <span><code class="codeintext">id</code></span>, as the basis for a room name, PubSub rooms are generated for <span><code class="codeintext">create</code></span>, <span><code class="codeintext">update</code></span>, and <span><code class="codeintext">delete</code></span> actions, as well as additions to and removal from associations. For example, we have the fidelity of joining a requesting WebSocket to a room that limits events to the updates of that record.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">These Resourceful PubSub methods follow a pattern referred to as the publish/subscription model. If a WebSocket is <span class="italics1">subscribed</span> to a resource, then events are <span class="italics1">published</span> to the subscribing WebSockets.</p>
+    </div>
+
+    <p class="body">In the previous section we used three back-end low-level WebSocket methods including:</p>
+
+    <p class="listbulletcxspfirst">·   <span><code class="codeintext">sails.sockets.getId(req)</code></span>– returns the WebSocket <span><code class="codeintext">id</code></span> found on the <span><code class="codeintext">req</code></span> dictionary</p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">sails.sockets.join(req, roomName)</code></span> – joins the WebSocket to a room</p>
+
+    <p class="listbulletcxsplast">·   <span><code class="codeintext">sails.sockets.broadcast(roomName, data)</code></span> – sends an event to a room</p>
+
+    <p class="body">Resourceful PubSub provides additional back-end methods that extend their low-level counterparts to a specific resource—the model. There are a total of 10PubSub methods. Four of the methods replace and enhance the low-level <span class="italics">.join()</span> method:</p>
+
+    <p class="listbulletcxspfirst">·   <span><code class="codeintext">.subscribe()</code></span> – joins a requesting WebSocket to the update, destroy, add and remove rooms of one or more record(s) of a model. Behind the scenes Sails takes care of creating and managing these room names. For example, a room named <span class="italics">sails_model_user_33: update</span> is the <span><code class="codeintext">update</code></span> action room for a <span><code class="codeintext">user</code></span> record with an <span><code class="codeintext">id</code></span> of <span><code class="codeintext">33</code></span>. We don’t have to remember the room names. Instead we will pass various PubSub methods including <span><code class="codeintext">.subscribe()</code></span>the <span><code class="codeintext">id</code></span> of a record or records we want to “join” the room.</p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">.unsubscribe()</code></span> – removes a requesting WebSocket from the room of one or more record(s) of a model.</p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">.watch()</code></span> – joins a requesting WebSocket to a model’s class room whose name is derived behind-the-scenes by concatenating the word <span><code class="codeintext">create</code></span> followed by the model name like <span><code class="codeintext">sails_model_create_user</code></span>.  This is a room that will “watch” for new records of a particular model.</p>
+
+    <p class="listbulletcxsplast">·   .<span><code class="codeintext">unwatch()</code></span>– removes a requesting WebSocket from the model’s class room.</p>
+
+    <p class="body">The remaining 6PubSubmethods replace and enhance the low-level <span class="italics">.broadcast()</span> method that sends events to WebSockets:</p>
+
+    <p class="listbulletcxspfirst">·   <span><code class="codeintext">.publishCreate()</code></span> -sends an event to subscribers of the model class room like <span><code class="codeintext">sails_model_create_video</code></span>.</p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">.publishUpdate()</code></span> - sends an event to subscribers of the <span><code class="codeintext">update</code></span> instance room like <span><code class="codeintext">sails_model_video_44:update</code></span>.</p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">.publishDestroy()</code></span> – sends an event to subscribers of the <span><code class="codeintext">destroy</code></span> instance room like<span><code class="codeintext">sails_model_video_44:destroy</code></span>.</p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">.publishAdd()</code></span> – sends an event to subscribers of the <span><code class="codeintext">add</code></span> instance roomlike<span><code class="codeintext">sails_model_video_44:add:chats</code></span>.</p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">.publishRemove()</code></span> – sends an event to subscribers of the <span><code class="codeintext">remove</code></span> instance room like <span><code class="codeintext">sails_model_video_44:add:chats</code></span>.</p>
+
+    <p class="listbulletcxsplast">·   <span><code class="codeintext">.message()</code></span> – sends an event to all WebSockets that are listening for an event based upon the model name like <span><code class="codeintext">sails_model_video_44:message</code></span>.</p>
+
+    <h3 class="head1" id="heading_id_18">14.5.1   Using<span><code class="codeintext1">.subscribe()</code></span></h3>
+
+    <p class="body">The <span><code class="codeintext">.subscribe()</code></span>PubSub method subscribes the requesting client WebSocket to one or more database records. In our example we have a single <span><code class="codeintext">video</code></span> record for each video player page. The <span><code class="codeintext">Video.subscribe()</code></span>method will automatically create a video <span><code class="codeintext">update</code></span> and <span><code class="codeintext">destroy</code></span> room as well as rooms affecting the <span><code class="codeintext">chats</code></span> association-- adding and removing associated records and then join the requesting WebSocket to those rooms. In the next section we will explore methods that send events to these rooms. For now, in Sublime, open <span><code class="codeintext">brushfire/api/controllers/VideoController.js</code></span> and change the <span><code class="codeintext">joinChat</code></span> action similar to listing 14.18.</p>
+
+    <p class="codelistingcaption">Listing 14.18  Adding <span><code class="codeintext1">.subscribe()</code></span>method with <span><code class="codeintext1">.join()</code></span>in the <span><code class="codeintext1">joinChat</code></span> action</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  joinChat: function (req, res) {</code> <code class="codebcxspmiddle">    if (!req.isSocket) {</code> <code class="codebcxspmiddle">      return res.badRequest();</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">sails.sockets.join(req, 'video'+req.param('id'));</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">Video.subscribe(req, req.param('id'));  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    return res.ok();</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">  ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  Subscribe the requesting WebSocket to the provided <span><code class="codeintext1">video</code></span>record instance</p>
+
+    <p class="body">By using <span><code class="codeintext">Video.subscribe(),</code></span>we are not responsible for managing room names for the chat messages. Instead we’ll refer to the <span><code class="codeintext">id</code></span> of the record we want to subscribe a WebSocket to or to send an event. Next, let’s incorporate PubSub methods to send events to these rooms.</p>
+
+    <h3 class="head1" id="heading_id_19">14.5.2   Using <span><code class="codeintext1">.publishUpdate()</code></span></h3>
+
+    <p class="body">The requesting WebSockets are now joined to unique rooms whose name reflects the <span><code class="codeintext">id</code></span> of the record of the <span><code class="codeintext">video</code></span> model as well as the type of action being performed: <span><code class="codeintext">create</code></span>, <span><code class="codeintext">update</code></span>, <span><code class="codeintext">destroy</code></span>, <span><code class="codeintext">etc</code></span>. Now we need a way of sending events to the appropriate rooms. <span><code class="codeintext">Video.publishUpdate()</code></span>accepts an <span><code class="codeintext">id</code></span> or array of <span><code class="codeintext">ids</code></span> of <span><code class="codeintext">video</code></span> records as the first argument in its method signature. It then uses that information to broadcast an update event to the update room of those records.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Ironically, the <span><code class="codeintext1">.publishUpdate()</code></span>method doesn’t update any model records. Instead, it provides a mechanism for us to broadcast the fact that an update event has occurred within a controller/action to those WebSockets which are subscribed to the model room and have event listeners configured to listen for a particular event.</p>
+    </div>
+
+    <p class="body">In Sublime, open <span><code class="codeintext">brushfire/api/controllers/VideoController.js</code></span> and substitute <span><code class="codeintext">sails.sockets.broadcast()</code></span> in the <span><code class="codeintext">chat</code></span> action with <span><code class="codeintext">Video.publishUpdate()</code></span>similar to listing 14.19.</p>
+
+    <p class="codelistingcaption">Listing 14.19  Substituting <span><code class="codeintext1">.broadcast()</code></span> with <span><code class="codeintext1">.publishUpdate()</code></span> in the <span><code class="codeintext1">chat</code></span> action</p><code class="codebcxspfirst">  chat: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">      User.findOne({</code> <code class="codebcxspmiddle">        id: req.session.userId</code> <code class="codebcxspmiddle">      }).exec(function (err, foundUser){</code> <code class="codebcxspmiddle">        if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">        if (!foundUser) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">Video.publishUpdate(+req.param('id'), {      <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">message: req.param('message'),               <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        username: foundUser.username,        <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        created: 'just now',                 <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        gravatarURL: foundUser.gravatarURL   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">});</code><code class="codebcxsplast">      ...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Provide the <span><code class="codeintext1">id</code></span> of the <span><code class="codeintext1">video</code></span> record to broadcast the event.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> The <span><code class="codeintext1">message</code></span> dictionary to be passed with the <span><code class="codeintext1">video</code></span> event</p>
+
+    <p class="body">Now when a user sends a chat, a <span><code class="codeintext">video</code></span> event is broadcast to all WebSockets subscribed to that particular video record. Lastly,let’s change the event name of our event listener from <span><code class="codeintext">chat</code></span> to <span><code class="codeintext">video</code></span>.</p>
+
+    <h3 class="head1" id="heading_id_20">14.5.3   RPS methods and event names</h3>
+
+    <p class="body">The PubSub publish methods: <span><code class="codeintext">.publishUpdate()</code></span>, <span><code class="codeintext">.publishCreate()</code></span>, and <span><code class="codeintext">.publishDestory()</code></span>share  the same event name derived from the model. In our case the event name is <span><code class="codeintext">video</code></span>. We currently have the event listener configured for a <span><code class="codeintext">chat</code></span> event. So let’s change it to <span><code class="codeintext">video</code></span>. In Sublime, open <span><code class="codeintext">brushfire/assets/js/controllers/showVideoPageController.js</code></span> and change the event listener event name to <span><code class="codeintext">video</code></span> similar to listing 14.20.</p>
+
+    <p class="codelistingcaption">Listing 14.20 Updating the event listener to the <span class="italics1">video</span> event</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">  io.socket.on('video', function (e) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $scope.chats.push({</code> <code class="codebcxspmiddle">      created: e.data.created,  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      username: e.data.username,</code> <code class="codebcxspmiddle">      message: e.data.message,</code> <code class="codebcxspmiddle">      gravatarURL: e.data.gravatarURL</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $scope.$apply();</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Substitute the <span><code class="codeintext1">video</code></span> event for the <span><code class="codeintext1">chat</code></span> event.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> Notice we’re also adding <span><code class="codeintext1">data</code></span> property to the event.</p>
+
+    <p class="body">The listener will now be triggered when a <span><code class="codeintext">video</code></span> event is sent. Also the contents of the event will have a data property similar to listing 14.21.</p>
+
+    <p class="codelistingcaption">Listing 14.21A typical <span class="italics1">video</span> event</p><code class="codebcxspfirst">{</code> <code class="codebcxspmiddle">  data: {</code> <code class="codebcxspmiddle">    created: "just now",</code> <code class="codebcxspmiddle">    gravatarURL: "http://www.gravatar.com/avatar/c06112bbecd8a290a00441bf181a24d3?",</code> <code class="codebcxspmiddle">    message: "How are you?",</code> <code class="codebcxspmiddle">    username: "nikola-tesla",</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  id: 6,</code> <code class="codebcxspmiddle">  verb: "updated"</code><code class="codebcxsplast">}</code>
+
+    <p class="body">Even though we’re using the same <span class="italics">event</span> name for each method, we can differentiate between event types by checking the <span class="italics">verb</span> property, in this case <span><code class="codeintext">updated</code></span>.</p>
+
+    <p class="body">For Brushfire chat, we need to transform some of the values before they are sent as part of an event to the front end. Therefore, we use the publish methods in our custom actions. There are cases, however, when we don’t need a custom controller/action and can instead rely upon <span class="italics">blueprint: actions</span>. In these cases we can use built in PubSub features of blueprint: actions to automate the process of managing WebSockets.</p>
+
+    <h2 class="head" id="heading_id_21">14.6   Understanding how the blueprint API uses RPS methods</h2>
+
+    <p class="body">There are eight <span class="italics">blueprint actions</span> available to each controller unless overwritten by a custom action using the same name:</p>
+
+    <p class="listbulletcxspfirst">·   <span><code class="codeintext">find</code></span></p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">findOne</code></span></p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">create</code></span></p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">update</code></span></p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">destroy</code></span></p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">add</code></span></p>
+
+    <p class="listbulletcxspmiddle">·   <span><code class="codeintext">remove</code></span></p>
+
+    <p class="listbulletcxsplast">·   <span><code class="codeintext">populate</code></span></p>
+
+    <p class="body">In chapter four, we introduced some of these actions and how they can be triggered by <span class="italics">blueprint routes or</span> custom routes to provide pre-built CRUD operations to controllers. What we haven’t discussed is that these actions also contain built-in Resourceful PubSub features.</p>
+
+    <h3 class="head1" id="heading_id_22">14.6.1   The find and findOne actions</h3>
+
+    <p class="body">The blueprint <span><code class="codeintext">find</code></span> <span class="italics">and</span> <span><code class="codeintext">findOne</code></span> actions automatically subscribe requesting WebSockets to various PubSub rooms of <span class="italics">existing</span> records of a model. The <span class="italics">blueprint find</span> action automatically subscribes the requesting WebSocket to any records that match the results of a <span class="italics">find</span> query, including any records that are part of an association. For example, let’s say we want to track the position of each user’s cursor in the browser. We’ll first create a <span><code class="codeintext">cursor</code></span> model. We’ll then use the Sails WebSocket client to make a virtual <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/cursor</code></span>. This <span class="italics">virtual</span> request will trigger the <span class="italics">blueprint find</span> action executing <span><code class="codeintext">Cursor.subscribe()</code></span>which will automatically subscribe the requesting WebSocket to various rooms. <span><code class="codeintext">Cursor.subscribe()</code></span>will join the requesting WebSocket to the<span><code class="codeintext">update</code></span><span class="italics">,</span> <span><code class="codeintext">destroy</code></span><span class="italics">,</span> <span><code class="codeintext">add</code></span><span class="italics">,</span> and <span><code class="codeintext">remove</code></span> rooms for each record found by the find query and generated by the first WebSocket joining the room. In addition, the <span><code class="codeintext">find</code></span> action will execute <span><code class="codeintext">Cursor.watch()</code></span>. <span><code class="codeintext">Cursor.watch()</code></span> joins the requesting WebSocket to a room that combines the model name with the word <span><code class="codeintext">create--sails_model_create_cursor</code></span>. By adding the requesting WebSocket to the various rooms will enable the PubSub publish methods to automatically send events within the blueprint <span><code class="codeintext">create</code></span>, <span><code class="codeintext">update</code></span>, <span><code class="codeintext">destroy</code></span>, <span><code class="codeintext">add</code></span>, <span><code class="codeintext">remove</code></span>, and <span><code class="codeintext">populate</code></span> actions. Unlike the blueprint <span class="italics">find</span> action, the <span><code class="codeintext">findOne</code></span> action subscribes the requesting client to the record rooms: <span><code class="codeintext">update</code></span>, <span><code class="codeintext">destroy</code></span>, <span><code class="codeintext">add</code></span>, and <span><code class="codeintext">remove</code></span>, but not to the <span><code class="codeintext">create</code></span> class room.</p>
+
+    <h3 class="head1" id="heading_id_23">14.6.2   The create action</h3>
+
+    <p class="body">After the blueprint <span><code class="codeintext">create</code></span> action creates a record or records, it subscribes the requesting WebSocket to the created record or records. It then subscribes all of the WebSockets that are members of the models create room to the newly created record or records. Finally, by using <span><code class="codeintext">.publishCreate()</code></span>, the blueprint create action, will send an event to the subscribers of the model’s <span><code class="codeintext">create</code></span> room. For example, <span><code class="codeintext">sails_model_create_cursor</code></span> would be the create room for <span><code class="codeintext">cursor</code></span> model. A typical event from the blueprint create action’s automatic use of the <span><code class="codeintext">.publishCreate()</code></span> method will look similar to listing 14.22.</p>
+
+    <p class="codelistingcaption">Listing 14.22 A typical event from the .publishCreate() method executed by the blueprint create action</p><code class="codebcxspfirst">{</code> <code class="codebcxspmiddle">  data: {           <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    id: 1,</code> <code class="codebcxspmiddle">    createdAt: "2015-12-13T22:48:50.328Z",</code> <code class="codebcxspmiddle">    updatedAt: "2015-12-13T22:48:50.328Z",</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  id: 1,            <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">  verb: "created"   <span class="codeannotationcueballs1">❸ </span></code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶   </span>The record that was created</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷   </span>The <span><code class="codeintext1">id</code></span> of the record that was created</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸   </span>The type of Publish PubSub method used</p>
+
+    <h3 class="head1" id="heading_id_24">14.6.3   The update action</h3>
+
+    <p class="body">After the blueprint update action updates a record, it subscribes the requesting WebSocket to the updated record. Using <span><code class="codeintext">.publishUpdate()</code></span>, the blueprint update action, sends an event to the subscribers of the updated records <span><code class="codeintext">update</code></span> room. For example, <span><code class="codeintext">sails_model_cursor_24:update</code></span> would be the <span><code class="codeintext">update</code></span> room for a <span><code class="codeintext">cursor</code></span> record with an <span><code class="codeintext">id</code></span> of <span><code class="codeintext">24</code></span>. A typical event from the blueprint update action’s automatic use of the <span><code class="codeintext">.publishUpdate()</code></span> method will look similar to listing 14.23.</p>
+
+    <p class="codelistingcaption">Listing 14.23 A typical event from the .publishUpdate() method  executed by the blueprint: update action</p><code class="codebcxspfirst">{ </code> <code class="codebcxspmiddle">  data: {          <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    name: "john",</code> <code class="codebcxspmiddle">    updatedAt: "2015-12-13T23:20:34.560Z",</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  id: 32,  </code> <code class="codebcxspmiddle"> previous: {       <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    createdAt: "2015-12-13T23:20:34.560Z",</code> <code class="codebcxspmiddle">    updaedAt: "2015-12-13T23:20:34.570Z",</code> <code class="codebcxspmiddle">    id: 32,</code> <code class="codebcxspmiddle">    name: "joe"</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  verb: "updated"  <span class="codeannotationcueballs1">❸ </span></code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> The record that was updated</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> The <span class="italics1">previous values</span> of the record before it was updated</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span> The type of Publish PubSub method used</p>
+
+    <h3 class="head1" id="heading_id_25">14.6.4   The destroy action</h3>
+
+    <p class="body">After the blueprint destroy action destroys a record, it executes <span><code class="codeintext">.publishDestory()</code></span>sending an event to the subscribers of the deleted records <span><code class="codeintext">delete</code></span> room. For example,  (e.g. <span><code class="codeintext">sails_model_cursor_24:destroy</code></span> would be the <span><code class="codeintext">destroy</code></span> room for a <span><code class="codeintext">cursor</code></span> record with the <span><code class="codeintext">id</code></span> of <span><code class="codeintext">24</code></span>. The action then unsubscribes the requesting WebSocket and any existing subscribers from the deleted record <span><code class="codeintext">update</code></span><span class="italics">,</span> <span><code class="codeintext">destroy</code></span><span class="italics">,</span> <span><code class="codeintext">add</code></span><span class="italics">,</span> and <span><code class="codeintext">remove</code></span> rooms. A typical event from the blueprint destroy action’s automatic use of the <span><code class="codeintext">.publishDestroy()</code></span> method will look similar to listing 14.24.</p>
+
+    <p class="codelistingcaption">Listing 14.24 A typical event from the .publishDestroy() method  executed by the blueprint destroy action</p><code class="codebcxspfirst">{</code> <code class="codebcxspmiddle">  previous: {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    createdAt: "2015-12-13T23:20:34.560Z",</code> <code class="codebcxspmiddle">    updaedAt: "2015-12-13T23:20:34.570Z",</code> <code class="codebcxspmiddle">    id: 32,</code> <code class="codebcxspmiddle">    name: "joe"</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  id: 32,</code> <code class="codebcxspmiddle">  verb: "deleted"  <span class="codeannotationcueballs1">❷ </span></code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> The <span class="italics1">previous values</span> of the record before it was deleted</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> The type of Publish PubSub method used</p>
+
+    <h3 class="head1" id="heading_id_26">14.6.5   The populate action</h3>
+
+    <p class="body">After the blueprint populate action populates an association, it subscribes the requesting WebSocket to the record or records returned after populating the association. Using this blueprint method doesn’t produce any events.</p>
+
+    <h3 class="head1" id="heading_id_27">14.6.6   The add action</h3>
+
+    <p class="body">After the <span class="italics">blueprint add</span> action adds the associated record, it executes <span><code class="codeintext">.publishAdd()</code></span>, sending an event to the subscribers of the <span><code class="codeintext">add</code></span> room. For example, <span><code class="codeintext">sails_model_video_32:add:cursors</code></span> would be the <span><code class="codeintext">add</code></span> room for the cursor record with the <span><code class="codeintext">id</code></span> of <span><code class="codeintext">32</code></span>. A typical event from the <span class="italics">blueprin: add</span> action’s automatic use of the <span><code class="codeintext">.publishAdd()</code></span> method will look similar to listing 14.25.</p>
+
+    <p class="codelistingcaption">Listing 14.25 A typical event from the .publishAdd() method  executed by the blueprint: add action</p><code class="codebcxspfirst">{</code> <code class="codebcxspmiddle">  id: 32,     <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  verb: "addedTo",       <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">  attribute: "cursors",  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">addedId: "5"  <span class="codeannotationcueballs1">❹ </span></code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> The <span><code class="codeintext1">id</code></span> of the parent record</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> The type of Publish PubSub method used</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span> The association attribute</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span> The <span><code class="codeintext1">id</code></span> of the added record</p>
+
+    <h3 class="head1" id="heading_id_28">14.6.7   The remove action</h3>
+
+    <p class="body">After the <span class="italics">blueprint remove</span> action removes the associated record, it executes <span><code class="codeintext">.publishRemove()</code></span>, sending an event to the subscribers of the remove room. For example, <span><code class="codeintext">sails_model_video_32:remove:cursors</code></span>would be the <span><code class="codeintext">remove</code></span> room for the cursor record with the <span><code class="codeintext">id</code></span> of <span><code class="codeintext">32</code></span>. A typical event from the blueprint remove action’s automatic use of the <span><code class="codeintext">.publishRemove()</code></span> method will look similar to listing 14.26.</p>
+
+    <p class="codelistingcaption">Listing 14.26 A typical event from the .publishRemove() method  executed by the blueprint: remove action</p><code class="codebcxspfirst">{</code> <code class="codebcxspmiddle">id: 32,  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  verb: "removedFrom",   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">  attribute: "cursors",  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">  removedId: "5"         <span class="codeannotationcueballs1">❹ </span></code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶   </span>The <span><code class="codeintext1">id</code></span> of the parent record</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷   </span>The type of Publish PubSub method used</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  The association attribute</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹   </span>The <span><code class="codeintext1">id</code></span> of the removed record</p>
+
+    <h2 class="head" id="heading_id_29">14.7   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   Once a WebSocket makes a connection with the WebSocket server, the server can send events to the connected WebSocket at will.</p>
+
+    <p class="listbulletcxspmiddle">·   Sails provides “virtual” request methods similar to AJAX but with the addition of exposing the WebSocket id to the back end.</p>
+
+    <p class="listbulletcxsplast">·   Sails provides Resourceful PubSub which automatically equips models with methods for joining connected WebSockets to event notifications when records are created, updated, and/or deleted.</p>
+  </div>
+</body>
+</html>

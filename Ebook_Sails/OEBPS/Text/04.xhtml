@@ -1,0 +1,811 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">4    Using the Blueprint API</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   Expanding your understanding of the relationship between requests, routes, and actions in a Sails API</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Generating a back-end API with blueprint routes and blueprint actions</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Integrating front-end requests with the blueprint API</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Using blueprint shortcut routes to access data from the browser</p>
+
+    <p class="cosummarybulletcxsplast">·   Leveraging WebSockets to provide real time features</p>
+
+    <p class="body">Chad loved Brushfire’s ability to display and add YouTube videos. He soon discovered, however, the limitations of the simulated back end. When he refreshed his browser, all of the videos he added were no longer listed! We explained that this was because the links to the YouTube videos he added were stored temporarily in an array in memory. When he refreshed the browser, the array returned to its original state without his additional links in the list. Chad wasn’t happy about this. Fortunately we had anticipated this problem and begun work on a true back-end API that would store the added video links in a database. The next time Chad added a hundred videos to Brushfire (oops!) they’d still be there when he refreshed his browser. Let’s see how we added this functionality to Brushfire.</p>
+
+    <p class="body">In chapter 3, we created our initial front-end using Google’s Angular web framework. We also learned how to deliver static assets using the Sails’ asset pipeline. Finally, we prototyped a back-end using the (above-mentioned)array to simulate a model and database response. We’re now ready to refocus our efforts from the front end to the back end and replace the fake or simulated back end with a fully operational API. To do this we’re going to use another core component of Sails called <span class="italics">blueprints</span>. Blueprint routes and actions, combined with model methods, provide automatic CRUD end points around a given resource.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Recall that CRUD stands for Create, Read, Update and Destroy. These are the most common operations performed on stored data in an application.</p>
+    </div>
+
+    <p class="body">What this means is that, with a single command from the terminal window that generates a Sails API, we can start making AJAX requests to CRUD endpoints. These endpoints can create, update, and/or delete data in a model as well as retrieve data from a model. It’s so easy to create a JSON CRUD API around a resource that we don’t even need to simulate a response from the back end. Instead, we can now instantly create the real thing.</p>
+
+    <h2 class="head" id="heading_id_3">4.1   Prototyping with blueprints</h2>
+
+    <p class="body">Figure 4.1 illustrates what we know about a back-end API so far.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.1  The <span class="codeannotationcueballs">① </span>  back-end API endpoint is triggered by a request from the front-end.  The Sails router <span class="codeannotationcueballs">② </span>  attempts to match the route and if it finds one <span class="codeannotationcueballs">③ </span>  executes the action that <span class="codeannotationcueballs">④ </span>  does stuff and then responds back to the front-end.</p>
+
+    <p class="body">Routes are triggered by <span class="codeannotationcueballs">① </span>  requests. When a request is made, the Sails router <span class="codeannotationcueballs">② </span>  looks for a matching route. If it finds one, the router executes a JavaScript function called an <span class="italics">action</span>. The action fulfills the requirements of the request by doing stuff we added to the action and responds back to the device which made the original request. This request, route, router, and action form the building blocks of the API. Instead of manually creating the routes and actions necessary for common CRUD tasks around a resource we can generate them automatically using blueprints. But enough theory, let’s get started building our API.</p>
+
+    <h3 class="head1" id="heading_id_4">4.1.1   Designing an API around a user interface</h3>
+
+    <p class="body">In chapter 3 we identified two front-end requests on the video page of our interactive mockup: a request to <span class="italics">List Videos</span> and a request to <span class="italics">Add Videos</span>. We transformed this interactive mockup into the markup in <span><code class="codeintext">assets/videos/index.html</code></span> and the requests were fulfilled by simulated responses. In this chapter we’ll fulfill those requests with a “real” back end based on blueprints.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.2 The video page can send two requests, one for new video submissions and the other for the initial videos of the page.</p>
+
+    <p class="body">In chapter 1, we learned the importance of also documenting the requirements of each request. The requirements for our requests can be found as a link in the chapter 4 Hub <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/chapter-4/">http://sailsinaction.github.io/chapter-4/</a>. The requirement of the <span class="italics">List Videos</span> action is that Sails find all video records in the database, then respond with a JSON-formatted list of those videos. The requirement of the <span class="italics">Add Videos</span> action is that Sails take two parameters—<span><code class="codeintext">title</code></span> and <span><code class="codeintext">src</code></span> as the basis of new records in the <span><code class="codeintext">Video</code></span> model. Since these two requests are related, we’ll group their routes together in one API resource named /<span><code class="codeintext">video</code></span>.</p>
+
+    <h3 class="head1" id="heading_id_5">4.1.2   Obtaining the example materials for this chapter</h3>
+
+    <p class="body">To speed up our progress we’ll begin the next section with a fully baked front-end. We’ve added a few necessary changes to the front-end that we started back in chapter 3.  These changes allow us to access our soon-to-be-created back-end JSON CRUD API. Clone the chapter 4 repository <a class="pcalibre8 pcalibre5" href="https://github.com/sailsinaction/brushfire-ch4-start">https://github.com/sailsinaction/brushfire-ch4-start</a>. and install its Node module dependencies via npm install.</p>
+
+    <h3 class="head1" id="heading_id_6">4.1.3   Generating an API in Sails</h3>
+
+    <p class="body">Generating a JSON CRUD API in Sails is easy. Head over to the terminal window and type</p><code class="codebcxspfirst">~/brushfire $ sails generate api video</code> <code class="codebcxsplast">info: Created a new api!</code>
+
+    <p class="body">That’s it. We now have a <span><code class="codeintext">video</code></span> JSON CRUD API.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Recall that we already used the <span><code class="codeintext1">generate</code></span> command in chapter 3 when we replaced the default server-rendered homepage with a static homepage. In this case we ran this command to generate the necessary files and folders for a working API.</p>
+    </div>
+
+    <p class="body">So what did we create?  Opening the project in Sublime reveals two new files in the <span><code class="codeintext">brushfire/api/</code></span> folder:<span><code class="codeintext">/controllers/VideoController.js</code></span> and <span><code class="codeintext">/models/Video.js</code></span>. But listing 4.1 and 4.2reveals that both the controller and model files are empty.</p>
+
+    <p class="codelistingcaption">Listing 4.1   The initial contents of VideoController.js</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">};</code>
+
+    <p class="codelistingcaption">Listing 4.2   The initial contents of Video.js</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">};</code>
+
+    <p class="body">Unless disabled Sails uses the mere existence of these two files to build the blueprint routes and actions in table 4.1 each time the Sails server is started via <span><code class="codeintext">sails lift</code></span>.</p>
+
+    <p class="tablecaption pcalibre7">Table 4.1  An overview of blueprint API generated for the <span><code class="codeintext1">video</code></span> resource</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="12%" class="sgc48" rowspan="3" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">CRUD</p>
+
+            <p class="tablehead">Operation</p>
+          </div>
+        </td>
+
+        <td char="46%" class="sgc49" colspan="3" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Shortcut blueprint routes</p>
+          </div>
+        </td>
+
+        <td char="41%" class="sgc26" colspan="3" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">RESTful blueprint routes</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="30%" class="sgc50 pcalibre7" colspan="2" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Route address</p>
+          </div>
+        </td>
+
+        <td char="16%" class="sgc51" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Target</p>
+          </div>
+        </td>
+
+        <td char="25%" class="sgc52" colspan="2" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Route address</p>
+          </div>
+        </td>
+
+        <td char="16%" class="sgc53" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Target</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="6%" class="sgc54" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">verb</p>
+          </div>
+        </td>
+
+        <td char="23%" class="sgc55" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">path</p>
+          </div>
+        </td>
+
+        <td char="16%" class="sgc51" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">blueprint action</p>
+          </div>
+        </td>
+
+        <td char="10%" class="sgc56" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">verb</p>
+          </div>
+        </td>
+
+        <td char="14%" class="sgc57" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">path</p>
+          </div>
+        </td>
+
+        <td char="16%" class="sgc58 pcalibre7" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">blueprint action</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc59 pcalibre7" valign="top">
+          <p class="tablebody">Read</p>
+        </td>
+
+        <td char="6%" class="sgc60" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="23%" class="sgc61" valign="top"><code class="tablecode">/video/find</code></td>
+
+        <td char="16%" class="sgc62" valign="top"><code class="tablecode">find</code></td>
+
+        <td char="10%" class="sgc63" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="14%" class="sgc64" valign="top"><code class="tablecode">/video</code></td>
+
+        <td char="16%" class="sgc65" valign="top"><code class="tablecode">find</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc59 pcalibre7" valign="top">
+          <p class="tablebody">Read</p>
+        </td>
+
+        <td char="6%" class="sgc60" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="23%" class="sgc61" valign="top"><code class="tablecode">/video/find/:id</code></td>
+
+        <td char="16%" class="sgc62" valign="top"><code class="tablecode">find</code></td>
+
+        <td char="10%" class="sgc63" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="14%" class="sgc64" valign="top"><code class="tablecode">/video/:id</code></td>
+
+        <td char="16%" class="sgc65" valign="top"><code class="tablecode">find</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc59 pcalibre7" valign="top">
+          <p class="tablebody">Create</p>
+        </td>
+
+        <td char="6%" class="sgc60" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="23%" class="sgc61" valign="top"><code class="tablecode">/video/create</code></td>
+
+        <td char="16%" class="sgc62" valign="top"><code class="tablecode">create</code></td>
+
+        <td char="10%" class="sgc63" valign="top"><code class="tablecode">POST</code></td>
+
+        <td char="14%" class="sgc64" valign="top"><code class="tablecode">/video</code></td>
+
+        <td char="16%" class="sgc65" valign="top"><code class="tablecode">create</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc59 pcalibre7" valign="top">
+          <p class="tablebody">Update</p>
+        </td>
+
+        <td char="6%" class="sgc60" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="23%" class="sgc61" valign="top"><code class="tablecode">/video/update/:id</code></td>
+
+        <td char="16%" class="sgc62" valign="top"><code class="tablecode">update</code></td>
+
+        <td char="10%" class="sgc63" valign="top"><code class="tablecode">PUT</code></td>
+
+        <td char="14%" class="sgc64" valign="top"><code class="tablecode">/video/:id</code></td>
+
+        <td char="16%" class="sgc65" valign="top"><code class="tablecode">update</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc48" valign="top">
+          <p class="tablebody">Delete</p>
+        </td>
+
+        <td char="6%" class="sgc66" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="23%" class="sgc55" valign="top"><code class="tablecode">/video/destroy/:id</code></td>
+
+        <td char="16%" class="sgc51" valign="top"><code class="tablecode">destroy</code></td>
+
+        <td char="10%" class="sgc67 pcalibre7" valign="top"><code class="tablecode">DELETE</code></td>
+
+        <td char="14%" class="sgc57" valign="top"><code class="tablecode">/video/:id</code></td>
+
+        <td char="16%" class="sgc58 pcalibre7" valign="top"><code class="tablecode">destroy</code></td>
+      </tr>
+    </table>
+
+    <p class="body">Therefore, unlike explicit routes, which are created and configured in <span><code class="codeintext">brushfire/config/routes.js</code></span>, blueprint “shadow” routes are created within Sails core.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Sails core, in this context, means the source code of the Sails module. Recall that each Sails project has the <span><code class="codeintext1">sails</code></span> module installed in <span><code class="codeintext1">brushfire/node_modules/sails</code></span>.</p>
+    </div>
+
+    <p class="body">We could override blueprint routes or actions by creating an explicit route or action with the same name, however, for now we’ll use the blueprint API “as-is”.</p>
+
+    <h3 class="head1" id="heading_id_7">4.1.4   First look at Sails auto-migrations</h3>
+
+    <p class="body">Sails created a <span><code class="codeintext">Video</code></span> model when it generated the <span><code class="codeintext">video</code></span> CRUD API so it will prompt you for some information about model migrations when you next start the server. Go back to the terminal window and start Sails and your application from the command line by typing</p><code class="codebcxspfirst">~ $ sails lift</code> <code class="codebcxsplast">info: Starting app…</code>
+
+    <p class="body">After a few seconds you should see terminal output similar to Figure 4.2.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.3  Choosing between <span><code class="codeintext1">safe</code></span>, <span><code class="codeintext1">alter</code></span>, or <span><code class="codeintext1">drop</code></span> auto-migration in Sails.</p>
+
+    <p class="body">We’ll talk about data auto-migrations, which are quite fascinating. You’re going to select the <span><code class="codeintext">alter</code></span> option and later in chapter six we’ll come back to the topic. Also, in lieu of being prompted with this dialog each time we start Sails, open <span><code class="codeintext">brushfire/config/models.js</code></span> in Sublime and uncomment the <span><code class="codeintext">migrate</code></span> parameter which has a default value of <span><code class="codeintext">alter</code></span>. When Sails is restarted using <span><code class="codeintext">sails lift</code></span>, auto-migrations will be set to <span><code class="codeintext">alter</code></span> automatically.</p>
+
+    <h2 class="head" id="heading_id_8">4.2   Shortcut blueprint routes</h2>
+
+    <p class="body">Shortcut blueprint routes allow you to interact directly with the underlying database via the browser’s URL bar. Why would you want to do that?  Exploring the contents of one or more databases as you develop an API usually requires switching between different database viewers. Having a quick way to access information from a browser across multiple databases can greatly improve the speed of your workflow. When we generated the JSON CRUD API for the <span><code class="codeintext">video</code></span> resource, five shortcut blueprint routes were also exposed and made available. These routes, which correspond to common CRUD operations, enable you to find, create, update, and delete records from the browser. A list of the shortcut blueprint routes can be found in table 4.2.</p>
+
+    <p class="tablecaption pcalibre7">Table 4.2  Blueprint: shortcuts routes and Blueprint: actions</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="100%" class="sgc68" colspan="4" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Shortcut blueprint routes</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="67%" class="sgc69" colspan="3" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Route address</p>
+          </div>
+        </td>
+
+        <td char="32%" class="sgc70" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Target</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc71" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">verb</p>
+          </div>
+        </td>
+
+        <td char="33%" class="sgc72" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">path</p>
+          </div>
+        </td>
+
+        <td char="33%" class="sgc73" colspan="2" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">blueprint action</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">/video/find</code></td>
+
+        <td char="33%" class="sgc75" colspan="2" valign="top"><code class="tablecode">find</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">/video/find/:id</code></td>
+
+        <td char="33%" class="sgc75" colspan="2" valign="top"><code class="tablecode">find</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">/video/create</code></td>
+
+        <td char="33%" class="sgc75" colspan="2" valign="top"><code class="tablecode">create</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">/video/update/:id</code></td>
+
+        <td char="33%" class="sgc75" colspan="2" valign="top"><code class="tablecode">update</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc72" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="33%" class="sgc72" valign="top"><code class="tablecode">/video/destroy/:id</code></td>
+
+        <td char="33%" class="sgc73" colspan="2" valign="top"><code class="tablecode">destroy</code></td>
+      </tr>
+
+      <tr class="calibre3" height="0">
+        <td char="249" class="sgc76 pcalibre7"/>
+
+        <td char="249" class="sgc76 pcalibre7"/>
+
+        <td char="8" class="sgc76 pcalibre7"/>
+
+        <td char="241" class="sgc76 pcalibre7"/>
+      </tr>
+    </table>
+
+    <p class="body">We pointed out in chapter 1 that the first thing you might notice about shortcut blueprints are that the <span class="italics">Route Address</span> uses the same verb--<span><code class="codeintext">GET</code></span> for each route. Wouldn’t that violate the convention that <span><code class="codeintext">UPDATE</code></span>, <span><code class="codeintext">POST</code></span>, and <span><code class="codeintext">DELETE</code></span> should produce no side effects?  And yes it would violate the convention, which is why you should never use shortcut blueprint routes in a production application. However, during development they are insanely useful. Later when we transition to production they’re very easy to disable.</p>
+
+    <h3 class="head1" id="heading_id_9">4.2.1   Creating records with blueprint shortcut routes</h3>
+
+    <p class="body">Our current task is perfectly suited to shortcut blueprint routes. Recall from chapter three that our <span><code class="codeintext">videos</code></span> array contained three records with two attributes: the <span><code class="codeintext">title</code></span> of the YouTube video and the <span><code class="codeintext">src</code></span> URL of the video. We want to start development with some initial YouTube video records in the <span><code class="codeintext">video</code></span> model. Shortcut blueprint routes make it easy to recreate the catchy yet annoying GANGNAM STYLE YouTube <span><code class="codeintext">video</code></span> as a record in the <span><code class="codeintext">video</code></span> model. Make sure Sails is running via <span><code class="codeintext">sails lift</code></span> and navigate your browser to</p><code class="codeb"><a class="pcalibre8 pcalibre5" href="http://localhost:1337/video/create?title=FUNNY"><span class="sgc47">http://localhost:1337/video/create?title=FUNNY</span></a> BABY VIDEOS&amp;src=https://www.youtube.com/embed/_FvTVWjLiHM</code>
+
+    <p class="body">Your browser should display the <span><code class="codeintext">video</code></span> record similar to figure 4.4.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.4  The shortcut blueprint route triggered the <span class="italics1">create</span> blueprint action, which created a new <span><code class="codeintext1">video</code></span> record in the <span><code class="codeintext1">video</code></span> model and responded with the records contents as JSON.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">If you are a JSON geek, like us, you may notice in Figure 4.x that there aren’t any quotes on the keys returned in the browser. That’s because I’m using a Chrome extension that uses JSON.parse to beautify the JSON.</p>
+    </div>
+
+    <p class="body">So how was this <span><code class="codeintext">video</code></span> record created? Let’s go through the steps executed by this route illustrated in Figure 4.5.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.5  The Sails router listens for <span class="codeannotationcueballs">① </span>  an incoming request and tries to match it to an explicit route. Not finding a match with an explicit route it next tries to <span class="codeannotationcueballs">② </span>  match it to a shortcut blueprint route. In this example it found a match and <span class="codeannotationcueballs">③ </span>  executes the <span class="italics1">create</span> blueprint action and <span class="codeannotationcueballs">④  </span> responds with a <span><code class="codeintext1">200</code></span> status code and the newly created <span><code class="codeintext1">video</code></span> record as JSON.</p>
+
+    <p class="body">The <span class="codeannotationcueballs">① </span>  <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/video/create</code></span> matched a <span class="codeannotationcueballs">② </span>  shortcut blueprint route <span><code class="codeintext">'GET/video/create'</code></span>. The path also contained a <span class="italics">query string</span>. Recall from chapter 1 that a query string is part of the route address as illustrated in figure 4.6.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.6  The start of the query string uses a question mark (<span><code class="codeintext1">?</code></span>) followed by field value pairs where each pair is separated by an equals sign (<span><code class="codeintext1">=</code></span>) and the field value pairs are separated by an ampersand (<span><code class="codeintext1">&amp;</code></span>).</p>
+
+    <p class="body">The matched route triggered the <span class="codeannotationcueballs">③ </span>  <span class="italics">create</span> blueprint action, which <span class="codeannotationcueballs">④ </span>  parsed the <span><code class="codeintext">title</code></span> and <span><code class="codeintext">src</code></span> parameters, created the record and responded with JSON and a status code <span><code class="codeintext">200</code></span>. With Sails you can create, find, update, and delete records directly from your browser’s URL bar.</p>
+
+    <p class="body">Using the same steps now create two additional records to the <span><code class="codeintext">video</code></span> model for the “Justin Bieber” and “Charlie bit my finger” YouTube videos. You can copy and paste the URLs below into your browser’s URL bar.</p><code class="codebcxspfirst">http://localhost:1337/video/create?title=JustinBieber - Baby ft. Ludacris&amp;src=https://www.youtube.com/embed/kffacxfA7G4</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">http://localhost:1337/video/create?title=Charlie bit my finger - again !&amp;src=https://www.youtube.com/embed/_OBlgSz8sSM</code>
+
+    <p class="body">Let’s expand our exploration of shortcut blueprint routes to include routes to find, update, and delete <span><code class="codeintext">video</code></span> records.</p>
+
+    <h3 class="head1" id="heading_id_10">4.2.2   Accessing the database from the URL bar</h3>
+
+    <p class="body">We’ll first examine how to find records with shortcut blueprint routes. To obtain a list of all video records make sure Sails is running using <span><code class="codeintext">sails lift</code></span> and navigate your browser to <i>localhost:1337/video/find</i>. Your browser should look similar to the browser in Figure 4.7.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.7  The shortcut blueprint route uses the <span class="italics1">find</span> blueprint action and responds with a list of records from the <span><code class="codeintext1">video</code></span> model.</p>
+
+    <p class="body">The path <span><code class="codeintext">/video/find</code></span> gets us all of the <span><code class="codeintext">video</code></span> records. If we want to find a particular record we’ll use the <span><code class="codeintext">:id</code></span> <span class="italics">parameter</span> at the end of the path-- <span><code class="codeintext">/video/find/:id</code></span>. In Figure 4.6, notice how each <span><code class="codeintext">video</code></span> record has a unique <span><code class="codeintext">id</code></span>. This <span><code class="codeintext">id</code></span> is typically assigned by the database when the record is created. Let’s use the shortcut blueprint route to find a particular <span><code class="codeintext">video</code></span> record. Open your browser and navigate to <a class="pcalibre8 pcalibre5" href="http://localhost:1337/video/find/3">http://localhost:1337/video/find/3</a>. Your browser should look similar to Figure 4.8</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.8 When we add an <span><code class="codeintext1">:id</code></span>  parameter, in this case <span><code class="codeintext1">/3,</code></span>to the URL, the response is a single record from the <span><code class="codeintext1">video</code></span> model.</p>
+
+    <p class="body">Here the route returned the record with the <span><code class="codeintext">id</code></span> of <span><code class="codeintext">3</code></span> to the browser. Without the <span><code class="codeintext">:id</code></span> parameter, the <span class="italics">find</span> blueprint would have returned all <span><code class="codeintext">video</code></span> records.</p>
+
+    <p class="body">Next let’s update the <span><code class="codeintext">title</code></span> of a <span><code class="codeintext">video</code></span> record. We can do that by passing in the <span><code class="codeintext">id</code></span> of the record we want to update. The <span><code class="codeintext">id</code></span> becomes something called the <span class="italics">find criteria</span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span class="italics1">Criteria</span> is simply a dictionary that Sails uses to select one or more records from the database.</p>
+    </div>
+
+    <p class="body">The <span class="italics">find criteria</span> is followed by the parameter you want to update in the query string.</p>
+
+    <p class="body">in this case the <span><code class="codeintext">title</code></span>. Navigate your browser to <a class="pcalibre8 pcalibre5" href="http://localhost:1337/video/update/3?title=Charlie%20bit%20my%20finger%20%E2%80%93%20again%20and%20it%20HURT!!">http://localhost:1337/video/update/3?title=Charlie bit my finger – again and it HURT!!</a>. Your browser should return the updated <span><code class="codeintext">video</code></span> record with the new <span><code class="codeintext">title</code></span> as in to figure 4.9.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.9  The shortcut blueprint route uses the <span class="italics1">update</span> blueprint action and responds with the record containing the updated <span><code class="codeintext1">title</code></span>.</p>
+
+    <p class="body">By using the path <span><code class="codeintext">video/update/3</code></span>followed by the new <span><code class="codeintext">title</code></span> as a query string the route updated the <span><code class="codeintext">video</code></span> record. Finally, let’s delete a record using a shortcut blueprint route with the <span class="italics">destroy</span> blueprint action. Navigate your browser to <i>localhost:1337/video/destroy/3</i>. Your browser should look similar to figure 4.10.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.10  The shortcut blueprint route uses the <span class="italics1">destroy</span> blueprint action and responds with the deleted <span><code class="codeintext1">video</code></span> record.</p>
+
+    <p class="body">We pass in the <span><code class="codeintext">id</code></span> of the record we want to delete and the <span class="italics">destroy</span> blueprint action returns the destroyed <span><code class="codeintext">video</code></span> record. The shortcut blueprint routes are a useful tool in your development workflow and their utility will become more and more apparent throughout the book.</p>
+
+    <h2 class="head" id="heading_id_11">4.3   Connecting the front-end to our new API</h2>
+
+    <p class="body">Now that we have a JSON CRUD API around the <span><code class="codeintext">video</code></span> resource, let’s connect the front-end to it and satisfy the required functionality of our page’s requests. Table 4.3 illustrates the RESTful blueprint routes that are exposed when the Sails server starts.</p>
+
+    <p class="tablecaption pcalibre7">Table 4.3  RESTfulblueprint routes and blueprint actions</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="100%" class="sgc68" colspan="3" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">RESTful blueprint routes</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="66%" class="sgc77" colspan="2" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Route address</p>
+          </div>
+        </td>
+
+        <td char="33%" class="sgc71" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Target</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc78" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">verb</p>
+          </div>
+        </td>
+
+        <td char="33%" class="sgc72" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">path</p>
+          </div>
+        </td>
+
+        <td char="33%" class="sgc79" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">blueprint action</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc80" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">/video/</code></td>
+
+        <td char="33%" class="sgc81" valign="top"><code class="tablecode">find</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc80" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">/video/:id</code></td>
+
+        <td char="33%" class="sgc81" valign="top"><code class="tablecode">find</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc80" valign="top"><code class="tablecode">POST</code></td>
+
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">/video</code></td>
+
+        <td char="33%" class="sgc81" valign="top"><code class="tablecode">create</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc80" valign="top"><code class="tablecode">PUT</code></td>
+
+        <td char="33%" class="sgc74" valign="top"><code class="tablecode">/video/:id</code></td>
+
+        <td char="33%" class="sgc81" valign="top"><code class="tablecode">update</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc82" valign="top"><code class="tablecode">DELETE</code></td>
+
+        <td char="33%" class="sgc72" valign="top"><code class="tablecode">/video/:id</code></td>
+
+        <td char="33%" class="sgc79" valign="top"><code class="tablecode">destroy</code></td>
+      </tr>
+    </table>
+
+    <p class="body">In chapter 3 we simulated a back-end request via a combination of the <span><code class="codeintext">$timeout</code></span> method and the use of an array. We’ll now replace that code with the Angular <span><code class="codeintext">$http</code></span> service to make requests to our API. Specifically we’ll use <span><code class="codeintext">$http.get()</code></span> and <span><code class="codeintext">$http.post()</code></span>to make AJAX requests to find and create records in the <span><code class="codeintext">video</code></span> model. We could just as easily use jQuery, however, we’ll use Angular for consistency.</p>
+
+    <h3 class="head1" id="heading_id_12">4.3.1   Finding records with AJAX</h3>
+
+    <p class="body">When the videos page initially loads, it expects to receive all records from the <span><code class="codeintext">video</code></span> model as an array. We can obtain the <span><code class="codeintext">video</code></span> records for that array via REST blueprints and the <span class="italics">find</span> blueprint action. Let’s first take a look at the Angular AJAX <span><code class="codeintext">GET</code></span> request in <span><code class="codeintext">brushfire/assets/js/video-page.js</code></span> in listing 4.11.</p>
+
+    <p class="codelistingcaption">Listing 4.10  The Angular AJAX GET request to /video</p><code class="codebcxspfirst">    ...</code> <code class="codebcxspmiddle">    $http.get('/video')</code> <code class="codebcxspmiddle">      .then(function onSuccess(sailsResponse) {</code> <code class="codebcxspmiddle">        $scope.videos = sailsResponse.data;</code> <code class="codebcxspmiddle">      })</code> <code class="codebcxspmiddle">      .catch(function onError(sailsResponse) {</code> <code class="codebcxspmiddle">        console.log("An unexpected error occurred: " + sailsResponse.data.statusText);</code> <code class="codebcxspmiddle">      })</code> <code class="codebcxspmiddle">      .finally(function eitherWay() {</code> <code class="codebcxspmiddle">        $scope.videosLoading = false;</code> <code class="codebcxspmiddle">      });</code><code class="codebcxsplast">    ...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  the AJAX <span><code class="codeintext1">GET</code></span> request triggers the RESTful blueprint route and <span class="italics1">find</span> blueprint action</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  on success the <span class="italics1">find</span> blueprint responds with a <span><code class="codeintext1">200-status</code></span> code and an array of <span><code class="codeintext1">video</code></span> dictionaries</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span>  on error the error is logged to the console</p>
+
+    <p class="body">After making the request, the <span><code class="codeintext">find</code></span> blueprint action returns all of the records in the <span><code class="codeintext">video</code></span> model as dictionaries in an array. Let’s see how this process works within the API.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.11  The steps in a RESTful blueprint route include <span class="codeannotationcueballs">① </span>  recognition of the incoming request by the Sails router, <span class="codeannotationcueballs">② </span>  matching the request to a route, <span class="codeannotationcueballs">③ </span>  executing the <span class="italics1">find</span> blueprint action, which <span class="codeannotationcueballs">④ </span>  queries all <span><code class="codeintext1">video</code></span> records and responds with an array of <span><code class="codeintext1">video</code></span> record dictionaries.</p>
+
+    <p class="body">The <span class="codeannotationcueballs">① </span>  <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/video</code></span> matched a <span class="codeannotationcueballs">② </span>  RESTful blueprint route <span><code class="codeintext">'GET /video'</code></span>. This triggered the <span class="codeannotationcueballs">③ </span>  <span class="italics">find</span> blueprint action, which <span class="codeannotationcueballs">③ </span>  queried all the records of the <span><code class="codeintext">video</code></span> model and <span class="codeannotationcueballs">④ </span>  responded with them in an array of JSON dictionaries. The important distinction here is that we are now retrieving the videos from an actual back-end API instead of a static array.</p>
+
+    <h3 class="head1" id="heading_id_13">4.3.2   Creating a record with AJAX</h3>
+
+    <p class="body">Now we need to send the <span class="italics">Add videos</span> request when the <span class="italics">submit videos</span> button is clicked. We’ll use a blueprint API again this time to create a new <span><code class="codeintext">video</code></span> record. Let’s take a look at the Angular AJAX<span><code class="codeintext">POST</code></span> request in <span><code class="codeintext">brushfire/assets/js/video-page.js</code></span> in listing 4.3.</p>
+
+    <p class="codelistingcaption">Listing 4.3   The Angular AJAX POST request to /video</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">    $http.post('/video', {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        title: _newVideo.title,</code> <code class="codebcxspmiddle">        src: _newVideo.src</code> <code class="codebcxspmiddle">      })</code> <code class="codebcxspmiddle">      .then(function onSuccess(sailsResponse) {  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        // add video to the array videos in the scope</code> <code class="codebcxspmiddle">        $scope.videos.unshift(_newVideo);</code> <code class="codebcxspmiddle">      })</code> <code class="codebcxspmiddle">      .catch(function onError(sailsResponse) {   <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        console.log("An unexpected error occurred: " + sailsResponse.data.statusText);</code> <code class="codebcxspmiddle">      })</code> <code class="codebcxspmiddle">      .finally(function eitherWay() {</code> <code class="codebcxspmiddle">        $scope.busySubmittingVideo = false;</code> <code class="codebcxspmiddle">        $scope.newVideoTitle = '';</code> <code class="codebcxspmiddle">        $scope.newVideoSrc = '';</code> <code class="codebcxspmiddle">      });</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> the AJAX <span><code class="codeintext1">POST</code></span> request triggers the Blueprint: RESTful route and create action</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> on success the create action responds with a 200 status code and the new video record as a dictionary</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span> on error the error is logged</p>
+
+    <p class="body">Recall that in chapter 3 we wired up the submit button of our form to push the new video onto an array on the <span><code class="codeintext">$scope</code></span>. We’ve now refactored the code to trigger an Angular AJAX <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/video</code></span> instead. Let’s see this in action. Make sure Sails is running via <span><code class="codeintext">sails lift</code></span> and navigate your browser to <a class="pcalibre8 pcalibre5" href="http://localhost:1337/videos/">http://localhost:1337/videos/</a>,which should look similar to figure 4.12.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_12.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.12  The page triggers the RESTful blueprint route and <span class="italics1">find</span> blueprint action and then responds with all records in the <span><code class="codeintext1">video</code></span> model.</p>
+
+    <p class="body">Fill out the form and add a new record with the following parameters in table 4.4.</p>
+
+    <p class="tablecaption pcalibre7">Table 4.4  The parameters to create a new YouTube video record</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="12%" class="sgc83" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">title</code></span></p>
+        </td>
+
+        <td char="87%" class="sgc84 pcalibre7" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">The North Face: Alex Honnold in Yosemite</code></span></p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc85" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">src</code></span></p>
+        </td>
+
+        <td char="87%" class="sgc86" valign="top">
+          <p class="tablebody2cxsplast"><a class="pcalibre8 pcalibre5" href="https://www.youtube.com/watch?vICBrXUuwvgg">https://www.youtube.com/watch?vICBrXUuwvgg</a></p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Your browser should now look similar to figure 4.13.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_13.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.13  The RESTful route and <span class="italics1">create</span> action were triggered by the Angular AJAX <span><code class="codeintext1">POST</code></span> request and the action responded with the newly created record of the <span><code class="codeintext1">video</code></span>.</p>
+
+    <p class="body">Let’s see how this process works within the API.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_14.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.14  TheRESTful blueprint route and <span class="italics1">create</span> action creates a new video record based upon a <span><code class="codeintext1">POST</code></span> request to <span><code class="codeintext1">/video</code></span>.</p>
+
+    <p class="body">The <span class="codeannotationcueballs">① </span> <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/video</code></span> matched a <span class="codeannotationcueballs">② </span>  RESTful blueprint route <span><code class="codeintext">'POST/video'</code></span>. This triggered the <span class="codeannotationcueballs">③ </span> <span class="italics">create</span> blueprint action, which <span class="codeannotationcueballs">④ </span>  parsed the <span><code class="codeintext">title</code></span> and <span><code class="codeintext">src</code></span> parameters, and created the record and responded with JSON and status code <span><code class="codeintext">200</code></span>. Once again we are now creating a <span><code class="codeintext">video</code></span> from an actual back-end API instead of an array. Next let’s explore the remaining RESTful blueprint routes: <span class="italics">find</span>, <span class="italics">update</span>, and <span class="italics">destroy</span>.</p>
+
+    <h2 class="head" id="heading_id_14">4.4   Exploring the REST of the blueprint API</h2>
+
+    <p class="body">Let’s take the RESTful blueprint <span><code class="codeintext">find</code></span>, <span><code class="codeintext">update</code></span>, and <span><code class="codeintext">destroy</code></span> routes for a quick spin. Often times you’ll want to test a route but because of the complexity of the query parameters, using Blueprint shortcuts routes can become problematic. Enter Postman, the indispensible way to access and test an API. We installed Postman in chapter1.</p>
+
+    <h3 class="head1" id="heading_id_15">4.4.1   Locating a particular record with AJAX</h3>
+
+    <p class="body">There are two RESTful blueprint routes that use the <span class="italics">find</span> action. RESTful blueprint routes differentiate between obtaining a list of all records in a model and a single record in a model by using an<span><code class="codeintext">:id</code></span> parameter at the end of the path. If we make a <span><code class="codeintext">GET</code></span> request to<span><code class="codeintext">/video/:id</code></span> where the <span><code class="codeintext">:id</code></span> is the <span><code class="codeintext">id</code></span> of the record we want to find, Sails will return a single record. Let’s see this in action. From within Postman make a <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/video/2</code></span> similar to figure 4.15.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_15.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.15   Here we’re using Postman to make a <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">GET</code></span> request to the <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">/video/2</code></span>path. The API responds with a <span class="codeannotationcueballs">③ </span>  JSON dictionary of the particular <span><code class="codeintext1">video</code></span> record.</p>
+
+    <p class="body">After making the request, Sails returns the record with an <span><code class="codeintext">id</code></span> of <span class="italics">2</span> as a JSON dictionary in Postman.</p>
+
+    <h3 class="head1" id="heading_id_16">4.4.2   Updating a record with AJAX</h3>
+
+    <p class="body">Suppose we are not satisfied with the <span><code class="codeintext">title</code></span> of a YouTube video. We want to change the title of <span><code class="codeintext">Justin Bieber - Baby ft. Ludacris</code></span> to just <span><code class="codeintext">Ludacris</code></span>.</p>
+
+    <p class="body">Figure 4.16  demonstrates how to make the PUT request in Postman.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_16.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.16  Here we’re using Postman to make a  <span class="codeannotationcueballs">① </span>  PUT request to the path<span class="codeannotationcueballs">② </span> <span><code class="codeintext1">/video/2</code></span> with the <span class="codeannotationcueballs">③ </span> URL parameter <span><code class="codeintext1">title=Ludacris</code></span>. The API responded with a <span class="codeannotationcueballs">④ </span>  JSON dictionary of the updated <span><code class="codeintext1">video</code></span> record.</p>
+
+    <p class="body">POSTMAN made the request on our behalf, updated the record, and returned the updated <span><code class="codeintext">video</code></span> record as JSON dictionary.</p>
+
+    <h3 class="head1" id="heading_id_17">4.4.3   Deleting a record with AJAX</h3>
+
+    <p class="body">The Justin Bieber video has over a billion views and we are probably responsible for at least a thousand. Enough. We will now show you how to delete the Justin Bieber record from the <span><code class="codeintext">video</code></span> model and in the process demonstrate another useful endpoint in the blueprint API. Figure 4.17 demonstrates how to <span><code class="codeintext">DELETE</code></span> a record by making a request in Postman.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_17.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.17  Here we’re using Postman to make a  <span class="codeannotationcueballs">① </span>  a DELETE request to <span class="codeannotationcueballs">② </span> <span><code class="codeintext1">/video/2</code></span> that contains the record <span><code class="codeintext1">id</code></span> that we want to delete. The API <span class="codeannotationcueballs">③ </span>  responds with the JSON <span><code class="codeintext1">video</code></span> record that was deleted.</p>
+
+    <p class="body">POSTMAN made the request, deleted the record, and returned the deleted record as a JSON dictionary. We’ve now reviewed shortcut blueprint routes, RESTful blueprint routes, and blueprint actions. Let’s get our first taste of real time programming in the next section using WebSockets.</p>
+
+    <h2 class="head" id="heading_id_18">4.5   Upgrading to WebSockets</h2>
+
+    <p class="body">After showing Chad the latest version of Brushfire using our prototyped API, he told us that he wants Brushfire to be “real time”. We weren’t exactly sure what he meant by this. After a few minutes of probing we deduced that what Chad really wants is for Brushfire to update all browsers currently connected to the site at a particular moment with new YouTube videos as they are added. Luckily we can quickly accomplish this by replacing our Angular AJAX methods with Sails WebSockets methods.</p>
+
+    <p class="body">Chapter 14 explains in detail how to configure and use WebSockets in Sails. The HTTP protocol requires that a user-agent make a request to the server before the server can send a response back to the client. WebSocket s<span class="italics">upgrades</span> the HTTP protocol so that once a connection is established, a server can send messages and data to the client at will. This mechanism is what Chad refers to as “real time”. Let’s take our first look at how WebSockets and real-time programming work.</p>
+
+    <h3 class="head1" id="heading_id_19">4.5.1   Replacing $http.get() with io.socket.get()</h3>
+
+    <p class="body">Chad wants some way to update all browsers currently on the Brushfire web site without a manual page refresh and after another user creates a new YouTube video link. We’re going to use WebSockets with some Sails components, pictured in figure 4.18 on the front end and back end to satisfy this requirement.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_18.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.18 Replacing the AJAX <span><code class="codeintext1">GET</code></span> request with the Sails WebSockets <span><code class="codeintext1">GET</code></span> enhances the functionality of the <span><code class="codeintext1">find</code></span> action.</p>
+
+    <p class="body">Every new Sails application has a <span><code class="codeintext">sails.io.js</code></span> file, located in the <span><code class="codeintext">brushfire/assets/js/dependencies</code></span> folder. By adding this file to the page in a script tag, Sails <span class="codeannotationcueballs">① </span>  automatically connects the browser to the Sails WebSockets server.</p>
+
+    <p class="body">You can also equate this file to the way adding jQuery gives you access to jQuery AJAX methods. Sails provides similar <span class="codeannotationcueballs">② </span>  AJAX-like methods to make requests but instead of using the HTTP protocol uses WebSockets. Table 4.5 compares Angular AJAX methods with their Sails WebSockets equivalent.</p>
+
+    <p class="tablecaption pcalibre7">Table 4.5  Angular AJAX Requests vs Sails Socket Requests</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="45%" class="sgc87" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Angular AJAX Requests</p>
+          </div>
+        </td>
+
+        <td char="54%" class="sgc88" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Sails Socket Requests</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="45%" class="sgc89" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">$http.get()    </code></span></p>
+        </td>
+
+        <td char="54%" class="sgc90" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">io.socket.get()</code></span></p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="45%" class="sgc89" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">$http.post()   </code></span></p>
+        </td>
+
+        <td char="54%" class="sgc90" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">io.socket.post()</code></span></p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="45%" class="sgc89" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">$http.put()    </code></span></p>
+        </td>
+
+        <td char="54%" class="sgc90" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">io.socket.put()</code></span></p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="45%" class="sgc91" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">$http.delete() </code></span></p>
+        </td>
+
+        <td char="54%" class="sgc92" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">io.socket.delete()</code></span></p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Now we’ll use <span class="codeannotationcueballs">② </span> <span><code class="codeintext">io.socket.get()</code></span>instead of <span><code class="codeintext">$http.get()</code></span> to make the GET request to <span><code class="codeintext">/video</code></span>. The Sails router will again <span class="codeannotationcueballs">③ </span>  listen for an incoming request and <span class="codeannotationcueballs">④ </span>  match the request with the Blueprint: RESTful <span class="italics">find</span> route which triggers the Blueprint: find action. The Blueprint: find action then tries to find all the records of the <span><code class="codeintext">video</code></span> model. What’s new is that the Blueprint: find action has some additional functionality when triggered with Sails WebSockets <span><code class="codeintext">GET</code></span> method. The action is now aware that this is a socket request and <span class="codeannotationcueballs">⑤ </span> automatically places the requesting browser on a list to be notified if there are any changes to the <span><code class="codeintext">video</code></span> records found by the action. The Blueprint: find action places the requesting browser on another list to be notified if there are any new records created in the <span><code class="codeintext">video</code></span> model. Finally the Blueprint: find action<span class="codeannotationcueballs">⑥ </span>  responds with an array of the found <span><code class="codeintext">video</code></span> records as an array of JSON dictionaries. Let’s see this in action by replacing the Angular AJAX <span><code class="codeintext">GET</code></span> request with the Sails socket equivalent. Open <span><code class="codeintext">brushfire/assets/js/video-page.js</code></span> in Sublime and make the changes outlined in listing 4.4.</p>
+
+    <p class="codelistingcaption">Listing 4.4  Replacing Angular AJAX GET request with io.socket.get</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">    io.socket.get('/video', function whenServerResponds(data, JWR) { <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      $scope.videosLoading = false;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (JWR.statusCode &gt;= 400) {  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        $scope.submitVideosError = true;</code> <code class="codebcxspmiddle">        console.log('something bad happened');</code> <code class="codebcxspmiddle">        return;</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">      $scope.videos = data; <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      $scope.$apply();  <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle"> io.socket.on('video', functionwhenAVideoIsCreatedUpdatedOrDestroyed(event) {  <span class="codeannotationcueballs1">① </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        $scope.videos.unshift({  <span class="codeannotationcueballs1">② </span></code> <code class="codebcxspmiddle">          title: event.data.title,</code> <code class="codebcxspmiddle">          src: event.data.src,</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        $scope.$apply();  <span class="codeannotationcueballs1">③ </span></code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">       });</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶   </span>replace $http.get() with io.socket.get() passing <span><code class="codeintext1">/video</code></span> as an argument</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  If there’s an error we’ll log it to the console</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  on success, returns <span><code class="codeintext1">video</code></span> records to $scope.videos</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  call $scope.$apply() to update the DOM since websockets is not part of Angular</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">① </span> : event handler that listens for changes to the <span><code class="codeintext1">video</code></span> model (e.g. create, update, and destroy).</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">② </span> : update $scope.videos with the updated attributes</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">③ </span> : trigger the digest cycle</p>
+
+    <p class="body">The <span><code class="codeintext">io.socket.get()</code></span>method requires a URL <span><code class="codeintext">path</code></span> as a first argument, an optional <span><code class="codeintext">data</code></span> dictionary, and a <span class="italics">callback</span>. The callback will have two arguments, a <span><code class="codeintext">resData</code></span> dictionary that contains the <span><code class="codeintext">body</code></span> of the response and a JSON WebSockets Response (<span><code class="codeintext">jwres</code></span>) that contains the entire response including headers, body, and status code.</p>
+
+    <p class="body">You might wonder why we’ve added <span class="codeannotationcueballs">① </span>  the <span><code class="codeintext">io.socket.on()</code></span> method. Earlier we explained that when <span><code class="codeintext">io.socket.get('/video')</code></span> triggered the Blueprint: find action, that action added the requesting browser’s socket to a list. Whenever a <span><code class="codeintext">video</code></span> record is changed or a new <span><code class="codeintext">video</code></span> record is created that list is notified of the event. The <span><code class="codeintext">io.socket.on()</code></span> method listens for the event and if triggered,<span class="codeannotationcueballs">② </span>  updates the <span><code class="codeintext">video</code></span> array on the <span><code class="codeintext">$scope</code></span>. Because Sails socket requests are not part of Angular we need to <span class="codeannotationcueballs">③ </span>  use <span><code class="codeintext">$scope.apply()</code></span> in order for the digest cycle to kick in and update the DOM. So we’re now equipped to listen for changes to the <span><code class="codeintext">video</code></span> model and update the DOM accordingly. To complete the process we need to update the <span class="italics">Add Video</span> request to Sails WebSockets.</p>
+
+    <h3 class="head1" id="heading_id_20">4.5.2   Replacing $http.post() with io.socket.post()</h3>
+
+    <p class="body">We now want to replace the Angular AJAX <span><code class="codeintext">POST</code></span> method with a method that uses WebSockets. The goal is that when a user submits a new YouTube video to Brushfire, an event will be triggered that lets any other user on the video page know that a new <span><code class="codeintext">video</code></span> was added. It will update the videos list with the new <span><code class="codeintext">video</code></span> without having to refresh their browser. Let’s replace the Angular AJAX <span><code class="codeintext">POST</code></span> request with the Sails WebSockets equivalent. Open <span><code class="codeintext">brushfire/assets/js/video-page.js</code></span> in Sublime and make the changes outlined in listing 4.5.</p>
+
+    <p class="codelistingcaption">Listing 4.5 Replacing Angular AJAX POST request with io.socket.post</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">io.socket.post('/video', { <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        title: _newVideo.title,</code> <code class="codebcxspmiddle">        src: _newVideo.src</code> <code class="codebcxspmiddle">      }, function whenServerResponds(data, JWR) {</code> <code class="codebcxspmiddle">        $scope.videosLoading = false;</code> <code class="codebcxspmiddle">        if (JWR.statusCode &gt;= 400) { <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">          console.log('something bad happened');</code> <code class="codebcxspmiddle">          return;</code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">        $scope.videos.unshift(_newVideo); <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        $scope.busySubmittingVideo = false;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">$scope.newVideoTitle = '';</code> <code class="codebcxspmiddle">        $scope.newVideoSrc = '';</code> <code class="codebcxspmiddle">        $scope.$apply(); <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">      });</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  replace <span><code class="codeintext1">$http.post()</code></span> with <span><code class="codeintext1">io.socket.post()</code></span>passing the <span><code class="codeintext1">title</code></span> and <span><code class="codeintext1">src</code></span> attributes as arguments</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  If there’s an error we’ll log it to the console</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span> on success we’ll add the new record via <span><code class="codeintext1">$scope.videos.unshift(_newVideo).</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span>  call <span><code class="codeintext1">$scope.$apply()</code></span> to update the DOM since websockets is not part of Angular</p>
+
+    <p class="body">Let’s look at this in action. Make sure Sails is running via <span class="italics">sails lift</span> from the command-line. Open a browser and navigate to <span><code class="codeintext">localhost:1337/videos</code></span>. Open a second browser window and navigate to <span><code class="codeintext">localhost:1337/videos</code></span>. This will simulate two different users accessing Brushfire. From either window, create a new YouTube Video with the following parameters in table 4.6.</p>
+
+    <p class="tablecaption pcalibre7">Table 4.6 The parameters of a new Youtube video record</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="14%" class="pcalibre7 sgc93" valign="top">
+          <p class="tablebody2cxspfirst">title</p>
+        </td>
+
+        <td char="85%" class="sgc94" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">The North Face: Alex Honnold in Yosemite</code></span></p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="14%" class="sgc95" valign="top">
+          <p class="tablebody2cxspfirst">Youtube  url</p>
+        </td>
+
+        <td char="85%" class="sgc96" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">https://www.youtube.com/watch?v=ICBrXUuwvgg</code></span></p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Your browser should look like figure 4.19.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/04_19.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 4.19   When the <span><code class="codeintext1">io.socket.post()</code></span> method made a <span><code class="codeintext1">POST</code></span> request to <span><code class="codeintext1">/video</code></span> the <span><code class="codeintext1">create</code></span> action added the new <span><code class="codeintext1">video</code></span> record that emitted an <span><code class="codeintext1">video</code></span> event. This event was received by the previously added event handler, which triggered an update to the DOM with the new <span><code class="codeintext1">video</code></span> record.</p>
+
+    <p class="body">The other window should automatically update with the new YouTube Video.</p>
+
+    <h2 class="head" id="heading_id_21">4.6   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   Sails Blueprints automatically generate the routes and actions necessary to produce JSON CRUD APIs around a resource..</p>
+
+    <p class="listbulletcxspmiddle">·   Blueprint shortcuts routes can be used to find, add, update, and delete video records.</p>
+
+    <p class="listbulletcxsplast">·   Sails WebSockets support allows the back end to send events to front-end user-agents at will.</p>
+  </div>
+</body>
+</html>

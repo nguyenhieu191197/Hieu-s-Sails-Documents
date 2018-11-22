@@ -1,0 +1,833 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">15    Deployment, Testing, and Security</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   Deploying Brushfire to a PaaS</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Distinguishing between development and production</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Incorporating testing into Brushfire</p>
+
+    <p class="cosummarybulletcxsplast">·   Understanding XSS and CSRF attacks and protection</p>
+
+    <p class="body">In this final chapter we will address deploying Brushfire into the wild. This will require us to choose a destination for deploying Brushfire. It will also include deploying and configuring a remote postgreSQL instance for our main database and a Redis instance for our Session and WebSocket stores. We’ll separate Brushfire into three different environments – development, production, and test. We will use the environments as a way to configure Brushfire separately based upon one of the three environments chosen. Testing is a vital step in the development process. We show you how to setup tests for endpoints and model methods. We will wrap up the chapter with a discussion of the most prevalent security vulnerabilities and steps you can take to protect against them.</p>
+
+    <h2 class="head" id="heading_id_3">15.1   Obtaining the example materials for this chapter</h2>
+
+    <p class="body">If you have followed along in chapter 14 with an existing project, you can continue to use that project in this chapter. If, however, you want to start from this chapter and move forward, clone the following repo: <a class="pcalibre8 pcalibre5" href="https://github.com/sailsinaction/brushfire-ch14-end">https://github.com/sailsinaction/brushfire-ch14-end</a>. After cloning the repo, install the Node module dependencies via <span><code class="codeintext">npm install</code></span>. You’ll also want to add the <span><code class="codeintext">local.js</code></span> file that we created in chapter 11. In Sublime, copy and paste your <span><code class="codeintext">local.js</code></span> file that we created in chapter 14 or create a new file in <span><code class="codeintext">brushfire/config/local.js,</code></span> and add the following code in listing 15.1.</p>
+
+    <p class="codelistingcaption">Listing 15.1 Adding to the local.js file</p><code class="codebcxspfirst">module.exports.blueprints = {</code> <code class="codebcxspmiddle">  shortcuts: true,</code> <code class="codebcxspmiddle">  prefix: '/bp',</code> <code class="codebcxspmiddle">};</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports.connections = {</code> <code class="codebcxspmiddle">  myPostgresqlServer: {</code> <code class="codebcxspmiddle">    adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">    host: 'localhost',</code> <code class="codebcxspmiddle">    database: 'brushfire'</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle">};</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports.mailgun =  {</code> <code class="codebcxspmiddle">  apiKey: 'ADD YOUR MAILGUN API KEY HERE',</code> <code class="codebcxspmiddle">  domain: 'ADD YOUR MAILGUN DOMAIN HERE',</code> <code class="codebcxspmiddle">  baseUrl: 'http://localhost:1337'</code><code class="codebcxsplast">};</code>
+
+    <h2 class="head" id="heading_id_4">15.2   Deploying your Sails app</h2>
+
+    <p class="body">You have many options when deploying a Sails application into the wild. A significant choice is whether to deploy the application to a server located on your own hardware, on a Cloud Computing Service (CCS), or to one of the many Platform as a Service (PaaS) providers to deploy. Creating your own server, whether locally or virtually, is beyond the scope of this book. Instead we’ll be using a PaaS called Heroku to deploy Brushfire. The techniques we’ll employ, however, will be generally applicable to any PaaS you choose. We’ll also use Heroku to host remote versions of our existing postgreSQL database and new databases for the Session and WebSockets databases. In this section we’ll create destinations for Brushfire and our main postgreSQL database on Heroku.</p>
+
+    <h3 class="head1" id="heading_id_5">15.2.1   About Heroku</h3>
+
+    <p class="body">Like other PaaS, Heroku frees you from having to manage much of the infrastructure involved in deploying and maintaining your application. This infrastructure includes the hardware and software related to servers, storage and networking. Heroku uses lightweight Linux containers, called <span class="italics">dynos</span> to run instances of an application.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">A container is part of a technology generally termed containerization where multiple isolated instances of an operating system can run on a single shared host. Each container can in turn run individual instances of an application.</p>
+    </div>
+
+    <h3 class="head1" id="heading_id_6">15.2.2   Scaling to multiple dynos</h3>
+
+    <p class="body">For many applications, one server is enough to handle the expected traffic-- at least at first. Chad’s thinking big, so we are planning for growth. We will assume Brushfire could be deployed on multiple containerized dynos similar to figure 15.1.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.1  Horizontal scaling of an application on Heroku is accomplished by adding additional dynos to a given project.</p>
+
+    <p class="body">Adding dynos in this way is known as <span class="italics">horizontal scaling</span>. This is opposed to adding resources to an individual node or dyno, known as <span class="italics">vertical scaling</span>. Horizontal scaling has the advantages that (in principle) you aren’t limited by the maximum amount of resources one can add to a single machine. Instead, the load can be spread across multiple machines/dynos.  You also have the advantage of reducing a single source of failure. Configuring Brushfire so that it can be successfully deployed using horizontal scaling on multiple dyno instances requires a few application configuration considerations including:</p>
+
+    <p class="listbulletcxspfirst">·   How do we route incoming requests to multiple dynos?</p>
+
+    <p class="listbulletcxspmiddle">·   Where will our database reside and how will each dyno be configured to connect to it?</p>
+
+    <p class="listbulletcxsplast">·   How do we implement a centralized storage regime for WebSockets and sessions?</p>
+
+    <p class="body">First, Heroku has its own load balancing router that sits between an incoming request and the dyno instances. So incoming requests are automatically routed for us similar to figure 15.2.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.2 Heroku’s load balancing router automatically routes incoming requests to multiple instances of Sails within multiple dynos.</p>
+
+    <p class="body">It’s also worth pointing out that the traffic from the browser to this load balancer is using <span class="italics">HTTPS</span>. Therefore, we don’t need to worry about configuring TLS.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">TLS stands for transport layer security and is responsible for encrypting traffic between the browser and server. Its purpose is to ensure that traffic between the browser and server remains private.</p>
+    </div>
+
+    <p class="body">We’ll discuss TLS in the security section later in this chapter.</p>
+
+    <p class="body">Second, for our database, we’ll have one remote postgreSQL instance that covers all current and subsequent dynos. We will also move our sessions and WebSockets store from an individual per instance memory store to one central <span class="italics">Redis</span> location similar to figure 15.3.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.3  The Brushfire dynos will use a centralized postgreSQL instance for the main database and a redis instance for session and WebSocket storage.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span class="italics1">Redis</span> is an <span class="italics1">in memory</span> data store using key/value pairs similar to a dictionary. We will  take a much closer look at Redis later in the chapter.</p>
+    </div>
+
+    <p class="body">The goal here is to make each dyno stateless and therefore independent of holding things in memory like a session <span><code class="codeintext">id</code></span>. But before we transition our postgreSQL database, session and WebSocket store, we will create an initial Heroku dyno for Brushfire. The remaining configuration steps will involve setting up instructions for Heroku and Sails to follow when each dyno is created.</p>
+
+    <h3 class="head1" id="heading_id_7">15.2.3   Installing the Heroku toolbelt</h3>
+
+    <p class="body">Heroku uses <span class="italics">Git</span> to actually deploy Brushfire. Therefore, we’ll need to create another <span class="italics">remote</span> that’s pointing to Heroku.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">A remote is the label for the destination (URL) of a remote repository.</p>
+    </div>
+
+    <p class="body">Instead of using <span class="italics">Git</span> directly from the command line, Heroku has its own “tool belt” that wraps <span class="italics">Git</span> functionality. We’re going to assume that you have already created a free account on http://heroku.com. Once you’ve created the account, you’ll want to install the Heroku tool belt found here: <a class="pcalibre8 pcalibre5" href="https://toolbelt.heroku.com/">https://toolbelt.heroku.com/</a>. Once the tool belt is installed, head over to the command line and from the root of your Brushfire project type:</p><code class="codeb">~/brushfire $ heroku create    <span class="codeannotationcueballs1">❶ </span></code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  Creates an application on Heroku and adds a <span class="italics1">heroku</span> alias that points to a remote heroku repo</p>
+
+    <p class="body">If this is the first time you’ve used the Heroku tool belt from the command line, you’ll be prompted for your Heroku account credentials. After entering your credentials, a Heroku application will be created with an alias to a remote Heroku repo:</p><code class="codebcxspfirst">~/brushfire $ heroku create</code> <code class="codebcxspmiddle">https://still-retreat-63077.herokuapp.com/ | https://git.heroku.com/still-retreat-63077.git</code><code class="codebcxsplast">~/brushfire $</code>
+
+    <div class="sgc3">
+      <p class="sidebarc">We now have a place for Brushfire, but we haven’t “pushed” anything yet so the Brushfire application has not, as yet, been deployed.</p>
+    </div>
+
+    <p class="body">Heroku will provide a random name for your application. For example, it named ours<span class="italics">still-retreat-63077,</span> which doesn’t exactly roll off your tongue. Instead, we can change the name by navigating our browser to the Heroku dashboard and selecting <span class="italics">still-retreat-63077.</span></p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note that Heroku application names must be unique so <span class="underline1">your</span> application name will be different.</p>
+    </div>
+
+    <p class="body">Next, select the <span class="italics">Settings</span> option similar to figure 15.4.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.4 We can rename an application directly from the Heroku Dashboard under <span class="italics1">settings</span>.</p>
+
+    <p class="body">Heroku application names are unique. We suggest using <span class="italics">brushfire</span> in the name followed by some other identifier. For example, we renamed our application <span class="italics">brushfire-sailsinaction</span>. To change the name, click on the pencil icon next to the name in the dashboard. Changing the name of the application does have an implication with respect to the Heroku remote repo. To review, Brushfire will be using3Git repositories as illustrated in figure 15.5.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.5 Brushfire is stored <span class="codeannotationcueballs">① </span>  in a local GIT repo on our local machine with two remote repos on <span class="codeannotationcueballs">② </span>  Heroku and <span class="codeannotationcueballs">③ </span>  GitHub.</p>
+
+    <p class="body">We have our local repo on our machine and a remote repo on GitHub. When we created an application on Heroku another remote repository was created pointing to our application <span class="italics">still-retreat-63077.</span>Therefore, we need to change the name of the remote repository. In our case, we renamed it from <span class="italics">still-retreat-63077</span> to <span class="italics">brushfire-sailsinaction</span>. Rename the application using the unique name you created earlier. Heroku makes this easy to do from the command line:</p><code class="codeb">~/brushfire $ heroku git:remote -a brushfire-sailsinaction  <span class="codeannotationcueballs1">❶ </span></code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  This updates the name of the Heroku remote repository to the new name.</p>
+
+    <p class="body">We’ve created a place for Brushfire on Heroku, however, before we actually deploy it let’s also create a place for our postgreSQL database.</p>
+
+    <h3 class="head1" id="heading_id_8">15.2.4   Using a remote PostgreSQL database</h3>
+
+    <p class="body">During development we’ve used a local running version of postgreSQL as our main database for Brushfire. This works for development. However, now that we’re transitioning to a production environment, we need a more stable place to store our data. Our PaaS provider, Heroku, also provides remote postgreSQL instances as an add-on Database as a Service (DaaS).This will allow us to separate the location of our application from the underlying database. To add the service, return to Heroku and select your application from the dashboard and then select <span class="italics">Find More Add-Ons</span> similar to figure 15.6.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.6 Heroku offers a variety of add-ons including postgreSQL as a service. To obtain a list of all services click <span class="codeannotationcueballs">① </span>  <span class="italics1">Find More Add Ons</span> from the dashboard.</p>
+
+    <p class="body">After clicking the link you’ll go through several steps illustrated in figure 15.7.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.7  Locate and click <span class="codeannotationcueballs">① </span> <span class="italics1">Heroku Postgres</span> from the list of available services. Click <span class="codeannotationcueballs">② </span> <span class="italics1">Login to Install</span> and then <span class="codeannotationcueballs">③ </span>  <span class="italics1">Install Heroku Postgres</span>. You’ll want to choose <span class="codeannotationcueballs">④ </span>  the zero cost <span class="italics1">Hobby Dev</span> and click on the <span class="italics1">provision</span> button. Finally, you will see the <span class="codeannotationcueballs">⑤ </span>  Heroku Postgres instance.</p>
+
+    <p class="body">Heroku has created a postgreSQL instance that will serve as our <span class="italics">production</span> database. More on what production means in a moment. Now that we have destinations for the application and database, we need to provide the configuration instructions that Heroku and Sails will use each time Brushfire is deployed and started.</p>
+
+    <h2 class="head" id="heading_id_9">15.3   Using environment variables with Sails</h2>
+
+    <p class="body">Environment variables are values kept in memory that can be accessed by a particular running instance of Sails. They are useful for temporarily storing sensitive credentials to databases and services like Mailgun. They can also be used as a way of configuring Sails when the Sails server “lifts”. In this section we’ll show you how to use environment variables with Heroku to configure and store credentials for our remote postgreSQL database as depicted in figure 15.8.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.8  When Heroku starts the dyno, an <span class="codeannotationcueballs">① </span>  environment variable is created in memory. When Sails starts, <span class="codeannotationcueballs">② </span>  how do we get the value of the environment variable into Sails?</p>
+
+    <p class="body">We’ll also show you the mechanism for accessing environment variables within Sails. As always, instead of discussing these concepts theoretically, let’s dive in with an example.</p>
+
+    <h3 class="head1" id="heading_id_10">15.3.1   Storing credentials in environment variables</h3>
+
+    <p class="body">Using <span><code class="codeintext">brushfire/config/local.js</code></span> during development was a convenient way of storing credentials locally. And combined with using <span><code class="codeintext">brushfire/.gitignore</code></span> blocked <span><code class="codeintext">local.js</code></span> from being “pushed” to our remote repository thereby effectively preventing sensitive data from being pushed to a public repository. Now that we’re deploying Brushfire to Heroku there’s an issue of where and how to store these credentials. We’ll actually store the credentials on Heroku and access them securely in Sails using environment variables.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Remember that <span class="italics1">environment variables</span> are values that are stored in memory and can be accessed by a particular running instance of Sails.</p>
+    </div>
+
+    <p class="body">When we created the postgreSQL instance on Heroku, a <span class="italics">configuration variable</span> named <span><code class="codeintext">DATABASE_URL</code></span> was generated for us. A configuration variable is Heroku’s term for a “potential” environment variable. We say <span class="italics">potential</span> because it doesn’t become an environment variable until the dyno is started and the <span class="italics">configuration variables</span> are loaded into the environment’s memory. The value for the <span><code class="codeintext">DATABASE_URL</code></span> environment variable contains the credentials for our remote postgreSQL database instance outlined in figure 15.9.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.9 The value of the <span><code class="codeintext1">DATABASE_URL</code></span> contains the database credentials including <span class="codeannotationcueballs">① </span>  the user, <span class="codeannotationcueballs">② </span>  password, <span class="codeannotationcueballs">③ </span>  host, <span class="codeannotationcueballs">④ </span>  port and <span class="codeannotationcueballs">⑤ </span>  database to the postgreSQL instance.</p>
+
+    <p class="body">If you’re curious where to find the configuration variables set by Heroku, click on the <span class="italics">settings</span> menu of your Brushfire application in Heroku and then click the <span class="italics">Reveal Config Vars</span> button. Your browser should look similar to figure 15.10.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.10 Heroku allows you to create environment variables which are set prior to launching Brushfire. When we created the postgreSQL instance the <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">DATABASE_URL</code></span> <span class="italics1">Config Var</span> was also created.</p>
+
+    <p class="body">Once we deploy Brushfire to Heroku, this <span><code class="codeintext">DATABASE_URL</code></span> can be used within Sails to configure the connection to the remote postgreSQL instance.  At this point we have a remote postgreSQL database and the necessary credentials in an environment variable that we can access. Sails, however, only has a <span><code class="codeintext">connection</code></span> to our local postgreSQL instance. Let’s create a separate <span><code class="codeintext">connection</code></span> for the remote database instance.</p>
+
+    <h3 class="head1" id="heading_id_11">15.3.2   Configuring a connection to a remote database</h3>
+
+    <p class="body">We’re currently using a <span><code class="codeintext">connection</code></span> named <span><code class="codeintext">myPostgresqlServer</code></span> defined in <span><code class="codeintext">brushfire/config/local.js</code></span> to connect our local Brushfire application to our local postgreSQL database similar to listing 15.2.</p>
+
+    <p class="codelistingcaption">Listing 15.2  Credentials to our local postgreSQL database</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">exports.connections = {</code> <code class="codebcxspmiddle">  myPostgresqlServer: {  // <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">    host: 'localhost',</code> <code class="codebcxspmiddle">    database: 'brushfire'</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle">};</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> A <span><code class="codeintext1">connection</code></span> to the local postgreSQL database</p>
+
+    <p class="body">Let’s create another connection named <span><code class="codeintext">productionPostgresqlServer</code></span> to connect our soon-to-be deployed version of Brushfire to our remote postgreSQL database on Heroku. In Sublime, open <span><code class="codeintext">brushfire/config/connections.js</code></span> and add the following connection in listing 15.3.</p>
+
+    <p class="codelistingcaption">Listing 15.3 Adding a connection to the remote Heroku postgreSQL instance</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">productionPostgresqlServer: {</code> <code class="codebcxspmiddle">  adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">  url: process.env.DATABASE_URL,   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  ssl: true    <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">}</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  This points to the Heroku <span><code class="codeintext1">DATABASE_URL</code></span> environment variable set by Heroku.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  Heroku requires that this property be set to <span><code class="codeintext1">true.</code></span></p>
+
+    <p class="body">Notice that we referenced the <span><code class="codeintext">DATABASE_URL</code></span> environment variable that holds the remote postgreSQL credentials using Node’s <span><code class="codeintext">process</code></span> dictionary to access it when Sails starts. Let’s take a closer look at using the <span><code class="codeintext">process</code></span> dictionary as a conduit to access environment variables.</p>
+
+    <h3 class="head1" id="heading_id_12">15.3.3   Accessing environment variables in custom code</h3>
+
+    <p class="body">In the prior section we created a new <span><code class="codeintext">connection</code></span> to our remote postgreSQL instance and used the <span><code class="codeintext">DATABASE_URL</code></span> environment variable that Heroku sets when Brushfire is deployed to access the database credentials. We’ll access the environment variable using the global <span><code class="codeintext">process</code></span> dictionary of Node. Let’s examine the <span><code class="codeintext">process</code></span> dictionary in action. From the command line start the Sails REPL by typing:</p>
+
+    <p class="body"> </p><code class="codeb">~/brushfire $DATABASE_URL=example sails console  <span class="codeannotationcueballs1">❶ </span></code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  sets the DATABASE_URL environment variable to <span><code class="codeintext1">example</code></span> and starts the Sails REPL</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The Read-Eval-Print-Loop (REPL) is a program that allows you to interactively execute JavaScript and immediately “see” the results within a running Node application in the Sails console. It functions similarly to executing a command in the console of your browser on the front end.</p>
+    </div>
+
+    <p class="body">To log the contents of the <span class="italics">process</span> dictionary return to the command line and type:</p><code class="codeb">sails&gt;process  <span class="codeannotationcueballs1">❶ </span></code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> This logs the global <span><code class="codeintext1">process</code></span> dictionary to the console.</p>
+
+    <p class="body">There’s quite a bit of information attached to the <span><code class="codeintext">process</code></span> dictionary, so let’s make it a bit more manageable by looking at a portion of the <span><code class="codeintext">process</code></span> dictionary by next typing:</p><code class="codeb">sails&gt;process.env  <span class="codeannotationcueballs1">❶ </span></code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> This logs the environment variables collected by Node to the Sails console.</p>
+
+    <p class="body">You should see the <span><code class="codeintext">DATABASE_URL</code></span> as one of the environment variables logged to the terminal window. When Heroku starts an instance of Sails, it will also set the <span><code class="codeintext">DATABASE_URL</code></span> environment variable automatically. Now we configure Brushfire to use a connection to the local postgreSQL instance while we’re developing on our local machine.  We use  the new remote connection configuration when we deploy Brushfire to Heroku using Sails runtime modes. To exit out of the Sails REPL, type <span><code class="codeintext">ctrl-c</code></span> twice.</p>
+
+    <h2 class="head" id="heading_id_13">15.4   Runtime environments</h2>
+
+    <p class="body">Currently when you start Brushfire using <span><code class="codeintext">sails lift</code></span> you’re initiating a runtime environment in <span><code class="codeintext">development</code></span> mode.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Arun time environment loosely refers to the computer or container an application is currently running.</p>
+    </div>
+
+    <p class="body">A runtime mode enables you to configure Sails based upon a “mode” by setting the NODE_ENV environment variable.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span><code class="codeintext1">NODE_ENV</code></span> is the “holy grail” of environment variables for 3<span class="superscript1">rd</span> party Node applications. Many Node applications, including Sails, use <span><code class="codeintext1">NODE_ENV</code></span> to set-up the initial runtime mode of an application.</p>
+    </div>
+
+    <p class="body">The different configurations based upon the “mode” are accomplished through configuration files in <span><code class="codeintext">brushfire/config/env/</code></span>. Sails creates two runtime specific files with each new project: <span><code class="codeintext">development.js</code></span> and <span><code class="codeintext">production.js</code></span>. These files work like the other Sails configuration files found in <span><code class="codeintext">brushfire/config/</code></span>.The settings in these files, however, override any other settings in the <span><code class="codeintext">brushfire/config/</code></span> (except for <span><code class="codeintext">brushfire/config/local.js</code></span>)In addition to being able to configure Sails differently based upon the “mode” through the contents of these environment specific files, <span><code class="codeintext">development</code></span> and <span><code class="codeintext">production</code></span> modes also have special significance in Sails. In <span><code class="codeintext">development</code></span> mode, our Sails app will go out of its way to help you. For example, Sails will provide you with more descriptive error and debugging output. In contrast, <span><code class="codeintext">production</code></span> mode configures itself (and its dependencies) to optimize performance.</p>
+
+    <p class="body">You have a variety of ways to set the runtime mode when Sails starts.</p>
+
+    <p class="listbulletcxspfirst">·   Using <span><code class="codeintext">sails lift</code></span> without any command line parameters or environment variables will set Sails runtime mode to <span><code class="codeintext">development</code></span>.</p>
+
+    <p class="listbulletcxspmiddle">·   Using <span><code class="codeintext">sails lift –prod</code></span> sets Sails runtime mode to <span><code class="codeintext">production</code></span>.</p>
+
+    <p class="listbulletcxspmiddle">·   Using <span><code class="codeintext">NODE_ENV=production node app.js</code></span> sets Sails runtime mode to <span><code class="codeintext">production</code></span>.</p>
+
+    <p class="listbulletcxsplast">·   Setting the environment variable <span><code class="codeintext">NODE_ENV=production</code></span> in the terminal window before starting Sails will set Sails runtime mode to <span><code class="codeintext">production</code></span>.</p>
+
+    <p class="body">To ensure that Sails will run in <span><code class="codeintext">production</code></span> mode when deployed to Heroku, we will create a Heroku Config Variable that will set <span><code class="codeintext">NODE_ENV</code></span> to <span><code class="codeintext">production</code></span> when a dyno starts. We can create the variable from the terminal window by typing the following commands on the command line:</p><code class="codeb">~/brushfire $ heroku config:set NODE_ENV=production</code>
+
+    <div class="sgc3">
+      <p class="sidebarc">We could have created the <span class="italics1">Config Variable</span> from within the Heroku dashboard. Earlier we showed you how to access <span><code class="codeintext1">DATABASE_URL</code></span> from Heroku <span class="italics1">Config Variables</span>. You can also add variables directly from the Heroku user interface instead of the command line.</p>
+    </div>
+
+    <p class="body">Heroku will now set <span><code class="codeintext">NODE_ENV</code></span> to <span><code class="codeintext">production</code></span> each time Sails is deployed and before Sails starts up. Now that we can set Sails runtime mode, let’s instruct Sails to execute particular commands based upon a particular mode.</p>
+
+    <h3 class="head1" id="heading_id_14">15.4.1   Setting a default datastore for production</h3>
+
+    <p class="body">When Sails starts all models are currently configured to use the local postgreSQL instance <span><code class="codeintext">connection</code></span> in <span><code class="codeintext">brushfire/config/models.js</code></span> similar to listing 15.4.</p>
+
+    <p class="codelistingcaption">Listing 15.4 Setting the default connection for all models</p><code class="codebcxspfirst">module.exports.models = {</code> <code class="codebcxspmiddle">connection: 'myPostgresqlServer',  <span class="codeannotationcueballs1">❶ </span></code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  all models will use the <span><code class="codeintext1">myPostgresqlServer</code></span> connection</p>
+
+    <p class="body">We can override <span><code class="codeintext">brushfire/config/models.js</code></span> with another configuration file found at <span><code class="codeintext">brushfire/config/env/production.js</code></span><span class="italics">.</span></p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Recall that this file is executed if Sails is set to <span><code class="codeintext1">production</code></span> mode via the <span><code class="codeintext1">NODE_ENV</code></span> environment variable.</p>
+    </div>
+
+    <p class="body">From this file we can set the default <span><code class="codeintext">connection</code></span> for all models when Sails is in <span><code class="codeintext">production</code></span> mode. In Sublime, open <span><code class="codeintext">brushfire/config/env/production.js</code></span> and add a new models property that uses the <span><code class="codeintext">productionPostgresqlServer</code></span> connection similar to listing 15.5.</p>
+
+    <p class="codelistingcaption">Listing 15.5 Setting the default connection for all models in <span class="italics1">production</span></p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  models: {</code> <code class="codebcxspmiddle">    connection: 'productionPostgresqlServer'  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> All models will use the <span><code class="codeintext1">productionPostgresqlServer</code></span> connection in <span><code class="codeintext1">production.</code></span></p>
+
+    <p class="body">So now we have all models configured to use either the <span><code class="codeintext">myPostgresqlServer</code></span> connection or the <span><code class="codeintext">productionPostgresqlServer</code></span> connection depending upon Sails runtime mode as illustrated in figure 15.11.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.11 The runtime mode dictates which database connection is used at startup.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note: Without <span><code class="codeintext1">brushfire/.gitignore</code></span>,<span><code class="codeintext1">brushfire/config/local.js</code></span> <span class="underline1">will</span> overwrite the configuration settings in <span><code class="codeintext1">brushfire/config/production.js</code></span><span class="italics1">.</span> The reason it’s not overwriting it on Heroku is due to the fact that <span><code class="codeintext1">.gitignore</code></span> blocks <span><code class="codeintext1">local.js</code></span> from the remote repository. If we were deploying Brushfire by a method other than a remote <span class="italics1">Git</span> repository, <span><code class="codeintext1">brushfire/.gitignore</code></span> wouldn’t block <span><code class="codeintext1">local.js</code></span> and thus its configuration would overwrite our <span><code class="codeintext1">production</code></span> configuration. Therefore, if you’re deploying using a method other than a remote Git repository, you would need to make sure <span><code class="codeintext1">brushfire/config/local.js</code></span> was not also deployed.</p>
+    </div>
+
+    <p class="body">Finally, let’s move the <span><code class="codeintext">productionPostgresqlServer</code></span> connection we created earlier to <span><code class="codeintext">brushfire/config/env/production.js</code></span> so that all of our <span><code class="codeintext">production</code></span> configuration is in one place. In Sublime open <span><code class="codeintext">brushfire/config/connections.js</code></span> and move the <span><code class="codeintext">productionPostgresqlServer</code></span> connection to <span><code class="codeintext">brushfire/config/env/production.js</code></span> similar to listing 15.6.</p>
+
+    <p class="codelistingcaption">Listing 15.6 Adding the  <span class="italics1">productionPostgresqlServer</span> connection to <span><code class="codeintext1">production.js</code></span></p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  models: {</code> <code class="codebcxspmiddle">    connection: 'productionPostgresqlServer'</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  connections: {   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    productionPostgresqlServer: {</code> <code class="codebcxspmiddle">      adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">      url: process.env.DATABASE_URL,</code> <code class="codebcxspmiddle">      ssl: true</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Added connections specifically for <span><code class="codeintext1">production</code></span> mode</p>
+
+    <h3 class="head1" id="heading_id_15">15.4.2   Configuring auto-migration settings</h3>
+
+    <p class="body">When we first started developing Brushfire, changes to our database schema could happen <span class="italics">ad hoc</span> because we were not concerned with preserving the underlying data. In fact, we have <span><code class="codeintext">migrations</code></span> within <span><code class="codeintext">brushfire/config/models.js</code></span> set to <span><code class="codeintext">drop</code></span> the database tables each time we restart Sails. Needless to say, in production, we are very concerned with preserving our data each time we restart Sails. In <span><code class="codeintext">production</code></span> mode, Sails will override all configuration files regarding migrations and automatically set migrations to <span><code class="codeintext">safe</code></span> mode to prevent inadvertent deletion of data.</p>
+
+    <p class="body">In <span><code class="codeintext">development</code></span> mode, allowing database tables to be dropped each time Sails is restarted is compatible with our existing bootstrap file that creates test data each time Sails lifts. For <span><code class="codeintext">production</code></span> mode, however, the existing bootstrap file will attempt to create users that potentially exist causing an error and preventing Sails from starting up. Let’s change the bootstrap file to only add test user records if no users exist. In Sublime open <span><code class="codeintext">brushfire/config/bootstrap.js</code></span> and add the following code in listing 15.7.</p>
+
+    <p class="codelistingcaption">Listing 15.7  Changing the bootstrap file to check for existing users</p><code class="codebcxspfirst">module.exports.bootstrap = function(cb) {</code> <code class="codebcxspmiddle">  User.find().limit(1).exec(function(err, user) {    <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    if(err) { return cb(err); }</code> <code class="codebcxspmiddle">    if(user.length &gt; 0) { return cb(); }   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    var FixtureBootstrapper = require('../fixtures');</code> <code class="codebcxspmiddle">    return FixtureBootstrapper(cb);</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Find all users but <span><code class="codeintext1">limit</code></span> the number of records found to <span><code class="codeintext1">1.</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  if a <span><code class="codeintext1">user</code></span> exists continue lifting Sails without creating test users.</p>
+
+    <p class="body">We’ll use the <span><code class="codeintext">find</code></span> method to look for records in the <span><code class="codeintext">user</code></span> model. Because there could be millions of users, we’ll limit the query to the first record found. If a record is found we’ll pass control back to Sails without adding any test data.</p>
+
+    <h3 class="head1" id="heading_id_16">15.4.3   Creating tables in PostgreSQL</h3>
+
+    <p class="body">Since <span><code class="codeintext">production</code></span> mode will set migrations to <span><code class="codeintext">safe</code></span> meaning, no schema changes can be made to database tables.  We need a mechanism to configure both the initial and ongoing configuration of the remote postgreSQL database. To accomplish this we’re going to connect, temporarily, our local version of Brushfire, which runs in <span><code class="codeintext">development</code></span> mode, to our remote instance of postgreSQL on Heroku. That way when the local Sails version starts, the remote instance of postgreSQL will be configured with the initial schema attributes for each table. In order to do this, however, we need to “comment out” the existing <span><code class="codeintext">connection</code></span> in our local version of Sails and add a temporary <span><code class="codeintext">connection</code></span> to our remote database. In Sublime, open <span><code class="codeintext">brushfire/config/local.js</code></span> and make a copy of the <span><code class="codeintext">myPostgresqlServer</code></span> connection similar to listing 15.8.</p>
+
+    <p class="codelistingcaption">Listing 15.8 Connecting the local Brushfire to the remote postgreSQL database</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">module.exports.connections = {</code> <code class="codebcxspmiddle">  // myPostgresqlServer: {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  //   adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">  //   host: 'localhost',</code> <code class="codebcxspmiddle">  //   database: 'brushfire'</code> <code class="codebcxspmiddle">  // }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  myPostgresqlServer: {</code> <code class="codebcxspmiddle">      adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">      url: 'ADD YOUR OWN HEROKU POSTGRESQL URL HERE',  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      ssl: true</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle">};</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Added comment tags to existing local postgreSQL connection</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> Added the connection credentials to the remote postgreSQL connection on Heroku</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Notice we also added comments to the existing local postgreSQL instance.</p>
+    </div>
+
+    <p class="body">Start the Sails server using <span><code class="codeintext">sails lift</code></span>. The table schemas will be setup according to the configuration of Brushfire models. It’s <span class="bold">important</span> to note, that since our local instance of Brushfire has migrations set to <span><code class="codeintext">drop</code></span>, we need to exercise <span class="bold">extreme</span> caution when using this technique to initialize the remote postgreSQL instance. Once Sails loads, you can confirm that the tables and test data were created by navigating your browser to <i>localhost:1337</i> and signing in as: <span><code class="codeintext">sailsinaction</code></span> with the password: <span><code class="codeintext">abc123</code></span>. After confirming that the tables were configured properly, head back to <span><code class="codeintext">brushfire/config/local.js</code></span> and <span class="bold">remove the connection to the remote postgreSQL instance</span> and restore the connection to the local postgreSQL database, similar to listing 15.9.</p>
+
+    <p class="codelistingcaption">Listing 15.9 Restored local Brushfire postgreSQL database</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">module.exports.connections = {</code> <code class="codebcxspmiddle"> myPostgresqlServer: {</code> <code class="codebcxspmiddle">   adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">   host: 'localhost',</code> <code class="codebcxspmiddle">   database: 'brushfire'</code> <code class="codebcxspmiddle"> }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">// myPostgresqlServer: {</code> <code class="codebcxspmiddle">//   adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">//    url: 'ADD YOUR OWN HEROKU POSTGRESQL URL HERE',</code> <code class="codebcxspmiddle">//    ssl: true</code> <code class="codebcxspmiddle">// }</code> <code class="codebcxspmiddle">};</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Once “real” production data is added to the database, you should only use one of the many 3<span class="superscript">rd</span> party clients to access your remote production database. We currently use a 3<span class="superscript">rd</span> party client called <span class="italics">Postico.</span></p>
+
+    <h3 class="head1" id="heading_id_17">15.4.4   Runtime vs. “build-time”</h3>
+
+    <p class="body">Now that we’re about to deploy Brushfire into <span><code class="codeintext">production</code></span>, it’s necessary to distinguish between <span class="italics">runtime process</span> and <span class="italics">build-time process</span>. This distinction is important because there are some tasks you want to run each time the Sails server starts. For example, the bootstrap is a run time process because we use it to execute when the Sails server starts. There are some tasks that we want performed only when Brushfire is deployed. For example, we want the <span><code class="codeintext">production</code></span> Grunt tasks to execute when we deploy and not each time the Sails server starts. Therefore, let’s change the Grunt tasks to execute when Brushfire is deployed instead of every time the Sails server is started.</p>
+
+    <h3 class="head1" id="heading_id_18">15.4.5   Setting up Grunt for production</h3>
+
+    <p class="body">By default in <span><code class="codeintext">production</code></span> mode, Sails will perform different Grunt tasks on our static assets. The <span><code class="codeintext">production</code></span> Grunt tasks include concatenating asset files as well as minification of some assets. These tasks can take a few minutes depending upon the size of the project. Heroku has a default sixty-second boot timeout. This means that Brushfire needs to start within sixty seconds or it will fail.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note: In <span><code class="codeintext1">development</code></span> mode, Sails doesn’t wait for the Grunt tasks to be completed before lifting. In <span><code class="codeintext1">production</code></span> mode, Sails does wait until all Grunt tasks are completed.</p>
+    </div>
+
+    <p class="body">Therefore, we want the static asset preparation tasks to happen at build time so as to avoid any potential time-out issues. In order to run these tasks during build time and not during run time, we must make a few configuration changes. First, we’re going to turn off Grunt when we’re in <span><code class="codeintext">production</code></span> mode. Next, we’ll alter the name of the Grunt task that Heroku will use to build our static assets during build time. Finally, we’ll install an alternative set of scripts that incorporates Grunt into Heroku’s build-time process.</p>
+
+    <p class="body">To turn off Grunt in <span><code class="codeintext">production,</code></span> we need to alter the Sails startup file named <span><code class="codeintext">app.js</code></span>. In Sublime, open <span><code class="codeintext">brushfire/app.js</code></span> and make the following changes in listing 15.10.</p>
+
+    <p class="codelistingcaption">Listing 15.10 Preventing Grunt tasks on startup if Sails is in <span><code class="codeintext1">production</code></span> mode</p><code class="codebcxspfirst">   ...</code> <code class="codebcxspmiddle">      console.error('npm install rc --save');</code> <code class="codebcxspmiddle">      rc = function () { return {}; };</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  var config = rc('sails');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (process.env.NODE_ENV === 'production' || process.env.nogrunt) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    config.hooks = config.hooks || {};</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    config.hooks.grunt = false;   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  sails.lift(config);    <span class="codeannotationcueballs1">❸ </span></code><code class="codebcxsplast">})();</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Check if we’re in <span><code class="codeintext1">production</code></span> mode.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Turn off <span><code class="codeintext1">Grunt</code></span> tasks.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span> <span><code class="codeintext1">Lift</code></span> Sails with our new configuration.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note: The changes we make to the <span><code class="codeintext1">brushfire/app.js</code></span> file will not be executed locally using <span><code class="codeintext1">sails lift</code></span> because <span><code class="codeintext1">app.js</code></span> is only executed when starting Sails via <span><code class="codeintext1">node app.js</code></span>. Heroku, however, starts Sails using <span><code class="codeintext1">node app.js,</code></span> and thus the file will be executed on the remote instance of Sails.</p>
+    </div>
+
+    <p class="body">In <span><code class="codeintext">production</code></span> mode Grunt is setup by default to run a task named <span><code class="codeintext">prod</code></span> located in <span><code class="codeintext">brushfire/tasks/register/prod.js</code></span>. Instead, we’re going to change the name of the existing production Grunt task to the name Heroku will use when building our static assets. In Sublime, open <span><code class="codeintext">brushfire/tasks/register/prod.js</code></span> and rename the registered task to <span class="italics">heroku:production</span> similar to listing 15.11.</p>
+
+    <p class="codelistingcaption">Listing 15.11 Renaming the resgistered Grunt task for Heroku</p><code class="codebcxspfirst">   module.exports = function (grunt) {</code> <code class="codebcxspmiddle">        grunt.registerTask('heroku:production', [  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">          'compileAssets',</code> <code class="codebcxspmiddle">          'concat',</code><code class="codebcxsplast">          ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Change the registered task name from <span><code class="codeintext1">prod</code></span> to <span><code class="codeintext1">heroku:production.</code></span></p>
+
+    <p class="body">Heroku will execute this Grunt task when building a Sails <span class="italics">dyno</span>. Finally, the scripts Heroku will use to build our Sails <span class="italics">dyno</span> are called <span><code class="codeintext">buildpacks</code></span>. Default Heroku buildpacks don’t support Grunt so let’s set the <span><code class="codeintext">buildpack</code></span> location to an alternative set of <span><code class="codeintext">buildpacks</code></span>, which do support Grunt. Head back over to the terminal window and type the following commands on the command line:</p><code class="codeb">~/brushfire $ heroku buildpacks:set <a class="pcalibre8 pcalibre5" href="https://github.com/mbuchetics/heroku-buildpack-nodejs-grunt.git">https://github.com/mbuchetics/heroku-buildpack-nodejs-grunt.git</a></code>
+
+    <p class="body">Heroku will now execute our Grunt tasks as part of its build-time process.</p>
+
+    <h3 class="head1" id="heading_id_19">15.4.6   Deploying to Heroku</h3>
+
+    <p class="body">We’re now ready to deploy Brushfire to Heroku. Let’s save our changes to the local Git repository by returning to the terminal window and typing the following commands on the command line:</p><code class="codebcxspfirst">~/brushfire $ git add .  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxsplast">~/brushfire $ git commit -am 'added deployment configuration'   <span class="codeannotationcueballs1">❷ </span></code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Will stage all of our changes for the next commit</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> Commit changes to the local repository.</p>
+
+    <p class="body">Now that we’ve committed our changes to the local repo, deploying Brushfire to Heroku is as simple as pushing our local repository to the Heroku remote repository. Again from the command line type:</p><code class="codeb">~/brushfire $ git push heroku master</code>
+
+    <p class="body">At the end of the build process, Heroku will display the <span><code class="codeintext">URL</code></span> of the Brushfire instance. Navigate your browser to the logged <span><code class="codeintext">URL</code></span> which should look similar to figure 15.12.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_12.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.12 Brushfire deployed and running on Heroku.</p>
+
+    <p class="body">Although Brushfire has been deployed, we still have some work to do. Chad has high hopes for growth and wants us to plan for Brushfire to use multiple Heroku dynos. Therefore, we need to transition from individual session and WebSocket stores on each Brushfire instance to a central store for all dynos.</p>
+
+    <h2 class="head" id="heading_id_20">15.5   Configuring sessions and sockets for production</h2>
+
+    <p class="body">During development we’ve stored session information in memory on our local machine. Now that we have the potential for multiple instances of Brushfire in <span><code class="codeintext">production,</code></span> we need to configure a centralized session store for any potential number of Heroku dynos. We’re going to use <span class="italics">Redis</span> as the database to store sessions. Recall that Redis is an in memory data store using key/value pairs similar to a dictionary. Similar to postgreSQL, Heroku provides remote Redis instances as a Database as a Service (DaaS). Let’s setup Redis in Heroku.</p>
+
+    <h3 class="head1" id="heading_id_21">15.5.1   Provisioning a remote “Redis To Go” instance</h3>
+
+    <p class="body">To add a remotely hosted Redis database on Heroku, navigate your browser to the Heroku dashboard resources page. You should see the existing remote postgreSQL instance as one of the Add-ons. The process of adding Redis is similar to what we did with postgreSQL. From the resources page, click <span class="italics">Find More Add-Ons</span>. Next, click the <span class="italics">Redis To Go</span> service followed by the <span class="italics">Login to Install</span> button followed by the <span class="italics">Install Redis to Go</span> button. Select your Brushfire instance and click submit. Finally, ensure you’re using the free <span class="italics">Nano</span> plan and click the <span class="italics">provision</span> button. Similar to the remote postgreSQL instance, Heroku creates a Configuration Variable named <span><code class="codeintext">REDISTOGO_URL</code></span> that contains the credentials for the <span class="italics">Redis To Go</span> data store. We’ll use this variable and its value when configuring sessions and WebSockets.</p>
+
+    <h3 class="head1" id="heading_id_22">15.5.2   Configuring a remote session store</h3>
+
+    <p class="body">Sessions are currently stored in memory in each instance of Sails. Now that we have a remote Redis database, we can configure each Sails dyno to use this single remote instance. In Sublime, open <span><code class="codeintext">brushfire/config/env/production.js</code></span> and add the following to enable the Sails session store to Redis similar to listing 15.12.</p>
+
+    <p class="codelistingcaption">Listing 15.12 Configuring Redis to Go for sessions in <span><code class="codeintext1">production</code></span></p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  connections: {</code> <code class="codebcxspmiddle">    productionPostgresqlServer: {</code> <code class="codebcxspmiddle">      adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">      url: process.env.DATABASE_URL,</code> <code class="codebcxspmiddle">      ssl: true</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  session: {</code> <code class="codebcxspmiddle">    adapter: 'redis',  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    url: process.env.REDISTOGO_URL</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Configuring sessions to use the <span class="italics1">redis</span> adapter</p>
+
+    <p class="body">Now that we have the connection configured, let’s install the adapter. From the terminal window, type:</p><code class="codeb">~/brushfire $ npm install connect-redis --save</code>
+
+    <p class="body">Once installed, sessions will now be configured to use the <span class="italics">Redis To Go</span> instance on Heroku for Brushfire in <span><code class="codeintext">production</code></span> mode.</p>
+
+    <h3 class="head1" id="heading_id_23">15.5.3   Using Redis to deliver notifications</h3>
+
+    <p class="body">Similar to sessions, WebSockets are currently stored in memory for each instance of Sails. So we need to configure each Sails dyno to use this remote instance. In Sublime, open <span><code class="codeintext">brushfire/config/env/production.js</code></span> and add the following code to enable the Sails WebSocket store to Redis similar to listing 15.13.</p>
+
+    <p class="codelistingcaption">Listing 15.13 Configuring Redis to Go for WebSockets in production</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  session: {</code> <code class="codebcxspmiddle">    adapter: 'redis',</code> <code class="codebcxspmiddle">    url: process.env.REDISTOGO_URL</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  sockets: {</code> <code class="codebcxspmiddle">    adapter: 'socket.io-redis',  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    url: process.env.REDISTOGO_URL,</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Configuring WebSockets to use the <span class="italics1">redis socket</span> adapter.</p>
+
+    <p class="body">Now that we have the connection configured, let’s install the adapter. From the terminal window type:</p><code class="codeb">~/brushfire $ npm install socket.io-redis --save</code>
+
+    <p class="body">Once installed, WebSockets will now be configured to use the <span class="italics">Redis To Go</span> instance on Heroku for Brushfire in <span><code class="codeintext">production</code></span> mode.</p>
+
+    <h3 class="head1" id="heading_id_24">15.5.4   Using Redis in development (so you don’t have to log in all the time)</h3>
+
+    <p class="body">There is no real performance or scalability advantage to using <span class="italics">Redis</span> for WebSockets in development. However, there is a benefit to using Redis with sessions. Sessions are stored in memory on your local machine. Therefore, any time you restart Sails the sessions are lost because they’re stored in memory on the same machine. By installing a local instance of Redis and configuring Sails to use it during development eliminates the need to sign in after restarting the Sails server. In Sublime, open <span><code class="codeintext">brushfire/config/session.js</code></span> and uncomment the adapter similar to listing 15.14.</p>
+
+    <p class="codelistingcaption">Listing 15.14 Configuring a local Redis database for sessions in development</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">module.exports.session = {</code> <code class="codebcxspmiddle">secret: '[YOUR SECRET]',</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">adapter: 'redis', <span class="codeannotationcueballs1">❶ </span></code><code class="codebcxsplast">  ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Specifying the <span class="italics1">redis</span> adapter in development mode.</p>
+
+    <p class="body">Information about installation can be found at <a class="pcalibre8 pcalibre5" href="http://redis.io/download">http://redis.io/download</a>. For OS X, we used the package manager <span class="italics">Homebrew</span>. Once installed, the Redis server can be started by typing the following from the command line:</p><code class="codeb">~/ $ redis-server</code>
+
+    <p class="body">Sails will now use the local <span class="italics">Redis</span> instance in <span><code class="codeintext">development</code></span> mode and the remote instance in <span><code class="codeintext">production</code></span> mode. To confirm that Redis is running locally, restart Sails using <span><code class="codeintext">sails lift</code></span>. Navigate your browser to localhost:1337 and sign into Brushfire using <span><code class="codeintext">sailsinaction</code></span> and password: <span><code class="codeintext">abc123</code></span>. Now restart the Sails server using <span><code class="codeintext">sails lift</code></span>. If you go back to your browser and refresh, you should be logged in. This is because the session database is now separate from your Sails instance.</p>
+
+    <h3 class="head1" id="heading_id_25">15.5.5   Configuring Mailgun for email delivery</h3>
+
+    <p class="body">We need a way to configure the Mailgun service credentials we implemented earlier in chapter 11. We can configure Heroku to set environment variables in a way similar to how we configured our postgreSQL database credentials by storing them securely on Heroku. Add the environment variables by navigating your browser to the Heroku dashboard for your Brushfire instance and click <span class="italics">settings</span>. Then from the settings page, click the <span class="italics">Reveal Config Vars</span> button. After adding the environment variables your browser should look similar to figure 15.13.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_13.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.13 The Mailgun credentials include <span class="codeannotationcueballs">① </span>  the API key, <span class="codeannotationcueballs">② </span>  the Base URL, and <span class="codeannotationcueballs">③ </span>  the domain.</p>
+
+    <p class="body">Next, let’s add these environment variables to the <span><code class="codeintext">production</code></span> configuration file. In Sublime, open <span><code class="codeintext">brushfire/config/env/production.js</code></span> and add the following MailGun settings similar to listing 15.15.</p>
+
+    <p class="codelistingcaption">Listing 15.15 Configuring Mailgun credentials for production</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  session: {</code> <code class="codebcxspmiddle">    adapter: 'redis',</code> <code class="codebcxspmiddle">    url: process.env.REDISTOGO_URL</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  mailgun: {</code> <code class="codebcxspmiddle">    apiKey: process.env.MAILGUN_API_KEY,  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    domain: process.env.MAILGUN_DOMAIN,   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    baseUrl: process.env.MAILGUN_BASE_URL <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  MailGun credentials via environment variables</p>
+
+    <p class="body">In <span><code class="codeintext">production</code></span>, Brushfire is now properly configured for Mailgun. Commit the changes from the terminal window by typing:</p><code class="codeb">~/brushfire $ git commit –am 'added mailgun credentials'</code>
+
+    <p class="body">And then push the results to Heroku by typing:</p><code class="codeb">~/brushfire $ git push heroku master</code>
+
+    <p class="body">Let’s move on to a very important topic, testing.</p>
+
+    <h2 class="head" id="heading_id_26">15.6   Testing</h2>
+
+    <p class="body">The amount of testing needed for a project can be a highly contentious subject. In this section we’ll show you how to implement and configure a testing environment that supports many different testing styles. When planning for this book we discussed using test-driven development (TDD) and realized it could double the length of the manuscript. In the end we compromised on providing this discussion that allows you to implement your own style of testing.</p>
+
+    <p class="body">There are many libraries and frameworks you can use to test Sails. We use a JavaScript testing framework named <span class="italics">Mocha</span>. Mocha allows you to create test cases, execute those cases and receive the results via reports. We also use <span class="italics">SuperTest,</span> another testing library, that allows us to easily create test cases that make requests to our routes and controller/actions. Finally, SuperTest provides a way to make requests using existing sessions.</p>
+
+    <h3 class="head1" id="heading_id_27">15.6.1   Installing dependencies for your test suite</h3>
+
+    <p class="body">In this section we’ll install <span class="italics">Mocha</span> and <span class="italics">SuperTest</span> as well as configure the folder structure that will contain our tests. From the command line install <span class="italics">Mocha</span> by typing:</p><code class="codeb">~/brushfire $ npm install mocha --save-dev</code>
+
+    <p class="body">By using the <span><code class="codeintext">–dev</code></span> tag, <span class="italics">Mocha</span> will be installed as a <span><code class="codeintext">development</code></span> dependency and therefore will not be installed when Brushfire is deployed in <span><code class="codeintext">production</code></span> mode. Let’s do something similar for <span class="italics">SuperTest</span>. From the command line type:</p><code class="codeb">~/brushfire $ npm install supertest --save-dev</code>
+
+    <p class="body">Now that both frameworks are installed, let’s create a folder structure for our tests. From the root of the Brushfire project, create a folder named <span><code class="codeintext">brushfire/test/</code></span>. We’ll add all of our tests, helper functions, and fixtures to this folder.</p>
+
+    <h3 class="head1" id="heading_id_28">15.6.2   Using before() and after()</h3>
+
+    <p class="body">Mocha provides functions where we can setup preconditions before tests as well as cleanup after tests. In Sublime, create a new file named <span><code class="codeintext">brushfire/test/bootstrap.test.js</code></span> and add the following code similar to listing 15.16.</p>
+
+    <p class="body"> </p>
+
+    <p class="codelistingcaption">Listing 15.16  Adding before and after hooks to mocha</p><code class="codebcxspfirst">var Sails = require('../node_modules/sails');</code> <code class="codebcxspmiddle">var sails = require('sails');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">before(function(done) {   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  Sails.lift({</code> <code class="codebcxspmiddle">    log: {</code> <code class="codebcxspmiddle">      level: 'error'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle">    hooks: {</code> <code class="codebcxspmiddle">      grunt: false        <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  }, done);</code> <code class="codebcxspmiddle">});</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">after(function(done) {    <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">  Sails.lower(done);</code><code class="codebcxsplast">});</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> The before method allows us to lift Sails before a test is executed.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Start Sails without loading Grunt.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span> The after method allows us to close Sails after tests are completed.</p>
+
+    <p class="body">This Mocha bootstrap file is very useful for running tasks before and after a test and should not be confused with <span><code class="codeintext">brushfire/config/bootstrap.js</code></span> which is executed when the Sails server starts. Next, let’s see how we can use npm to start our tests from the command line.</p>
+
+    <h3 class="head1" id="heading_id_29">15.6.3   Running tests from the command line</h3>
+
+    <p class="body">We’ll use npm from the command line to initiate tests. To set this up, open <span><code class="codeintext">brushfire/package.json</code></span> in Sublime and add the following to the <span><code class="codeintext">scripts</code></span> dictionary in listing 15.17.</p>
+
+    <p class="codelistingcaption">Listing 15.17  Configuring npm to initiate tests from the command line</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">  "scripts": {</code> <code class="codebcxspmiddle">    "debug": "node debug app.js",</code> <code class="codebcxspmiddle">    "start": "node app.js",</code> <code class="codebcxspmiddle">    "test": "NODE_ENV=test mocha --recursive -t 5000"  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Initiate the test environment by setting NODE_ENV and start Mocha.</p>
+
+    <p class="body">Let’s see this in action. From the command line start Mocha by typing:</p><code class="codeb">~/brushfire $<span><code class="codeintext">npm test</code></span></code>
+
+    <p class="body">You should see <span><code class="codeintext">0 passing (1ms)</code></span>. Since we don’t have any tests yet, you should see something like <span><code class="codeintext">0 passing (1ms)</code></span>from the command line<span><code class="codeintext">.</code></span> This will not only initiate Mocha tests, but also set the runtime mode of Sails to <span><code class="codeintext">test</code></span><span class="italics">.</span> Before we start testing we’ll set up a <span><code class="codeintext">test</code></span> environment mode file similar to what we did for <span><code class="codeintext">production</code></span> and <span><code class="codeintext">development</code></span> modes.</p>
+
+    <h3 class="head1" id="heading_id_30">15.6.4   Configuring your test environment</h3>
+
+    <p class="body">We currently have configuration files for <span><code class="codeintext">development</code></span> and <span><code class="codeintext">production</code></span> <span class="italics">modes</span>. Let’s add one for our <span><code class="codeintext">test</code></span> environment. In Sublime, create a file named <span><code class="codeintext">brushfire/config/env/test.js</code></span> and add the following code in listing 15.18.</p>
+
+    <p class="codelistingcaption">Listing 15.18 Configuring npm to initiate tests from the command line</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  models: {       <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    connection: 'memory',</code> <code class="codebcxspmiddle">    schema: true,</code> <code class="codebcxspmiddle">    migrations: 'drop'</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  connections: {  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    memory: {</code> <code class="codebcxspmiddle">      adapter: 'sails-memory',</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  session: {      <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">    adapter: 'memory'</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Configure all models to use the memory connection, enforce schema, and drop tables.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Configure the memory connection to use the sails-memory adapter.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span> Configure sessions to use the in memory adapter.</p>
+
+    <p class="body">It is sometimes useful to use the <span><code class="codeintext">sails-memory</code></span> adapter to speed up testing. So during testing, we’ll configure models and sessions to use the <span><code class="codeintext">sails-memory</code></span> adapter instead of postgreSQL and Redis adapters. To install the <span><code class="codeintext">sails-memory</code></span> adapter head over to the terminal window and type:</p><code class="codeb">~/brushfire $ npm install sails-memory --save-dev</code>
+
+    <p class="body">We are now ready to add our first test case.</p>
+
+    <h3 class="head1" id="heading_id_31">15.6.5   Understanding tests</h3>
+
+    <p class="body">Before diving into an actual test of Brushfire, we thought it would be easier to start our discussion with a simple test case that isolates the structure of a test. In the <span><code class="codeintext">brushfire/test/</code></span> folder, create a subfolder named <span><code class="codeintext">integration/</code></span><span class="italics">.</span> This is where we will aggregate our tests. Let’s create the test in Sublime by creating a file named <span><code class="codeintext">brushfire/test/integration/test.js</code></span> and by adding the following code in listing 15.19.</p>
+
+    <p class="body"> </p>
+
+    <p class="codelistingcaption">Listing 15.19 Fundamentals of a test</p><code class="codebcxspfirst">var assert = require('assert');             <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">describe('Personal Heros :: ', function(){  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">  describe('Nikola Tesla :: ', function(){  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    it('everyone should think Nikola Tesla is a genius!', function() { <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">      // Since there are no errors, this test will pass!</code> <code class="codebcxspmiddle">assert.equal(1,1);   <span class="codeannotationcueballs1">❹  </span></code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">});</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Add Node’s native assert module.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Name spacing our test</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span> First test case</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span> First assertion</p>
+
+    <p class="body">The <span class="italics">assert</span> library is a core module in Node. One of the purposes of the library is to provide methods that we can use to test whether something is true. The <span><code class="codeintext">describe()</code></span>method is a way to group multiple tests together under a particular name space often referred to as a <span class="italics">test suite</span>. We can also nest the <span><code class="codeintext">describe()</code></span>method in another <span><code class="codeintext">describe()</code></span>to create sub groups. Observing the results of a test will provide greater clarity on how and why we use these methods. The <span><code class="codeintext">it()</code></span>method creates an actual test case. Anything that throws an error within the <span><code class="codeintext">it()</code></span> method will cause the test to fail. Let’s execute our first test by heading to the terminal window and typing the following from the command line:</p><code class="codeb">~/brushfire $ npm test</code>
+
+    <p class="body">The result of the test should look similar to listing 15.20.</p>
+
+    <p class="codelistingcaption">Listing 15.20  The results of executing test.js</p><code class="codebcxspfirst">brushfire@0.0.0 test /brushfire</code> <code class="codebcxspmiddle">&gt; NODE_ENV=test mocha --recursive -t 5000</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  Personal Heros :: <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    Nikola Tesla :: <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"><span class="codeinmincho">✓</span> everyone should think Nikola Tesla is a genius! <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">  1 passing (2s)    <span class="codeannotationcueballs1">❸ </span></code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  From the <span><code class="codeintext1">description()</code></span> method</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷   </span>From the <span><code class="codeintext1">it()</code></span> method</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸   </span>Our test passed.</p>
+
+    <p class="body">Looking at the log results of the test, we can see that our first test passed.</p>
+
+    <h3 class="head1" id="heading_id_32">15.6.6   Testing an endpoint</h3>
+
+    <p class="body">Now that we have an initial test under our belt, let’s create a test for a portion of our <span class="italics">Signup a user</span> endpoint. The route consists of a <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/signup</code></span> that triggers the <span><code class="codeintext">signup</code></span> action of the <span><code class="codeintext">User</code></span> controller. There’s a policy on this action that requires a <span><code class="codeintext">user</code></span> to be logged out and therefore not authenticated in order to access the action. In order to test whether this policy is working, we need to create and authenticate a <span><code class="codeintext">user</code></span> as part of the set-up for the test. In Sublime, create a new file <span><code class="codeintext">brushfire/test/integration/create-user.js</code></span> and add the following code similar to listing 15.21.</p>
+
+    <p class="codelistingcaption">Listing 15.21  Creating the user before the test</p><code class="codebcxspfirst">var assert = require('assert');</code> <code class="codebcxspmiddle">var request = require('supertest');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">describe('User Controller :: ', function() {          <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  describe('POST /user/signup :: ', function() {      <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    describe('When logged in :: ', function() {       <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      var agent;</code> <code class="codebcxspmiddle">      before(function(done) {</code> <code class="codebcxspmiddle">        agent = request.agent(sails.hooks.http.app);  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        Passwords.encryptPassword({  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">          password: 'abc123'</code> <code class="codebcxspmiddle">        })</code> <code class="codebcxspmiddle">        .exec({</code> <code class="codebcxspmiddle">          error: done,</code> <code class="codebcxspmiddle">          success: function(password) {</code> <code class="codebcxspmiddle">            User.create({            <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">              username: 'testtest',</code> <code class="codebcxspmiddle">              email: 'test@test.com',</code> <code class="codebcxspmiddle">              encryptedPassword: password</code> <code class="codebcxspmiddle">            })</code> <code class="codebcxspmiddle">            .exec(function(err, user) {</code> <code class="codebcxspmiddle">              if(err) { return done(err); }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">              agent                  <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">              .put('/login')</code> <code class="codebcxspmiddle">              .send({</code> <code class="codebcxspmiddle">                username: 'testtest',</code> <code class="codebcxspmiddle">                password: 'abc123'</code> <code class="codebcxspmiddle">              })</code> <code class="codebcxspmiddle">              .set('Content-Type', 'application/json')</code> <code class="codebcxspmiddle">              .end(function(err, res) {</code> <code class="codebcxspmiddle">                if(err) { return done(err); }</code> <code class="codebcxspmiddle">                console.log('res.status', res.status);</code> <code class="codebcxspmiddle">                return done();</code> <code class="codebcxspmiddle">              });</code> <code class="codebcxspmiddle">            });</code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">});</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Establishing the test suite group and subgroups</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Returns a dictionary we can use to make requests with cookies</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span> Encrypt the test user password.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span> Create the user.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span> Make a request using the agent to authenticate the test user.</p>
+
+    <p class="body">We are again using the <span><code class="codeintext">before()</code></span>method. But this time we’re using it within a <span><code class="codeintext">describe()</code></span>method. Therefore, instead of the <span><code class="codeintext">before</code></span> code executing prior to all tests, like we did in <span><code class="codeintext">bootstrap.test.js</code></span>, this code will execute before the tests within this particular <span><code class="codeintext">describe()</code></span><span class="italics">.</span></p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We’ve made this <span><code class="codeintext1">before()</code></span> method asynchronous by adding <span><code class="codeintext1">done</code></span> as an argument in the callback. Thus, no tests will be run until <span><code class="codeintext1">before()</code></span>returns control.</p>
+    </div>
+
+    <p class="body">Next, we’ll configure SuperTest’s <span><code class="codeintext">agent</code></span> dictionary, which allows us to make requests with persisted cookies.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">There are many ways to make client requests of a server. We can rely upon a browser to make a request, or we can rely upon a library that uses methods that issue requests on our behalf. The <span class="italics1">SuperTest</span> agent allows us to simulate a browser request including things like cookies used with sessions.</p>
+    </div>
+
+    <p class="body">We encrypt the test user <span><code class="codeintext">password</code></span> and then create the user before making a request with our <span><code class="codeintext">agent</code></span> dictionary. The request authenticates the test user and then passes control back to <span class="italics">Mocha</span> to execute the remainder of the tests.</p>
+
+    <p class="body">Now that we have an authenticated test <span><code class="codeintext">user</code></span>, let’s use it to test the policy. Head back to Sublime and add the following code to <span><code class="codeintext">brushfire/test/integration/create-user.js</code></span> in listing 15.22.</p>
+
+    <p class="codelistingcaption">Listing 15.22 Testing the <span class="italics1">signup a user</span> endpoint</p><code class="codebcxspfirst">    ...</code> <code class="codebcxspmiddle">      it('should return a 403 response code', function(done) { <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        agent   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        .post('/user/signup')</code> <code class="codebcxspmiddle">        .send({</code> <code class="codebcxspmiddle">          username: 'foo',</code> <code class="codebcxspmiddle">          email: 'foo@foo.com',</code> <code class="codebcxspmiddle">          password: 'barbaz'</code> <code class="codebcxspmiddle">        })</code> <code class="codebcxspmiddle">        .set('Content-Type', 'application/json')</code> <code class="codebcxspmiddle">        .end(function(err, res) {</code> <code class="codebcxspmiddle">          if(err) { return done(err); }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">          assert.equal(res.statusCode, 403);   //C</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">return done();</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">});</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Creates an asynchronous test case</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Attempt to create a user.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span> Confirm the correct returned status code.</p>
+
+    <p class="body">First we’ll create an asynchronous test case by adding <span><code class="codeintext">done</code></span> as an argument to the callback of the <span><code class="codeintext">it()</code></span>method. Then we will make a request that will trigger an attempt to create a user using the <span><code class="codeintext">agent</code></span> method.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The policy should prevent an authenticated user from reaching the <span><code class="codeintext1">signup</code></span> action and produce the <span class="italics1">403</span> status code.</p>
+    </div>
+
+    <p class="body">Finally, we’ll confirm that the returned status code is <span><code class="codeintext">403</code></span> by using the <span><code class="codeintext">assert()</code></span> method. Let’s see this in action. From the terminal window type the following on the command line:</p><code class="codeb">~/brushfire $ npm test</code>
+
+    <p class="body">You should now have two passing tests.</p>
+
+    <h3 class="head1" id="heading_id_33">15.6.7   Refactoring a test using fixtures and helper functions</h3>
+
+    <p class="body">There are times when you’ll want to refactor some repeated aspects of a test into a reusable component. For example, let’s refactor the test <span><code class="codeintext">user</code></span> properties into its own fixture. Within <span><code class="codeintext">brushfire/test/</code></span>create a subfolder, named <span><code class="codeintext">fixtures</code></span>. In Sublime create a new file named <span><code class="codeintext">brushfire/test/fixtures/user.js</code></span> similar to listing 15.23.</p>
+
+    <p class="codelistingcaption">Listing 15.23 Refactoring the test user data into fixtures</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  username: 'testtest',</code> <code class="codebcxspmiddle">  password: 'abc123',</code> <code class="codebcxspmiddle">  email: 'test@test.com'</code><code class="codebcxsplast">};</code>
+
+    <p class="body">We can now <span><code class="codeintext">require</code></span> this <span><code class="codeintext">fixture</code></span> anytime we need it. Next let’s refactor the creation and authentication of a test user into its own utility method. In Sublime, open <span><code class="codeintext">brushfire/test/integration/create-user.js</code></span> and replace the bulk of creating and authenticating a user with a new method appropriately named <span><code class="codeintext">createTestUserAndAuthenticate(agent, done)</code></span> similar to listing 15.24.</p>
+
+    <p class="codelistingcaption">Listing 15.24  Introducing a new helper function in a test</p><code class="codebcxspfirst">var assert = require('assert');</code> <code class="codebcxspmiddle">var request = require('supertest');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">describe('User Controller :: ', function() {</code> <code class="codebcxspmiddle">  describe('POST /user/signup :: ', function() {</code> <code class="codebcxspmiddle">    describe('When logged in :: ', function() {</code> <code class="codebcxspmiddle">      var agent;</code> <code class="codebcxspmiddle">      before(function(done) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        var createTestUserAndAuthenticate = require('../utils/create-logged-in-user'); <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        agent = request.agent(sails.hooks.http.app);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        createTestUserAndAuthenticate(agent, done);  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      it('should return a 403 response code', function(done) {</code><code class="codebcxsplast">      ...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Require the soon-to-be refactored code.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> Execute the new method passing in the agent and callback from the <span><code class="codeintext1">before()</code></span> method.</p>
+
+    <p class="body">Next, let’s implement the <span><code class="codeintext">createTestUserAndAuthenticate()</code></span>method. Within <span><code class="codeintext">brushfire/test/</code></span>create a subfolder, named <span><code class="codeintext">utils</code></span>. We’ll use the <span><code class="codeintext">utils</code></span> subfolder as a place for our utility test methods. In Sublime, create a new file named <span><code class="codeintext">brushfire/test/utils/create-logged-in-user.js</code></span> and add the following code similar to listing 15.25.</p>
+
+    <p class="codelistingcaption">Listing 15.25  Implementing  the <span class="italics1">createTestUserAndAuthenticate</span> method</p><code class="codebcxspfirst">var request = require('supertest');</code> <code class="codebcxspmiddle">var Passwords = require('machinepack-passwords');</code> <code class="codebcxspmiddle">var USER_FIXTURE = require('../fixtures/user');   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports = function(agent, cb) {            <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">  Passwords.encryptPassword({</code> <code class="codebcxspmiddle">    password: USER_FIXTURE.password               <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">  })</code> <code class="codebcxspmiddle">  .exec({</code> <code class="codebcxspmiddle">    error: cb,</code> <code class="codebcxspmiddle">    success: function(password) {</code> <code class="codebcxspmiddle">      User.create({</code> <code class="codebcxspmiddle">        username: USER_FIXTURE.username,</code> <code class="codebcxspmiddle">        email: USER_FIXTURE.email,</code> <code class="codebcxspmiddle">        encryptedPassword: password</code> <code class="codebcxspmiddle">      })</code> <code class="codebcxspmiddle">      .exec(function(err, user) {</code> <code class="codebcxspmiddle">        if(err) { return cb(err); }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        agent</code> <code class="codebcxspmiddle">        .put('/login')</code> <code class="codebcxspmiddle">        .send({</code> <code class="codebcxspmiddle">          username: USER_FIXTURE.username,</code> <code class="codebcxspmiddle">          password: USER_FIXTURE.password</code> <code class="codebcxspmiddle">        })</code> <code class="codebcxspmiddle">        .set('Content-Type', 'application/json')</code> <code class="codebcxspmiddle">        .end(function(err, res) {</code> <code class="codebcxspmiddle">          if(err) { return cb(err); }</code> <code class="codebcxspmiddle">          return cb();</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Add access to test <span><code class="codeintext1">user</code></span> fixtures.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Pass in the <span><code class="codeintext1">agent</code></span> dictionary and callback</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span> Syntax for accessing the fixture dictionary</p>
+
+    <p class="body">Let’s again see this in action. From the terminal window type the following on the command line:</p><code class="codeb">~/brushfire $ npm test</code>
+
+    <p class="body">After the refactor you should still have two passing tests, except we now have a utility function we can use throughout our test suites. Next, let’s do some validation testing on the user model.</p>
+
+    <h3 class="head1" id="heading_id_34">15.6.8   Testing model methods and validations</h3>
+
+    <p class="body">The <span class="italics">Signup a user</span> endpoint has several initial validations. Let’s test one of the validations: when a user has not supplied an <span><code class="codeintext">email</code></span> address. In Sublime, open <span><code class="codeintext">brushfire/test/integration/create-user.js</code></span> and add the following code similar to listing 15.26.</p>
+
+    <p class="codelistingcaption">Listing 15.26 Testing the missing email validation</p><code class="codebcxspfirst">    ...</code> <code class="codebcxspmiddle">    describe('When logged out ::', function() {</code> <code class="codebcxspmiddle">      describe('With an invalid email address', function() {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        it('should return a 400 status code when missing', function(done) {</code> <code class="codebcxspmiddle">          request(sails.hooks.http.app)                       <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">          .post('/user/signup')</code> <code class="codebcxspmiddle">          .send({</code> <code class="codebcxspmiddle">            username: 'foo',</code> <code class="codebcxspmiddle">            password: 'barbaz'</code> <code class="codebcxspmiddle">          })</code> <code class="codebcxspmiddle">          .set('Content-Type', 'application/json')</code> <code class="codebcxspmiddle">          .end(function(err, res) {</code> <code class="codebcxspmiddle">            if(err) { return done(err); }</code> <code class="codebcxspmiddle">            assert.equal(res.statusCode, 400);                <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">            return done();</code> <code class="codebcxspmiddle">          });</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code><code class="codebcxsplast">    });</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶   </span>Group tests as <span><code class="codeintext1">email</code></span> validations.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷   </span>Make request with missing <span><code class="codeintext1">email</code></span> property.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸   </span>Test for <span><code class="codeintext1">400</code></span> response.</p>
+
+    <p class="body">These tests will require a new user that is unauthenticated, so we don’t need any test user creation and authentication setup. The validation requires an email address, so we will make a request to signup a new user without an email address. The test is expecting a <span><code class="codeintext">400</code></span><span class="italics">bad request</span> status code. Let’s give this a try. Start the test from the terminal window via <span><code class="codeintext">npm test</code></span>. You should now have three passing tests. Finally, let’s create a test for a successful signup. In Sublime open <span><code class="codeintext">brushfire/test/integration/create-user.js</code></span> and add the following test similar to listing 15.27.</p>
+
+    <p class="codelistingcaption">Listing 15.27 Testing for a successful signup</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">describe('With valid properties', function() {</code> <code class="codebcxspmiddle">      var userResponse;        <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      before(function(done) {  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        request(sails.hooks.http.app)</code> <code class="codebcxspmiddle">        .post('/user/signup')</code> <code class="codebcxspmiddle">        .send({</code> <code class="codebcxspmiddle">          username: 'foofoo',</code> <code class="codebcxspmiddle">          password: 'barbaz',</code> <code class="codebcxspmiddle">          email: 'foo.bar@baz.com'</code> <code class="codebcxspmiddle">        })</code> <code class="codebcxspmiddle">        .set('Content-Type', 'application/json')</code> <code class="codebcxspmiddle">        .end(function(err, res) {</code> <code class="codebcxspmiddle">          if(err) { return done(err); }</code> <code class="codebcxspmiddle">          userResponse = res;</code> <code class="codebcxspmiddle">          done();</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      it('should return a 200 response code', function() {</code> <code class="codebcxspmiddle">        assert.equal(userResponse.statusCode, 200);         <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      it('should return the username of the user in the body', function() {</code> <code class="codebcxspmiddle">        assert.equal(userResponse.body.username, 'foofoo'); <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      it('should set the gravatar on the user record', function(done) {</code> <code class="codebcxspmiddle">        User.findOne({ username: 'foofoo' }).exec(function(err, user) { <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">          if(err) { return done(err); }</code> <code class="codebcxspmiddle">          assert(user);</code> <code class="codebcxspmiddle">          assert(user.gravatarURL);</code> <code class="codebcxspmiddle">          assert.notEqual(user.gravatarURL, '');</code> <code class="codebcxspmiddle">          done();</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">});</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> <span><code class="codeintext1">userResponse</code></span> will hold the <span><code class="codeintext1">res</code></span> dictionary we’ll use later within the <span><code class="codeintext1">assert()</code></span>method.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Create a <span><code class="codeintext1">user.</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span> Test whether the <span><code class="codeintext1">user</code></span> was successfully created.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span> Test whether the user <span><code class="codeintext1">name</code></span> was created.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span> Test whether the <span><code class="codeintext1">gravatarURL</code></span> was created.</p>
+
+    <p class="body">Here we’re testing various ways of whether the user was created successfully:</p>
+
+    <p class="listbulletcxspfirst">·   did we receive a <span><code class="codeintext">200</code></span> status response.</p>
+
+    <p class="listbulletcxspmiddle">·   did we receive a valid <span><code class="codeintext">username</code></span>, and</p>
+
+    <p class="listbulletcxsplast">·   did we receive a valid <span><code class="codeintext">gravatarURL</code></span>.</p>
+
+    <p class="body">Once again let’s execute the test via <span><code class="codeintext">npm test</code></span>. You should now have six passing tests. With these testing components you have the tools necessary to test all aspects of your controller/actions.</p>
+
+    <h2 class="head" id="heading_id_35">15.7   Security</h2>
+
+    <p class="body">Although we’ve been working on Brushfire security concepts throughout the book, we wanted to extend our discussion with a section that identifies an application’s core security vulnerabilities as well as the various steps you can be take to protect against them. Figure 15.14 focuses on the top vulnerabilities of each layer of Brushfire’s technical stack.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_14.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.14 An overview view of the security vulnerabilities of Brushfire’s technical stack includes <span class="codeannotationcueballs">① </span>  attacks related to the front end, <span class="codeannotationcueballs">② </span>  attacks related to the network, and <span class="codeannotationcueballs">③ </span>  attacks related to the back end.</p>
+
+    <p class="body">First, we will address <span class="codeannotationcueballs">① </span>  front-end vulnerabilities due to cross-site scripting (XSS) and cross-site request forgery (CSRF) attacks, as well as preventative measures to protect against them. Next, we’ll look at <span class="codeannotationcueballs">② </span>  how to protect against so-called man-in-the-middle network attacks. Finally, we end with <span class="codeannotationcueballs">③ </span>  addressing back-end vulnerabilities and protections. We encourage you to explore the Sails security site at <a class="pcalibre8 pcalibre5" href="http://sailsjs.org/documentation/concepts/security">http://sailsjs.org/documentation/concepts/security</a> as well as the Open Web Application Security Project (OWASP) site at <a class="pcalibre8 pcalibre5" href="https://www.owasp.org/index.php/Category:OWASP_Top_Ten_Project">https://www.owasp.org/index.php/Category:OWASP_Top_Ten_Project</a>. Each destination provides a wealth of timely information pertaining to many aspects of application security.</p>
+
+    <h3 class="head1" id="heading_id_36">15.7.1   Front-end, network and back-end security</h3>
+
+    <p class="body">Before addressing specific vulnerabilities it is important to discuss our control or lack thereof of each layer. Relative control is directly tied to a layer’s exposure to changes without our consent. For example, on the client-side, we have provided validation logic through Angular that prevents the creation of a user that contains characters other than spaces (the letters Aa-Zz, or the numbers 0-9). However, anyone can circumvent those validations because we have no control over changes to the browser user-agent. We have to design our security around an assumption that anything we do on the browser user-agent is subject to change and therefore any data from the front-end layer is untrusted and possibly malicious. In the validation example, because front-end validations can be thwarted, we must also create the same validations on the back end.</p>
+
+    <p class="body">  The network layer is also outside our control and subject to changes. Again we have to protect against the possibility that someone could be intercepting and changing our requests/responses before they reach the user-agent or server. Finally, unlike the browser user-agent or network, we can reasonably expect that what we create on the back end will not change without our consent. That doesn’t mean we can’t create unwanted vulnerabilities. It just means that whatever we’ve “baked-in” will not be subject to change.</p>
+
+    <h3 class="head1" id="heading_id_37">15.7.2   Understanding cross-site scripting (XSS) attacks</h3>
+
+    <p class="body">Cross-site scripting (XSS) attacks occur when an attacker injects malicious scripts into an otherwise benign webpage causing the browser to do things counter to the best interest of the user. These malicious scripts can be injected in a variety of ways. The most prevalent way is a stored or <span class="italics">persistent</span> attack.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Once stored, a persistent attack can occur anytime a user renders the injected page.</p>
+    </div>
+
+    <p class="body">A persistent attack occurs when the malicious script is stored in a database.  It is then executed when the stored data is injected and rendered on a page.</p>
+
+    <h3 class="head1" id="heading_id_38">15.7.3   Protecting against XSS attacks</h3>
+
+    <p class="body">The best defense against an XSS attack is to <span class="italics">HTML escape</span> any untrusted data that’s inserted into a page.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">HTML escaping is a process of replacing the characters of potentially harmful scripts with an HTML entity. For example, we don’t want the <span><code class="codeintext1">&lt;script&gt;</code></span>tag to be executed in any data we inject in the page. HTML escaping replaces the less than (<span><code class="codeintext1">&lt;</code></span>)sign with the HTML entity <span><code class="codeintext1">&amp;lt;</code></span> and the greater than (<span><code class="codeintext1">&gt;</code></span>) sign with the HTML entity <span><code class="codeintext1">&amp;gt;</code></span>. Therefore, the<span><code class="codeintext1">&lt;script&gt;</code></span> tag becomes <span><code class="codeintext1">&amp;lt;script&amp;gt;</code></span> which renders as <span><code class="codeintext1">&lt;script&gt;</code></span> but does not execute as <span><code class="codeintext1">&lt;script&gt;</code></span>.</p>
+    </div>
+
+    <p class="body">Figure 15.15 illustrates HTML escaping of potentially malicious user-provided data.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_15.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.15  After HTML escaping the <span class="codeannotationcueballs">① </span>  malicious script is rendered harmless <span class="codeannotationcueballs">② </span>  before it’s injected into a page.</p>
+
+    <p class="body">Brushfire uses EJS template tags,<span><code class="codeintext">&lt;%= %&gt;</code></span><span class="italics">,and</span> Angular template tags, <span><code class="codeintext">{{ }}</code></span>, to HTML escape data on a page. For example these tags automatically escape characters like the less than (<span><code class="codeintext">&lt;</code></span>) and greater than(<span><code class="codeintext">&gt;</code></span>). A majority of the time we use the EJS<span><code class="codeintext">&lt;%= %&gt;</code></span> template tag that HTML escapes content. There are two instances, however, where we want to inject data into a page without HTML escaping. In <span><code class="codeintext">brushfire/views/layout.ejs</code></span> we use <span><code class="codeintext">&lt;%- body %&gt;</code></span>and <span><code class="codeintext">&lt;%- partial() %&gt;</code></span> to inject other views into the layout. These tags do not do HTML escaping and instead pass the responsibility of HTML escaping untrusted data to the views they inject. We also use the EJS <span class="italics">&lt;%- %&gt;</span>template tag when bootstrapping data on a page. Anytime you use inject user content without HTML escaping, you open yourself to risk so it’s important that you can trust whatever you’re injecting without HTML escaping it first.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">As of the publish date of this book, Sails v1.0 has not been released yet. But when it is, you will be able to take advantage of an easier approach for injecting data on the page using script tags. Take a look at the Sails v1.0 release notes at <a class="pcalibre8 pcalibre4 pcalibre5" href="http://sailsjs.org/support">http://sailsjs.org/support</a>  for more information.</p>
+    </div>
+
+    <h3 class="head1" id="heading_id_39">15.7.4   Understanding cross-site request forgery (CSRF) attacks</h3>
+
+    <p class="body">A typical CSRF attack occurs when a user who has authenticated to a trusted site and has a valid session, unwittingly executes a script that uses the existing browser session to perform a malicious act as an authenticated user.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_16.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.16 A typical CSRF attack begins with a user <span class="codeannotationcueballs">① </span>  logging into a trusted site. The user <span class="codeannotationcueballs">② </span>  clicks a malicious link that appears to be legitimate but is actually a page on an <span class="codeannotationcueballs">③ </span>  untrusted site that uses the existing session to do bad things.</p>
+
+    <p class="body">For example, a user navigates their browser to a site they trust and then logs-in. The log in process establishes a session between the browser user-agent and the trusted web site. Any subsequent request made from the browser user-agent while the session is active, regardless of whether the request is made from a new window or tab, will appear from the perspective of the server to be from that authenticated user. An attacker could, for example, use the hijacked session for a malicious act that changes the user’s password. This type of attack does require that the application have an XSS vulnerability or that the user clicks on a malicious link from some other source such as a link in an email that triggers a request from the authenticated browser.</p>
+
+    <p class="body">Sails provides protection against this style of attack using a CSRF <span><code class="codeintext">token</code></span>. While a session tells the server that a user "is who they say they are", a CSRF token tells the server "you are where you say you are". When enabled, all non-<span><code class="codeintext">GET</code></span> requests to the Sails server must be accompanied by a special token, identified as the <span><code class="codeintext">_csrf</code></span> parameter similar to figure 15.17.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/15_17.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 15.17  With CSRF protection enabled a user <span class="codeannotationcueballs">① </span>  logs into a trusted site. The user <span class="codeannotationcueballs">② </span>  clicks a malicious link that appears to be legitimate but is actually a page on an <span class="codeannotationcueballs">③ </span>  untrusted site that uses the existing session attempts to do bad things. Without the _csrf token, <span class="codeannotationcueballs">④ </span>  a malicious request will be rejected by goodGuys.com.</p>
+
+    <p class="body">This times-stamped, secret CSRF token is generated by the server and made available via either a local variable named <span><code class="codeintext">_csrf</code></span> in a view or via a <span><code class="codeintext">GET</code></span> request to the <span><code class="codeintext">/csrfToken</code></span> route, where the token will be returned as JSON. Without this token, the would-be attacker will be prevented from making non-<span><code class="codeintext">GET</code></span> requests. Let’s first enable CSRF protection in Brushfire and then look at the various ways of obtaining and including it in non-<span><code class="codeintext">GET</code></span> requests.</p>
+
+    <h3 class="head1" id="heading_id_40">15.7.5   Enabling CSRF token protection</h3>
+
+    <p class="body">Enabling CSRF token protection is simple. In Sublime, open <span><code class="codeintext">brushfire/config/csrf.js</code></span> and change the <span><code class="codeintext">csrf</code></span> property value to <span><code class="codeintext">true</code></span> similar to listing 15.28.</p>
+
+    <p class="codelistingcaption">Listing 15.28 Enabling csrf token protection</p><code class="codeb">module.exports.csrf = true;</code>
+
+    <p class="body">The Brushfire back end will now expect a <span><code class="codeintext">_csrf</code></span> token in every non-<span><code class="codeintext">GET</code></span> request. If no token is provided, the request will fail.</p>
+
+    <h3 class="head1" id="heading_id_41">15.7.6   Sending the CSRF token</h3>
+
+    <p class="body">Now that we’ve enabled the use of CSRF tokens, we need to make sure the token is passed into all non-<span><code class="codeintext">GET</code></span> requests. We can either add the token to each request manually or utilize an automated method to add a header to all HTTP and WebSockets requests.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">HTTP and WebSockets use headers to communicate configuration properties of requests and responses.</p>
+    </div>
+
+    <p class="body">Angular provides a way to set common headers in HTTP requests for a given application. In Sublime, open <span><code class="codeintext">brushfire/assets/js/app.js</code></span> and add the following code similar to listing 15.29.</p>
+
+    <p class="codelistingcaption">Listing 15.29 Adding a common csrf token header to Angular http requests</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">angular.module('brushfire').run(['$http', function($http) {</code> <code class="codebcxspmiddle">  if (window.SAILS_LOCALS._csrf) {</code> <code class="codebcxspmiddle">    $http.defaults.headers.common['X-CSRF-Token'] = window.SAILS_LOCALS._csrf;  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">}]);</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> This adds the <span><code class="codeintext1">csrf</code></span> token to every HTTP request.</p>
+
+    <p class="body">Now, all HTTP requests will contain a header with the <span><code class="codeintext">csrf</code></span> property to Sails. Next, we need to bootstrap the <span><code class="codeintext">_csrf</code></span> token to the window dictionary using the <span><code class="codeintext">_csrf</code></span> local variable Sails provides us from a view. In Sublime, open <span><code class="codeintext">brushfire/views/layout.ejs</code></span> and add the following code similar to listing 15.30.</p>
+
+    <p class="codelistingcaption">Listing 15.30 Establishing the csrf token as a property on the <span><code class="codeintext1">window</code></span> dictionary</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;!--TEMPLATES END--&gt;</code> <code class="codebcxspmiddle">&lt;script src="/js/dependencies/sails.io.js" headers='{"x-csrf-token":&lt;%- typeof _csrf !== 'undefined' ? JSON.stringify(_csrf) : 'null' %&gt;}'&gt;&lt;/script&gt;  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">&lt;!--SCRIPTS--&gt;</code> <code class="codebcxspmiddle">&lt;script src="/js/dependencies/sails.io.js"&gt;&lt;/script&gt;</code><code class="codebcxsplast">      ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> The generated token is now available via the <span><code class="codeintext1">window</code></span> dictionary.</p>
+
+    <p class="body">Since we are adding <span><code class="codeintext">sails.io.js</code></span> “manually” outside of the Grunt <span><code class="codeintext">SCRIPTS</code></span> tag, we need to remove <span><code class="codeintext">sails.io.js</code></span>  from the Grunt pipeline. In Sublime, open brushfire/tasks/pipeline.js and comment out the <span><code class="codeintext">sails.io.js</code></span> dependency similar to listing 15.31.</p>
+
+    <p class="codelistingcaption">Listing 15.31 Removing <span><code class="codeintext1">sails.io.js</code></span> from the <span><code class="codeintext1">pipeline.js</code></span> file</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  // 'js/dependencies/sails.io.js',  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  'js/dependencies/angular.js',</code> <code class="codebcxspmiddle">  'js/dependencies/jquery.min.js',</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  Removing <span><code class="codeintext1">sails.io.js</code></span> from the Grunt pipeline.js dependency</p>
+
+    <p class="body">This takes care of <span class="italics">non-</span><span><code class="codeintext">GET</code></span> HTTP requests, but we also need to bootstrap the <span><code class="codeintext">csrf</code></span> <span class="italics">token</span> for all WebSocket requests. In Sublime, open <span><code class="codeintext">brushfire/views/layout.ejs</code></span> and add the following code near the bottom of <span><code class="codeintext">layout.ejs</code></span> similar to listing 15.32.</p>
+
+    <p class="codelistingcaption">Listing 15.32 Adding the csrf token as a common header for WebSocket requests</p><code class="codebcxspfirst">    ...</code> <code class="codebcxspmiddle">&lt;script type="text/javascript"&gt;</code> <code class="codebcxspmiddle">      io.sails.headers = {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        'x-csrf-token': window.SAILS_LOCALS._csrf</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">&lt;/script&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code> <code class="codebcxspmiddle">&lt;/body&gt;</code><code class="codebcxsplast">&lt;/html&gt;</code>
+
+    <p class="codeannotation pcalibre7">    <span class="codeannotationcueballs2">❶ </span> Adds the <span><code class="codeintext1">_csrf token</code></span> in the header of each WebSocket request in Brushfire</p>
+
+    <p class="body">All of Brushfire’s non-GET requests use either Angular or WebSockets. However, there may be times when you want to access the <span><code class="codeintext">csrf</code></span> token from some other AJAX request via a <span><code class="codeintext">GET</code></span> <span class="italics">request</span> to <span><code class="codeintext">/csrfToken</code></span>. For example, listing 15.33 illustrates how to incorporate the token request as part of a series of AJAX requests.</p>
+
+    <p class="codelistingcaption">Listing 15.33 Inserting a csrf token via a hidden input field</p><code class="codebcxspfirst">$(document).ready(function(){</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  var _csrf;</code> <code class="codebcxspmiddle">  $.get('/csrfToken', function( data ) {   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    _csrf = data._csrf;</code> <code class="codebcxspmiddle">  }); </code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  $('#loginButton').click(function(){</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $.ajax({</code> <code class="codebcxspmiddle">      url: '/user/login',</code> <code class="codebcxspmiddle">      type: 'POST',</code> <code class="codebcxspmiddle">      data: {</code> <code class="codebcxspmiddle">        _csrf: _csrf  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">      success: function(result){</code> <code class="codebcxspmiddle">        console.log('result: ', result);</code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">      error: function(xhr, status, err){</code> <code class="codebcxspmiddle">        console.log(err);</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">});</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶   </span>Gets the <span><code class="codeintext1">CSRF</code></span> token</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷   </span>Uses the <span><code class="codeintext1">CSRF</code></span> token in a <span><code class="codeintext1">POST</code></span> request</p>
+
+    <p class="body">Although we don’t recommend using HTML form requests in your application, listing 15.34 illustrates how to configure them for CSRF tokens.</p>
+
+    <p class="codelistingcaption">Listing 15.34 Inserting a csrf token via a hidden input field</p><code class="codebcxspfirst">&lt;form&gt;</code> <code class="codebcxspmiddle">&lt;input type="hidden" name="_csrf" value="&lt;%= _csrf %&gt;" /&gt;</code><code class="codebcxsplast">&lt;/form&gt;</code>
+
+    <p class="body">When the form is submitted, the <span><code class="codeintext">csrf</code></span> token is also submitted allowing the request and form fields to be passed through to the controller/action.</p>
+
+    <h3 class="head1" id="heading_id_42">15.7.7   Disabling CSRF protection in tests</h3>
+
+    <p class="body">We will disable CSRF tokens in our test environment because our goal is not to test the framework but instead to test our application. In Sublime, open <span><code class="codeintext">brushfire/config/env/test.js</code></span> and add the following property similar to listing 15.35.</p>
+
+    <p class="codelistingcaption">Listing 15.35 Disabling csrf  tokens in the test environment</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">session: {</code> <code class="codebcxspmiddle">    adapter: 'memory'</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  csrf: false   <span class="codeannotationcueballs1">❶ </span></code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Disabling <span><code class="codeintext1">csrf</code></span> tokens in the test environment</p>
+
+    <p class="body">Let’s commit our changes and push them to Heroku. From the terminal window type:</p><code class="codebcxspfirst">~/brushfire $ git add .  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">~/brushfire $ git commit -am 'added csrf protection'   <span class="codeannotationcueballs1">❷ </span></code><code class="codebcxsplast">~/brushfire $ git push heroku master   <span class="codeannotationcueballs1">❸ </span></code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Will stage all of our changes for the next commit</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  Commit changes to the local repository</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span>  Pushes the changes to the Heroku remote repository</p>
+
+    <h3 class="head1" id="heading_id_43">15.7.8   Understanding cross-origin resource sharing (CORS)</h3>
+
+    <p class="body">A page obtained from a server and rendered by a browser user-agent that contains a script cannot successfully make a request using that script to a server from a different domain. This is because the request violates the browser’s same-origin policy.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">A browser’s same-origin policy restricts access of scripts, specifically AJAX, from accessing data on a different web server than what originally delivered the script.</p>
+    </div>
+
+    <p class="body">This prevents malicious script attacks across domains.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">If the malicious link triggers a form submission request as opposed to an AJAX request, the browser’s <span class="italics1">same-origin</span> policy does not restrict the form request. Since a form request is not subject to the same-origin policy, the request is allowed. The form request, however, cannot receive a JSON response like an AJAX request, so the end-point is protected.</p>
+    </div>
+
+    <p class="body">There are very limited occasions, however, when you might need to divide your application across multiple domains and use CORS to open cross-domain access. Sails can be configured to allow cross-origin requests from a list of domains you specify, or from every domain. This can be done on a per-route basis, or globally for every route in your app. Unless you completely trust the domain, we highly recommend against using CORS. And if you use CORS, limit the domains that can access it. CORS is beyond the scope of the book, however, additional details about configuring it can be found at <a class="pcalibre8 pcalibre5" href="http://sailsjs.org/documentation/concepts/security/cors">http://sailsjs.org/documentation/concepts/security/cors</a>.</p>
+
+    <h3 class="head1" id="heading_id_44">15.7.9   Understanding “man-in-the-middle” attacks (MIM)</h3>
+
+    <p class="body">So-called man-in-the-middle attacks occur because of our inherent lack of control over the network. We can’t be certain that a request traveling over the network between the front end and the back has not been intercepted and altered. Protecting against MIM attacks is straightforward. We need to encrypt the data that passes between our requests and responses. To do this, we need transport layer security (TLS) which is beyond the scope of the book. However, Brushfire is currently piggy-backing on top of Heroku’s TLS via <a class="pcalibre8 pcalibre5" href="https://brushfire-sailsinaction@herokuapp.com">https://brushfire-sailsinaction@herokuapp.com</a>.</p>
+
+    <h3 class="head1" id="heading_id_45">15.7.10<span class="sgc245">                       </span> Denial of service (DoS) attacks</h3>
+
+    <p class="body">When you think about a DoS attack you’re most likely thinking about thousands of nodes making requests to a particular endpoint interrupting service of the application. In reality, a DoS attack is any attempt to interrupt service of an application.  Ironically, many times the interruption of service is not intentional. At the application level, there are things you can end up writing in your code that make you vulnerable to DoS attacks. As we said, in many cases these are accidental DoS attacks!</p>
+
+    <p class="body">For example, if you write code that doesn’t use <span><code class="codeintext">limit</code></span> in your queries you’re going to get all of the records. So for the first few months of your application, there are no problems. However, as your application grows and you have a few hundred thousands records or a few million, every time a request is sent to that controller/action,n it’s going to load all of the records. Once again that might be okay for a few requests, but as those requests build, you’re now loading twenty or thirty million records.  This can quickly take down your application due to running out of RAM, then disk, and finally a pile of hot liquid metal. The way to work around this is to always use <span><code class="codeintext">.limit()</code></span>in <span><code class="codeintext">find</code></span><span class="italics">,</span> <span><code class="codeintext">update</code></span><span class="italics">,</span> and <span><code class="codeintext">destroy</code></span> methods that use criteria that could generate an unlimited number of records.</p>
+
+    <p class="body">Another possible attack can occur by not limiting the number of things that can be created. For example, a tutorial can currently have an unlimited number of videos.  However, let’s put an arbitrary limit of twenty-five videos per tutorial. The limit would need to be set in the <span><code class="codeintext">newVideo</code></span> action of the Page controller as well as the <span><code class="codeintext">addVideo</code></span> action of the Tutorial controller. Listing 15.36 depicts some initial code to set a limit for the <span><code class="codeintext">newVideo</code></span> <span class="italics">action.</span></p>
+
+    <p class="codelistingcaption">Listing 15.36 Limiting the number of videos in a tutorial</p><code class="codebcxspfirst">   ...</code> <code class="codebcxspmiddle">    var MAX_NUM_VIDEOS_PER_TUTORIAL = 25;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    Tutorial.findOne({</code> <code class="codebcxspmiddle">      id: +req.param('id')</code> <code class="codebcxspmiddle">    })</code> <code class="codebcxspmiddle">    .populate('owner')</code> <code class="codebcxspmiddle">    .populate('ratings')</code> <code class="codebcxspmiddle">    .populate('videos')</code> <code class="codebcxspmiddle">    .exec(function (err, foundTutorial){</code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">      if (!foundTutorial) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (foundTutorial.videos.length &gt;= MAX_NUM_VIDEOS_PER_TUTORIAL) {</code> <code class="codebcxspmiddle">        return res.badRequest("Tutorials may have no more than 25 videosYou've Maxium videos reached!"    <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        );</code> <code class="codebcxspmiddle">      }</code><code class="codebcxsplast">      ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> If the number of videos exceeds the maximum, we’ll inform the front-end.</p>
+
+    <p class="body">The final type of unintentional attack is failure to wrap synchronous functions in a <span><code class="codeintext">try/catch</code></span> that can cause the server to crash. Remember to not only wrap the synchronous function with <span><code class="codeintext">try/catch,</code></span> but also handle the underlying error. Figure 15.37 illustrates the correct use of try/catch with a synchronous function.</p>
+
+    <p class="codelistingcaption">Listing 15.37 Wrapping synchronous functions in try/catch</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">      try {</code> <code class="codebcxspmiddle">        var randomString = Strings.unique({}).execSync();</code> <code class="codebcxspmiddle">      } catch (err) {</code> <code class="codebcxspmiddle">        return res.serverError(err);</code> <code class="codebcxspmiddle">      }</code><code class="codebcxsplast">...</code>
+
+    <h3 class="head1" id="heading_id_46">15.7.11<span class="sgc245">                       </span> SQL injection attacks</h3>
+
+    <p class="body">There are times when you may need to go beyond the features of the ORM. Sails and Waterline do not restrict you from accessing the database directly using the <span><code class="codeintext">.query()</code></span>method. You do, however, have much more responsibility in protecting the way user data interacts with the query and the database directly. Waterline provides these types of protections if you're using model methods like <span><code class="codeintext">find</code></span>, <span><code class="codeintext">create</code></span>, <span><code class="codeintext">update</code></span>, and <span><code class="codeintext">destroy</code></span>. However, you have the responsibility when using <span><code class="codeintext">.query()</code></span>. For more information on using <span><code class="codeintext">.query(),</code></span> see</p>
+
+    <p class="tablebody"><a class="pcalibre8 pcalibre5" href="https://github.com/balderdashy/waterline-docs/blob/master/queries/query-methods.md#query-query-data-callback-">https://github.com/balderdashy/waterline-docs/blob/master/queries/query-methods.md#query-query-data-callback-</a>.</p>
+
+    <h2 class="head" id="heading_id_47">15.8   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   You understand containerization and horizontal/vertical scaling of an application.</p>
+
+    <p class="listbulletcxspmiddle">·   Sails uses development, production, and test environments that enable different configurations of Sails depending upon the environmental mode.</p>
+
+    <p class="listbulletcxspmiddle">·   Environment variables allow you to control Sails start up configuration as well as security transmit credentials within Sails when its deployed.</p>
+
+    <p class="listbulletcxspmiddle">·   Sails can use Mocha and SuperTest to test controller actions and models.</p>
+
+    <p class="listbulletcxsplast">·   Sails uses tokens to protect requests against CSRF attacks.</p>
+
+    <p class="body"> </p>
+  </div>
+</body>
+</html>

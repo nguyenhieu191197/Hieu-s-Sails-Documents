@@ -1,0 +1,467 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">8   Server-Rendered Views</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   An introduction to server-rendered views</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Using server-rendered views in an authentication scheme</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Setting up the layout page and using partials</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Using <span><code class="codeintext">locals</code></span> to make back-end data accessible to views</p>
+
+    <p class="cosummarybulletcxsplast">·   Bootstrapping data directly into views with EJS tags</p>
+
+    <p class="body">It’s now a well-known fact that we are building the greatest virtual edifice to cat videos on the planet Earth, better known as Brushfire. In chapter 6 we embarked on the design and implementation of an Identity, Authentication, and Access control system. We established identity with a <span><code class="codeintext">user</code></span> model in chapter 6. We connected that model to front-elements that enabled a user to create a <span><code class="codeintext">user</code></span> record and manage it in chapter 7. Now that a user can create an identity, our next step is deciding how that identity will affect the front-end assets available to the user once they’ve proven they are who they say they are, also known as authentication.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">When we use the terms authentication or authenticated state, we’re referring to whether a user’s claim, on behalf of a user-agent is genuine. This is typically referred to as a user being logged in or logged out of an application.</p>
+    </div>
+
+    <p class="body">For example, if a user is authenticated we’ll display the user’s Gravatar image and email address in the navigation bar. If the user is not authenticated we want to display the <span class="italics">login</span> form instead.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.1 We want to show different assets based upon the user authenticated state. Here if the user is logged in we’ll <span class="codeannotationcueballs">① </span>  display a Gravatar image, email, and <span class="italics1">signout</span> button. If the user is not logged in we’ll  <span class="codeannotationcueballs">② </span>  display the <span class="italics1">login</span> form.</p>
+
+    <p class="body">The actual mechanics of how a user is authenticated will be implemented in chapter 9 as shown in figure 8.1.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.2 The four components of an identity, authentication, personalization and access control system.</p>
+
+    <p class="body">In this chapter we’ll make an assumption that we have access to the user’s stored, authenticated state, on the back end in the form of a dictionary. This dictionary, named <span><code class="codeintext">me</code></span> will contain an <span><code class="codeintext">id</code></span> property whose value is the authenticated user’s record <span><code class="codeintext">id</code></span> in the database. If the <span><code class="codeintext">me</code></span> dictionary exists we’ll assume that the user is authenticated. This will let us concentrate instead on how to communicate the authenticated state to the front end in a secure and efficient way. In fact, the remainder of the chapter will show you how to communicate the authenticated state of the user using the hybrid approach to page navigation in Brushfire.</p>
+
+    <h2 class="head" id="heading_id_3">8.1   Page navigation</h2>
+
+    <p class="body">Over countless projects we’ve tried various ways of communicating the authenticated state of a user to the front end. In the end we found the hybrid approach to page navigation (first mentioned in chapter 1) to be superior when dealing with user authentication, not just because of its SEO advantages, but also because it combines the benefits of server-rendered views with the flexibility of client-side JavaScript frameworks like Angular. Let’s first explore how our current approach to routing and page navigation differs from the hybrid approach.</p>
+
+    <h3 class="head1" id="heading_id_4">8.1.1   Client-side vs. server-side routing</h3>
+
+    <p class="body">So far the front end of Brushfire consists of static assets delivered to the browser user-agent and controlled using the Angular framework. We first looked at this approach in chapter 1 using the illustration in figure 8.3.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.3  Delivering assets and endpoints to a Single Page Application.</p>
+
+    <p class="body">Using the SPA approach <span class="codeannotationcueballs">① </span>  Sails delivers <span class="codeannotationcueballs">② </span>  the initial HTML view, JavaScript and CSS as static assets, and then the JavaScript on the front end, is responsible for making <span class="codeannotationcueballs">③ </span>  intermediate changes to the view via AJAX request to <span class="codeannotationcueballs">④ </span>  the back-end API. Wholesale page navigation is controlled by <span class="codeannotationcueballs">⑤ </span>  a client-side Angular router. As a user navigates to a different page, client-side routing is used to navigate between pages of Brushfire. These routes are identified by the use of a hash-bang <span><code class="codeintext">#</code></span> which are intercepted by the Angular router. The router then loads templates based upon the route into the “entry” HTML page as illustrated in figure 8.4.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.4 In a single page app (SPA), the entry page is the anchor page where templates are inserted based upon front-end routes and the Angular router.</p>
+
+    <p class="body">The hybrid approach uses a combination of client-side and server-side rendering of pages controlled by back-end Sails routes as depicted in figure 8.5.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.5 Delivering assets and endpoints to a Hybrid Web Application.</p>
+
+    <p class="body">Using this approach <span class="codeannotationcueballs">① </span>  Sails provides the <span class="codeannotationcueballs">② </span>  initial server-rendered view. From this view, <span class="codeannotationcueballs">③ </span>  client side JavaScript can update the DOM by making AJAX calls to the <span class="codeannotationcueballs">④ </span>  Sails back-end API. Any <span class="codeannotationcueballs">⑤ </span>  wholesale page navigation, however, is handled via server-side routes and routing. Therefore, when a user navigates to a different page a <span class="codeannotationcueballs">⑥ </span>  new server-rendered view is sent as a response. In sum, the overall pages in Brushfire remain the same. The difference is that we’ll now use explicit routes and back-end Sails routing to manage changes between the pages as illustrated in figure 8.6.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.6  Using custom routes and back-end Sails routing to manage page navigation in Brushfire.</p>
+
+    <p class="body">So now that we understand the differences between client-side routing and back-end routing, how does this affect our ability to get the information contained in the <span><code class="codeintext">me</code></span> dictionary to the front end? The advantage of combining this type of routing with server-rendered views is that we can control the personalization of the page based upon the user’s authenticated state. Therefore, we can place the contents of the <span><code class="codeintext">me</code></span> dictionary directly in the view.</p>
+
+    <h3 class="head1" id="heading_id_5">8.1.2   What is a server-rendered view?</h3>
+
+    <p class="body">Server-rendered views are the result of Sails merging together one or more markup templates from the <span><code class="codeintext">brushfire/views/</code></span>folder. The final result, illustrated in figure 8.7, is transformed into HTML before being sent to the browser to be displayed.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.7  An <span class="codeannotationcueballs">① </span>  incoming <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">/</code></span><span class="codeannotationcueballs">② </span>  matches an explicit route that triggers<span class="codeannotationcueballs">③ </span>  a view named <span><code class="codeintext1">homepage.ejs</code></span> to be rendered into <span><code class="codeintext1">homepage.html</code></span> and <span class="codeannotationcueballs">④ </span>  sent as a response to the requesting user-agent.</p>
+
+    <p class="body">The real power of server-rendered views is their ability, using special inserted tags, to merge data from the back end into the view. Coupled with Sails ability to make data available to a view from an explicit route, we now have a way to securely inject values or other templates into a view on the back end before they’re sent to the browser for display (as illustrated in figure 8.8).</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.8  An <span class="codeannotationcueballs">① </span>  incoming <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">/</code></span><span class="codeannotationcueballs">② </span>  matches an explicit route and passes a <span><code class="codeintext1">locals</code></span> dictionary to <span class="codeannotationcueballs">③ </span>  a view named <span><code class="codeintext1">homepage.ejs.</code></span> The view contains a special tag that when <span class="codeannotationcueballs">④ </span>  rendered inserts a value from the locals dictionary as a response to the requesting user-agent.</p>
+
+    <p class="body">It’s always easier to understand the process when working through an actual example. So let’s get started implementing this hybrid approach.</p>
+
+    <h3 class="head1" id="heading_id_6">8.1.3   Obtaining the example materials for this chapter</h3>
+
+    <p class="body">Once again in an effort to cut down on the number of pages dedicated to source code we’ve created a Github repo with new assets. You can navigate directly to the repo here: <a class="pcalibre8 pcalibre5" href="https://github.com/sailsinaction/brushfire-ch8-start">https://github.com/sailsinaction/brushfire-ch8-start</a> or via a link from the chapter 8 hub at <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/chapter-8/">http://sailsinaction.github.io/chapter-8/</a>. After cloning the repo, install the Node module dependencies via <span><code class="codeintext">npm install</code></span>.</p>
+
+    <p class="body"> </p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span class="bold1">If you do choose the cloning option</span>, don’t forget to add the <span><code class="codeintext1">brushfire/config/local.js</code></span> file with your Google API key from chapter 5 (section 5.4.6) as well as starting your local PostgreSQL <span><code class="codeintext1">brushfire</code></span> database from chapter 6 (section 6.4.2).</p>
+    </div>
+
+    <h2 class="head" id="heading_id_7">8.2   Personalizing web pages</h2>
+
+    <p class="body">Now that we have a better understanding of server-rendered views and the hybrid approach, let’s see how we can use them to personalize HTML with data about a logged-in user. To do this we’ll take several steps that include:</p>
+
+    <p class="listbulletcxspfirst">·   getting a better understanding of explicit custom routes</p>
+
+    <p class="listbulletcxspmiddle">·   creating a custom route that triggers the homepage view</p>
+
+    <p class="listbulletcxspmiddle">·   exploring how we combine various server-rendered views using the Embedded JavaScript (EJS) template engine, layouts and tags</p>
+
+    <p class="listbulletcxspmiddle">·   simulating bootstrapping of the <span><code class="codeintext">me</code></span> dictionary on a browser’s <span><code class="codeintext">window</code></span> dictionary using markup in the <span><code class="codeintext">layout</code></span> template</p>
+
+    <p class="listbulletcxspmiddle">·   adding EJS tags to the <span><code class="codeintext">layout</code></span> template to make the <span><code class="codeintext">me</code></span> dictionary contents dynamic</p>
+
+    <p class="listbulletcxsplast">·   passing the me dictionary values in our custom route to the mark-up in the <span><code class="codeintext">layout</code></span> template</p>
+
+    <h3 class="head1" id="heading_id_8">8.2.1   A review of explicit routes</h3>
+
+    <p class="body">So far in Brushfire we have relied upon Sails asset-routes and blueprint routes to trigger the required endpoints and responses from our requests. We learned in chapter 1 that the Sails server listens for incoming requests and in addition to blueprint routes and assets routes looks for a matching explicit route in <span><code class="codeintext">brushfire/config/routes.js</code></span> similar to figure 8.9.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.9   Understanding how the Sails router matches the incoming request with routes to trigger an action.</p>
+
+    <p class="body">We also learned that the route itself is implemented in JavaScript, as a dictionary depicted in figure 8.10.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.10 An explicit route is a JavaScript dictionary made up of <span class="codeannotationcueballs">① </span>  a route address and <span class="codeannotationcueballs">② </span>  target.</p>
+
+    <p class="body">The key of the dictionary is <span class="codeannotationcueballs">① </span>  the request or route address, consisting of the HTTP method and path, and the value is another dictionary called <span class="codeannotationcueballs">② </span>  the target that consists of a controller-- <span><code class="codeintext">UserController</code></span> and an action-- <span><code class="codeintext">signup</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Shortly, we’ll see that the target can also be a call to execute a server-rendered view.</p>
+    </div>
+
+    <p class="body">The Sails router listens for incoming requests and first tries to match the request with an explicit route. If it finds one the router has done its job and listens for another request. If it is unable to find an explicit route it tries to match the request with one of the blueprint routes. If it is unable to find a blueprint route it tries to match the request with an asset-route. Finally if no route is found Sails will display the <span><code class="codeintext">404</code></span> status <span class="italics">Not Found</span> page.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The router will also look to see whether the request matches the CSRF token path, but we’ll address this potential security issue in chapter 15.</p>
+    </div>
+
+    <h3 class="head1" id="heading_id_9">8.2.2   Defining an explicit route</h3>
+
+    <p class="body">In chapter 3, we used a generator to remove the custom default route to the homepage and to create an <span><code class="codeintext">index.html</code></span> file in <span><code class="codeintext">brushfire/assets/index.html</code></span>. From that point on when a browser user-agent made a <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/</code></span> “slash”, Sails first looked for a custom route in <span><code class="codeintext">brushfire/config/routes.js</code></span><span class="italics">,</span> and not finding one next looked in <span><code class="codeintext">brushfire/assets/</code></span> for an <span><code class="codeintext">index.html</code></span> file. This <span><code class="codeintext">index.html</code></span> file became the “entry” page of our application. We’re now going to use a hybrid approach where Sails will return to a server-rendered “entry” page on the back end with Angular controlling the contents of the page on the front end. So, we’ll override <span><code class="codeintext">brushfire/assets/index.html</code></span> by adding a custom route with the same route address. Open <span><code class="codeintext">/brushfire/config/routes.js</code></span> and add the following in listing 8.1.</p>
+
+    <p class="body"> </p>
+
+    <p class="codelistingcaption">Listing 8.1  Triggering the <span class="italics1">homepage</span> via a custom route</p><code class="codebcxspfirst">module.exports.routes = {</code> <code class="codebcxspmiddle">  'GET /': {                                    <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">view: 'homepage'</code> <code class="codebcxspmiddle">},</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  'GET /videos': {</code> <code class="codebcxspmiddle">  ...  </code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  A <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">/</code></span>will respond with the view in <span><code class="codeintext1">brushfire/views/homepage.ejs</code></span>.</p>
+
+    <p class="codeannotationcxsplast"> </p>
+
+    <p class="body">You’ll notice that the route doesn’t trigger a <span class="italics">controller/action,</span> but instead, contains a dictionary that identifies the <span class="italics">view</span> that should be rendered when the route is triggered. Therefore, custom routes can trigger both <span class="italics">controller/actions</span> and <span class="italics">views</span>. In our custom route, a <span><code class="codeintext">GET</code></span> request to / will now trigger the display of a <span class="italics">homepage</span> template located in <span><code class="codeintext">brushfire/views/homepage.ejs</code></span> folder. Why are we using the <span class="italics">ejs</span> file extension?  Embedded JavaScript (EJS) is one of many view engines you can use with Sails.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span class="italics1">View engines</span> also called <span class="italics1">template engines</span> are what combine the templates and data to produce HTML. By default Sails uses the EJS template engine.</p>
+    </div>
+
+    <p class="body">So views are defined by EJS templates located in <span><code class="codeintext">brushfire/views/</code></span>. When called upon the view engine combines the templates, which results in HTML. Now that we can trigger the homepage view with a request via a custom route, let’s take a closer look at the view itself.</p>
+
+    <h3 class="head1" id="heading_id_10">8.2.3   Using EJS views</h3>
+
+    <p class="body">In Sublime, open <span><code class="codeintext">brushfire/views/homepage.ejs</code></span> and you should see something similar to listing 8.2.</p>
+
+    <p class="codelistingcaption">Listing 8.2  The homepage EJS template</p><code class="codebcxspfirst">&lt;div ng-controller="homePageController" class=" col-md-8 col-md-offset-2"&gt;</code> <code class="codebcxspmiddle">&lt;div class="jumbotron"&gt;</code> <code class="codebcxspmiddle">&lt;h1 class="jumboHeading"&gt;Chad's Feline Viral Videos Emporium&lt;/h1&gt;</code> <code class="codebcxspmiddle">&lt;h2 class="jumboSubHeading"&gt;Viral cat videos since 2015&lt;/h2&gt;</code> <code class="codebcxspmiddle">&lt;div&gt;&lt;img src="./images/cat_logo.png" /&gt;&lt;/div&gt;</code> <code class="codebcxspmiddle">&lt;a ng-hide="me.id || false" href="/signup" class="btn btn-lg btn-success"&gt;Sign up now!&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code><code class="codebcxsplast">&lt;/div&gt;</code>
+
+    <p class="body">The first thing that’s immediately apparent is that this isn’t a complete HTML page. This is only a part of what will make up the homepage view. EJS templates can use a base layout template that merges other templates to form a single page. Let’s look at the layout template next.</p>
+
+    <h3 class="head1" id="heading_id_11">8.2.4   Using partials and layout.ejs</h3>
+
+    <p class="body">When building an application with many different pages, it can be helpful to extrapolate markup shared by several HTML files into a layout. This reduces the total amount of code in your project and helps you avoid making the same changes in multiple files down the road. For example, in chapter 3 we learned to use special tags like <span><code class="codeintext">&lt;!--STYLES--&gt;&lt;!—STYLES END--&gt;</code></span> in <span><code class="codeintext">brushfire/assets/index.html</code></span> as placeholders for links inserted automatically when Sails starts via <span><code class="codeintext">sails lift</code></span><span class="italics">.</span> Sails replaced these tags with links to files in the <span><code class="codeintext">brushfire/assets/</code></span>folders<span class="italics">.</span> Let’s review the tags in table 8.1.</p>
+
+    <p class="tablecaption pcalibre7">Table 8.1  Automated linking to external CSS and JavaScript files via tags</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="22%" class="sgc181" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">tag</p>
+          </div>
+        </td>
+
+        <td char="30%" class="sgc182" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">folder</p>
+          </div>
+        </td>
+
+        <td char="46%" class="sgc183" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Example</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="22%" class="sgc184 pcalibre7" valign="top"><code class="tablecode">&lt;!--STYLES--&gt;</code> <code class="tablecode">&lt;!—STYLES END--&gt;</code></td>
+
+        <td char="30%" class="sgc185" valign="top"><code class="tablecode">brushfire/assets/styles/bootstrap.min.css</code></td>
+
+        <td char="46%" class="sgc186" valign="top"><code class="tablecode">&lt;link rel="stylesheet" href="/styles/bootstrap.min.css"&gt;</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="22%" class="sgc187" valign="top"><code class="tablecode">&lt;!--SCRIPTS--&gt;</code> <code class="tablecode">&lt;!--SCRIPTS END--&gt;</code></td>
+
+        <td char="30%" class="sgc188" valign="top"><code class="tablecode">brushfire/assets/js/app.js</code></td>
+
+        <td char="46%" class="sgc189" valign="top"><code class="tablecode">&lt;script src="/js/app.js"&gt;&lt;/script&gt;</code></td>
+      </tr>
+    </table>
+
+    <p class="body">So instead of including the tags directly in each view, we’ve placed them in a <span class="italics">layout</span> view provided with the chapter 8 Github repo. In Sublime open the layout in <span><code class="codeintext">brushfire/views/layout.ejs</code></span> similar to listing 8.3.</p>
+
+    <p class="codelistingcaption">Listing 8.3   The layout file for brushfire </p><code class="codebcxspfirst">&lt;!DOCTYPE html&gt;</code> <code class="codebcxspmiddle">&lt;html&gt;</code> <code class="codebcxspmiddle">&lt;head&gt;</code> <code class="codebcxspmiddle">&lt;title&gt;New Sails App&lt;/title&gt;</code> <code class="codebcxspmiddle">&lt;!-- Viewport mobile tag for sensible mobile support --&gt;</code> <code class="codebcxspmiddle">&lt;meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"&gt;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">&lt;!--STYLES--&gt;</code> <code class="codebcxspmiddle">&lt;!--STYLES END--&gt;</code> <code class="codebcxspmiddle">&lt;/head&gt;</code> <code class="codebcxspmiddle">&lt;body ng-app="brushfire"&gt;</code> <code class="codebcxspmiddle">&lt;%- partial('./partials/navigation.ejs') %&gt;     <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">&lt;%- body %&gt;                  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">&lt;!--TEMPLATES--&gt;</code> <code class="codebcxspmiddle">&lt;!--TEMPLATES END--&gt;</code> <code class="codebcxspmiddle">&lt;!--SCRIPTS--&gt;</code> <code class="codebcxspmiddle">&lt;!--SCRIPTS END--&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code> <code class="codebcxspmiddle">&lt;/body&gt;</code><code class="codebcxsplast">&lt;/html&gt;</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  EJS tags to include a partial template</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  EJS tags to include a body template</p>
+
+    <p class="body"> </p>
+
+    <p class="body">The layout file also contains a variable named <span><code class="codeintext">body</code></span> that’s surrounded by yet another type of EJS tag syntax.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Don’t confuse these tags with the previously mentioned Sails link tags like <span><code class="codeintext1">&lt;!--STYLES--&gt;</code></span>, the EJS template engine has its own template tags.</p>
+    </div>
+
+    <p class="body">There are three types of EJS template tags. It’s important to understand the different ways they render the values between them. Table 8.2 provides example usage of each tag as well as the resulting rendered value.</p>
+
+    <p class="tablecaption pcalibre7">Table 8.2 EJS Template Tags</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="51%" class="sgc190" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">EJS Tag Example</p>
+          </div>
+        </td>
+
+        <td char="48%" class="sgc191" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Rendered Result</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="51%" class="sgc192" valign="top"><code class="tablecode">&lt;%= &lt;script&gt; alert("Howdy") &lt;/script&gt; %&gt;</code></td>
+
+        <td char="48%" class="pcalibre7 sgc193" valign="top"><code class="tablecode">&amp;lt;script&amp;gt; alert(&amp;quot;Howdy&amp;quot;) &amp;lt;/script&amp;gt;</code></td>
+      </tr>
+
+      <tr class="sgc194">
+        <td char="51%" class="sgc195"><code class="tablecode">&lt;%- "&lt;script&gt; alert('Howdy') &lt;/script&gt;" %&gt;</code></td>
+
+        <td char="48%" class="sgc196" valign="top">
+          <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_10b_t1.png"/><br class="calibre1"/></p>
+        </td>
+      </tr>
+
+      <tr class="sgc194">
+        <td char="51%" class="sgc197"><code class="tablecode">(&lt;% if (!loggedIn) { %&gt;&lt;a&gt;Logout&lt;/a&gt;&lt;% } %&gt;</code></td>
+
+        <td char="48%" class="sgc198">
+          <p class="tablebody2cxspfirst">If loggedIn is true, <span><code class="codeintable">&lt;a&gt;Logout&lt;/a&gt;</code></span></p>
+
+          <p class="tablebody2cxsplast">would be displayed. If not, nothing would be rendered.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Using an opening <span><code class="codeintext">&lt;%=</code></span> <span class="italics">(equals)</span> template tag with a closing <span><code class="codeintext">%&gt;</code></span> tag, HTML-escapes whatever is contained between the tags and then includes it as a string.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">HTML escaping replaces certain characters like the less than <span><code class="codeintext1">&lt;</code></span> sign and replaces it with its encoding equivalent-- <span><code class="codeintext1">&amp;lt;</code></span>. This prevents the browser from interpreting a string as JavaScript, but still displays the correct characters.</p>
+    </div>
+
+    <p class="body">This is an important protection against XSS attacks.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Cross-Site Scripting (XSS) attacks occur when a user enters malicious scripts that are then executed by another user. For example, if a user enters a malicious script in a form field and the value is not stripped of script tags, the script will execute when the value is displayed. Therefore, it’s important to know where your values originate. If you don’t have control over where the values originate you’ll display originate using HTML escaping.</p>
+    </div>
+
+    <p class="body">Using an opening<span><code class="codeintext">&lt;%-</code></span> <span class="italics">(dash)</span> template tag with a closing <span><code class="codeintext">%&gt;</code></span> tag includes whatever is contained between the tags as-is, without escaping it. If you decide to use this be very careful as it can make your application vulnerable to Cross-Site Scripting (XSS) attacks. There are situations where this tag will be both useful and safe. In fact, we’ve already used the tag in listing 8.xx where we insert the value of <span><code class="codeintext">body</code></span> and incorporating partials.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Partials are template fragments we can incorporate into views. Common partials examples are headers and footers.</p>
+    </div>
+
+    <p class="body">Using an opening<span><code class="codeintext">&lt;%</code></span> template tag with a closing <span><code class="codeintext">%&gt;</code></span> tag, executes any JavaScript between the tags when the template is being compiled. Unlike the other two tags, whatever value is compiled is not displayed in the markup. This template tag is useful for inserting conditionals like (if/else) and looping over data using (for/each).</p>
+
+    <p class="body">So <span><code class="codeintext">body</code></span> and <span><code class="codeintext">partial('./partials/navigation.ejs')</code></span>in listing 8.3are replaced by whatever view template is being rendered within the layout file as well as the template in the partials path. In our custom route, the <span><code class="codeintext">homepage</code></span> template and the navigation partial template are combined with the layout template to form a view similar to figure 8.11.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.11  The layout file contains the navigation partial and surrounds the view that’s being rendered.</p>
+
+    <p class="body">Let’s see this in action. Restart Sails using <span><code class="codeintext">sails lift</code></span> and navigate your browser to localhost:1337 and your browser should look similar to figure 8.12.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_12.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.12  The new navigation sections contains both the <span class="codeannotationcueballs">① </span>  authenticated and <span class="codeannotationcueballs">② </span>  unauthenticated markup states.</p>
+
+    <p class="body">So the <span class="italics">layout</span> wrapped the homepage to deliver the server-rendered view in Figure 8.12 but we do have an issue. The layout is displaying the markup for both <span class="codeannotationcueballs">① </span>  authenticated and <span class="codeannotationcueballs">② </span>  unauthenticated states. Our intent is to display <span class="codeannotationcueballs">② </span>  the sign-in form when the user is not authenticated and therefore not logged in. When the user is authenticated we want to hide the sign-in form and display <span class="codeannotationcueballs">② </span>  the user’s authenticated markup-- the <span class="italics">Gravatar image</span>, <span class="italics">email address</span>, and <span class="italics">logout link</span>.</p>
+
+    <p class="body">The navigation template contains Angular directives that control the display of the markup based upon the <span><code class="codeintext">me</code></span> dictionary which contains the user’s authenticated state. In Sublime open <span><code class="codeintext">brushfire/views/partials/navigation.ejs</code></span> to see these directives in listing 8.4.</p>
+
+    <p class="codelistingcaption">Listing 8.4  The navigation partial</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;form ng-hide="me.id" ng-submit="submitLoginForm()" class="navbar-form navbar-right"&gt;  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">&lt;/form&gt;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">&lt;ul ng-show="me.id" class="nav navbar-nav navbar-right"&gt;  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">&lt;li class="gravatarSm"&gt;&lt;img class="gravatarSm" ng-src="{{me.gravatarURL}}" height="30" char="30"/&gt;&lt;/li&gt;</code> <code class="codebcxspmiddle">&lt;li class="activityOverlord active"&gt;</code> <code class="codebcxspmiddle">&lt;a href="/profile" class="pointer"&gt; {{me.email}}&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;/li&gt;</code> <code class="codebcxspmiddle">&lt;li&gt;</code> <code class="codebcxspmiddle">&lt;a href="/logout"&gt;sign-out&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;/li&gt;</code> <code class="codebcxspmiddle">&lt;/ul&gt;</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  the <span><code class="codeintext1">ng-hide</code></span> directive controls the display of the form based upon the value of <span><code class="codeintext1">me.id</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  the ng-show directive controls the display of the elements based upon the value of <span><code class="codeintext1">me.id</code></span></p>
+
+    <p class="body">If <span><code class="codeintext">me.id</code></span> has a value, the sign-in form will be hidden and the Gravatar image, email address, and logout link will be displayed. If <span><code class="codeintext">me.id</code></span> is null, the sign-in form will be displayed and the authenticated markup will be hidden. How can the front end get access to the values of the <span><code class="codeintext">me</code></span> dictionary? First we’ll bootstrap the <span><code class="codeintext">me</code></span> dictionary on the browser’s <span><code class="codeintext">window</code></span> dictionary via the <span><code class="codeintext">layout</code></span> view.</p>
+
+    <h3 class="head1" id="heading_id_12">8.2.5   Exposing data for use in client-side JavaScript</h3>
+
+    <p class="body">Let’s add the <span><code class="codeintext">me</code></span> dictionary to browser’s window <span><code class="codeintext">dictionary</code></span> in the <span><code class="codeintext">layout</code></span> view. Once again, open <span><code class="codeintext">brushfire/views/layout.ejs</code></span> in Sublime and add the following code in listing 8.5.</p>
+
+    <p class="codelistingcaption">Listing 8.5  Bootstrapping data in <span><code class="codeintext1">layout.ejs</code></span>.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;!--STYLES--&gt;</code> <code class="codebcxspmiddle">&lt;link rel="stylesheet" href="/styles/angular-toastr.css"&gt;</code> <code class="codebcxspmiddle">&lt;link rel="stylesheet" href="/styles/bootstrap.min.css"&gt;</code> <code class="codebcxspmiddle">&lt;link rel="stylesheet" href="/styles/importer.css"&gt;</code> <code class="codebcxspmiddle">&lt;!--STYLES END--&gt;</code> <code class="codebcxspmiddle">&lt;script type="text/javascript"&gt;       <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    window.SAILS_LOCALS = {</code> <code class="codebcxspmiddle">      me: {</code> <code class="codebcxspmiddle">        id: null</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    };</code> <code class="codebcxspmiddle">&lt;/script&gt;</code> <code class="codebcxspmiddle">&lt;/head&gt;</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  the script tag adds a <span><code class="codeintext1">me</code></span> property to the <span><code class="codeintext1">window</code></span> dictionary setting its value to <span><code class="codeintext1">null</code></span>.</p>
+
+    <p class="body">For now we’ve hardcoded the value of <span><code class="codeintext">me.id</code></span> to <span><code class="codeintext">null</code></span>. Next, let’s take a look at our Angular controller for the <span><code class="codeintext">layout</code></span> view. In Sublime open <span><code class="codeintext">brushfire/assets/js/controllers/navPageController.js</code></span> and take a look at the <span><code class="codeintext">$scope.me</code></span> property in listing 8.6.</p>
+
+    <p class="codelistingcaption">Listing 8.6   Bootstrapping data on view.</p><code class="codebcxspfirst">angular.module('brushfire').controller('navPageController', ['$location', '$scope', '$http', 'toastr', function($location, $scope, $http, toastr) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  $scope.me = window.SAILS_LOCALS.me;  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">}]);</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  assigning the value of  <span class="italics1">window.SAILS_LOCALS.me</span> to <span class="italics1">$scope.me</span></p>
+
+    <p class="body">The Angular controller’s main function is to grab the value of the <span><code class="codeintext">me</code></span> dictionary from <span><code class="codeintext">window.SAILS_LOCALS</code></span>. By hard coding the value of <span><code class="codeintext">me.id</code></span> equal to <span><code class="codeintext">null</code></span>, we’re simulating a logged out user. The Angular directives will hide the authenticated markup and show the sign-in form. Restart Sails using <span><code class="codeintext">sails lift</code></span> and navigate your browser to <span class="italics">localhost:1337</span> which should display something similar to figure 8.13.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_13.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.13  The <span><code class="codeintext1">homepage</code></span> view with the sign-in form displayed in its unauthenticated state.</p>
+
+    <p class="body">The homepage view is displayed with the sign-in form in the navigation portion of the markup indicating an unauthenticated state. Next, let’s use Sails <span><code class="codeintext">locals</code></span> to pass a value from the back end to the <span><code class="codeintext">me.id</code></span> property in our explicit route.</p>
+
+    <p class="body">We’ve already hardcoded the value of <span><code class="codeintext">me.id</code></span> to <span><code class="codeintext">null</code></span>, and we saw how the Angular controller could easily grab data from the browser’s <span><code class="codeintext">window</code></span> dictionary and save it on <span><code class="codeintext">$scope.me</code></span>. Then Angular directives can use that information to display markup based upon the values found in <span><code class="codeintext">me</code></span>. Now we want to make the values we bootstrap on the page to be dynamic. We’ll use EJS template tags to inject the values of the <span><code class="codeintext">me</code></span> dictionary from <span><code class="codeintext">locals</code></span> passed in an explicit route.</p>
+
+    <p class="body">In Sublime, open <span><code class="codeintext">brushfire/views/layout.ejs</code></span> and use template tags in listing 8.7, so that the <span><code class="codeintext">locals</code></span> passed in the route will be compiled on the view.</p>
+
+    <p class="codelistingcaption">Listing 8.7  Using EJS template tags to incorporate  <span class="italics1">locals</span> from the route.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;!--STYLES--&gt;</code> <code class="codebcxspmiddle">&lt;link rel="stylesheet" href="/styles/angular-toastr.css"&gt;</code> <code class="codebcxspmiddle">&lt;link rel="stylesheet" href="/styles/bootstrap.min.css"&gt;</code> <code class="codebcxspmiddle">&lt;link rel="stylesheet" href="/styles/importer.css"&gt;</code> <code class="codebcxspmiddle">&lt;!--STYLES END--&gt;</code> <code class="codebcxspmiddle">&lt;script type="text/javascript"&gt;      </code> <code class="codebcxspmiddle">window.SAILS_LOCALS = {</code> <code class="codebcxspmiddle">me: &lt;%- JSON.stringify(me||null) %&gt;  <span class="codeannotationcueballs1">❶ </span>  </code> <code class="codebcxspmiddle">};</code> <code class="codebcxspmiddle">&lt;/script&gt;</code> <code class="codebcxspmiddle">&lt;/head&gt;</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  JSON.stringify the <span><code class="codeintext1">me</code></span> dictionary if there’s a value or assign it to <span><code class="codeintext1">null</code></span></p>
+
+    <p class="body">Next, let’s add the locals to the explicit route to pass the authenticated state to the <span><code class="codeintext">layout</code></span> view.</p>
+
+    <h3 class="head1" id="heading_id_13">8.2.6   Hard-coding locals in a route</h3>
+
+    <p class="body">Now we’ve seen how Sails makes data available to views with variables called <span class="italics">locals</span>. In chapter 9, we’ll transition to setting locals in our controller actions<span class="italics">.</span> For now, just so we get to see some action, we’ll pass through stub data in our explicit route. In Sublime, open the <span><code class="codeintext">brushfire/config/routes.js</code></span> and add the following <span><code class="codeintext">locals</code></span> to <span><code class="codeintext">the GET /</code></span>route in listing 8.8.</p>
+
+    <p class="codelistingcaption">Listing 8.8  Adding <span><code class="codeintext1">locals</code></span> to a view in our custom route.</p><code class="codebcxspfirst">module.exports.routes = {</code> <code class="codebcxspmiddle">  'GET /': {</code> <code class="codebcxspmiddle">    view: 'homepage',</code> <code class="codebcxspmiddle">    locals: {                <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      me: {</code> <code class="codebcxspmiddle">        id: 1,</code> <code class="codebcxspmiddle">        gravatarURL: 'http://www.gravatar.com/avatar/ef3eac6c71fdf24b13db12d8ff8d1264?',</code> <code class="codebcxspmiddle">        email: 'sailsinaction@gmail.com'</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  ...</code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  Passing <span><code class="codeintext1">locals</code></span> to the view via a custom route.</p>
+
+    <p class="body">Here, we’re passing a static dictionary of a simulated user to the <span><code class="codeintext">view</code></span> via <span><code class="codeintext">locals</code></span>. Figure 8.14 illustrates the compiling process where <span><code class="codeintext">locals</code></span> passed in the route are injected into a view to produce our server-rendered view.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_14.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.14 An illustration of using <span class="codeannotationcueballs">① </span>  locals through a custom route to <span class="codeannotationcueballs">② </span>  bootstrap data in a <span class="codeannotationcueballs">③ </span>  server-rendered view.</p>
+
+    <p class="body">So the <span class="codeannotationcueballs">① </span>  route triggers the view along with <span><code class="codeintext">locals</code></span><span class="italics">.</span> We’re using template tags that will stringify the value of <span class="codeannotationcueballs">② </span>  the <span><code class="codeintext">me</code></span> dictionary or insert <span><code class="codeintext">null</code></span> if the <span><code class="codeintext">me</code></span> <span class="italics">local</span> is empty<span class="italics">.</span> The result of this compile is <span class="codeannotationcueballs">③ </span>  a server-rendered view that contains the <span><code class="codeintext">me</code></span> dictionary. The <span><code class="codeintext">me</code></span> dictionary will inform the front-end whether the <span><code class="codeintext">user</code></span> that made the request is authenticated or unauthenticated. Let’s see this in action. Restart Sails using <span><code class="codeintext">sails lift</code></span> and navigate your browser to localhost:1337. You browser should look similar to figure 8.15.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_15.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.15 The <span><code class="codeintext1">homepage</code></span> view with the simulated authenticated state displaying the authenticated markup.</p>
+
+    <p class="body">Notice that the signup button is not visible because the <span><code class="codeintext">ng-hide</code></span> directive hides the signup button based upon the <span><code class="codeintext">me</code></span> dictionary if the <span><code class="codeintext">user</code></span> is authenticated. Now that we understand how server-rendered views and front-end frameworks like Angular can be used to control what’s displayed on the front-end, let’s take a look at the remaining pages of Brushfire.</p>
+
+    <h2 class="head" id="heading_id_14">8.3   Transitioning from an SPA</h2>
+
+    <p class="body">If you’re following along in the example repo, you’ll notice we provided views for each of the main front-end pages of Brushfire outlined in figure 8.16.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_16.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.16 The relationship between the layout view and the other views of Brushfire.</p>
+
+    <p class="body">This allows us to share the same layout, partials, and (to some degree) locals, across each of our different views Currently, our <span><code class="codeintext">videos.ejs</code></span> view is served by an explicit route that simulates an unauthenticated state of a dummy user. And each of the other views have corresponding custom routes in <span><code class="codeintext">brushfire/config/routes.js</code></span> that simulate an authenticated state similar to listing 8.8.</p>
+
+    <p class="codelistingcaption">Listing 8.8<span class="italics1">locals</span> used to simulate the authenticated state of a user</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">locals: {</code> <code class="codebcxspmiddle">      me: {</code> <code class="codebcxspmiddle">        id: 1,</code> <code class="codebcxspmiddle">        gravatarURL: 'http://www.gravatar.com/avatar/ef3eac6c71fdf24b13db12d8ff8d1264?',</code> <code class="codebcxspmiddle">        email: 'sailsinaction@gmail.com'</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    }</code><code class="codebcxsplast">...</code>
+
+    <p class="body"> </p>
+
+    <p class="body">Table 8.3 lists the remaining routes and corresponding views we provided in the Github repo.  In Chapter 9, when we cover authentication, we will replace this fake data with data about the currently logged-in user.</p>
+
+    <p class="tablecaption pcalibre7">Table 8.3 Brushfire custom routes and templates</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="47%" class="sgc199" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">the <span class="bolditalics">route</span></p>
+          </div>
+        </td>
+
+        <td char="52%" class="sgc200" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">the <span><code class="codeintext">view</code></span> <span class="bolditalics">template</span></p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="47%" class="sgc201" valign="top"><code class="tablecode">'GET /videos'</code></td>
+
+        <td char="52%" class="sgc202" valign="top"><code class="tablecode">brushfire/views/videos.ejs</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="47%" class="sgc201" valign="top"><code class="tablecode">'GET /profile'</code></td>
+
+        <td char="52%" class="sgc202" valign="top"><code class="tablecode">brushfire/views/profile.ejs</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="47%" class="sgc201" valign="top"><code class="tablecode">'GET /edit-profile'</code></td>
+
+        <td char="52%" class="sgc202" valign="top"><code class="tablecode">brushfire/views/edit-profile.ejs</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="47%" class="sgc201" valign="top"><code class="tablecode">'GET /signup'</code></td>
+
+        <td char="52%" class="sgc202" valign="top"><code class="tablecode">brushfire/views/signup.ejs</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="47%" class="sgc201" valign="top"><code class="tablecode">'GET /restore-profile'</code></td>
+
+        <td char="52%" class="sgc202" valign="top"><code class="tablecode">brushfire/views/restore-profile.ejs</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="47%" class="pcalibre7 sgc203" valign="top"><code class="tablecode">'GET /administration'</code></td>
+
+        <td char="52%" class="sgc204" valign="top"><code class="tablecode">brushfire/views/administration.ejs</code></td>
+      </tr>
+    </table>
+
+    <p class="body">Let’s see this in action. Restart Sails via <span><code class="codeintext">sails lift</code></span> and navigate your browser to <span class="italics">localhost:1337/videos</span>. Your browser should look similar to figure 8.17.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/08_17.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 8.17 This videos page simulates an unauthenticated user and therefore does not have the markup to add a video.</p>
+
+    <p class="body">You might be wondering whether we could add a <span><code class="codeintext">video</code></span> with a <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/videos</code></span> in an application like Postman even if we weren’t authenticated?  The answer is yes. Therefore it’s important to distinguish between controlling what is displayed on the front end with preventing access to controller/actions on the back end. In chapter 10, we’ll show you how to lock down access to controller/actions with policies based upon a users authenticated state. For now, we’re concentrating on managing what is displayed on the front end, based upon their authenticated state.</p>
+
+    <p class="body">We now have a personalization system for our front end based upon the user’s simulated authenticated state. In chapter 9 we’ll build out the components of a user authentication system. We’ll then transition the front end that’s using a simulated authenticated state to the live authentication system that utilizes what we’ve built here to personalize the front end.</p>
+
+    <h2 class="head" id="heading_id_15">8.4   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   Sails can be configured to utilize client-side Angular routes or Sails back-end routes for page navigation.</p>
+
+    <p class="listbulletcxspmiddle">·   Sails uses the embedded JavaScript (EJS) view engine to integrate templates using a layout view with EJS tags.</p>
+
+    <p class="listbulletcxspmiddle">·   Custom routes that pass a dictionary can simulate a user authenticated state to the layout view.</p>
+
+    <p class="listbulletcxsplast">·   EJS tags are used to dynamically inject the user’s simulated authenticated state on the view.</p>
+  </div>
+</body>
+</html>

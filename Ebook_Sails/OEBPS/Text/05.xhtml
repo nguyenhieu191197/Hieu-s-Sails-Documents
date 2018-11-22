@@ -1,0 +1,473 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">5    Custom Back-End Code</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   Setting up the initial state of your application</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Introduction to custom asynchronous code in Sails</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Counting the number of records in your database</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Creating a new record in your database</p>
+
+    <p class="cosummarybulletcxsplast">·   Accessing a 3<span class="superscript">rd</span> party API</p>
+
+    <p class="body">Almost every commercial web application requires some way to run custom code “on lift”, <span class="italics">before</span> it begins listening for requests. This usually involves creating seed data, like admin user accounts. As we introduce custom back-end code in this chapter, we’ll show how to use the <span><code class="codeintext">config/bootstrap.js</code></span> file to set up the data your application needs at startup.</p>
+
+    <p class="body">Next, we’ll provide an introduction on communicating with 3<span class="superscript">rd</span> party APIs.  Specifically, we’ll show how to install open-source packages from NPM, and then take advantage of that pre-existing code in your app (without having to write it yourself by hand!)In this chapter, we’ll demonstrate how to use Node machines—reusable helper functions with standardized arguments, errors, and return values—but the concepts you learn here apply for any open-source package on NPM.</p>
+
+    <p class="body">Finally, in the process, we’ll explore some of the patterns (and anti-patterns) to look out for when writing custom logic for your Sails application; particularly as they relate to marshaling data and handling errors in synchronous vs. asynchronous code.</p>
+
+    <h2 class="head" id="heading_id_3">5.1   Chad has a new investor</h2>
+
+    <p class="body">We just finished a meeting with Chad. He told us how he took what we built so far, called it a prototype, and spent a few weeks showing it to some investors. And luckily, he found one individual who believed in his vision <span class="italics">so much</span> that she was willing to invest. She was on the call, actually, and introduced herself as Barbara.  In just a few short minutes, before Chad could say another word, she’d already won us over. Besides being a very intelligent woman and sharing our love for technology, Barbara is Chad’s mother. She keeps Chad on his toes, and it’s clear that she knows how to get results.</p>
+
+    <p class="body">So when our new investor told us that she believes cat videos are the next social media frontier, and insisted that the application devote itself to user-curated cat videos, we nodded and took notes:</p><code class="codebcxspfirst">Cat videos: the final frontier.</code> <code class="codebcxspmiddle">Cats: content producers? Or content consumers??</code><code class="codebcxsplast">Noone (person or cat) is going to use a video app without any cat videos.</code>
+
+    <p class="body">Barbara brought up some important concerns about our lack of content.  As it stands, all of Brushfire’s videos have to be entered by hand.  Barbara called this the common “chicken versus egg” problem with new applications. Brushfire needs users to create content, but it also needs content to attract users. To overcome this issue we must find a way to “seed” the database with content—in this case, with cat videos.</p>
+
+    <h3 class="head1" id="heading_id_4">5.1.1   Converting requirements into development tasks</h3>
+
+    <p class="body">Inspired by Barbara’s advice, we met with Chad and worked out some requirements. Table 5.1 is the result of our discussion.</p>
+
+    <p class="tablecaption pcalibre7">Table 5.1   Translating New Requirements Into Actionable Solutions</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="30%" class="sgc97" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Requirement</p>
+          </div>
+        </td>
+
+        <td char="69%" class="sgc98" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Solution</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="30%" class="sgc99" valign="top">
+          <p class="tablebody2cxspfirst">Get cat videos into the system somehow without requiring users to enter them by hand.</p>
+        </td>
+
+        <td char="69%" class="sgc100" valign="top">
+          <p class="tablebody2cxsplast">We’ll write some code in the <span><code class="codeintext">config/bootstrap.js</code></span> file that will be executed every time the Sails server lifts. (via <span><code class="codeintext">sails lift</code></span>)</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="30%" class="sgc99" valign="top">
+          <p class="tablebody2cxspfirst">Check if there are any videos in the Brushfire database.</p>
+        </td>
+
+        <td char="69%" class="sgc100" valign="top">
+          <p class="tablebody2cxsplast">We’ll use the <span><code class="codeintext">Video.count()</code></span> model method to determine how many records exist in the <span><code class="codeintext">Video</code></span> model.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="30%" class="sgc101" valign="top">
+          <p class="tablebody2cxspfirst">Search YouTube for popular cat videos and use those to “seed” the list of videos displayed on Brushfire.</p>
+        </td>
+
+        <td char="69%" class="sgc102" valign="top">
+          <p class="tablebody2cxsplast">We’ll install an NPM package called <span><code class="codeintext">machinepack-youtube</code></span> and use one of its methods (aka machines) to communicate with the YouTube API and search for cat videos. Then, we’ll use another model method, <span><code class="codeintext">Video.create()</code></span>, to create a new record in the database for each one of the results from YouTube. We might need to mess with the data a bit.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Now that we have our requirements and a plan for implementing them, let’s get started.</p>
+
+    <h2 class="head" id="heading_id_5">5.2   Running code on lift</h2>
+
+    <p class="body">In chapter 4,weran back-end code by sending requests to our back-end, which matched built-in blueprint routes and triggered blueprint actions.  Since we were using blueprint actions, we didn’t actually have to write this code ourselves; but we could have. Whether blueprint or custom, controller actions run when an incoming request is received. In other words, the execution context, or <span class="italics">habitat</span>, of any controller action is the request.  But in this chapter, we’ll explore a slightly different habitat: raw Sails.  The code we write in this chapter won’t have access to a request, but it will still have access to other features of Sails, like model methods. And instead of running code whenever a particular type of HTTP or socket request is received, we’ll trigger the execution of custom code when starting Sails via <span><code class="codeintext">sails lift</code></span><span class="italics">.</span> To do this we’ll modify a special function in Sails’ configuration called the bootstrap.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Be careful not to confuse the Sails bootstrap function with the popular Bootstrap CSS framework. The Bootstrap CSS framework is a set of conventions and reusable style sheets. The bootstrap function in Sails is where you can put custom code if you want it to run when the Sails server lifts.</p>
+    </div>
+
+    <p class="body">So far, we’ve relied on built-in features in Sails, like blueprint actions, for back-end functionality.  We haven’t needed to write any custom back-end JavaScript code yet.  But that’s all about to change.  We’ll still use many existing helpers and utilities provided by Sails, NPM, and Node.js itself, but from here on out, it will be up to us to create our own custom code to fulfill tasks. As an implementer and not simply a user of code, we’ll have the added responsibility of maintaining execution flow. Since Node.js is asynchronous, that can sometimes feel a bit different than in other languages like PHP or Java.  Luckily, since Node.js uses JavaScript, we’ve already got a big head start.</p>
+
+    <h3 class="head1" id="heading_id_6">5.2.1   Using bootstrap.js</h3>
+
+    <p class="body">In order to better understand how the bootstrap function works, let’s add some code to <span class="italics">the</span> <span><code class="codeintext">bootstrap.js</code></span> file and take it for a spin. Open <span><code class="codeintext">config/boostrap.js</code></span> in Sublime and add the following code in listing 5.1.</p>
+
+    <p class="codelistingcaption">Listing 5.1  A first look at the bootstrap function</p><code class="codebcxspfirst">module.exports.bootstrap = function(cb) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  console.log('Hello World!');<span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  return cb();</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  Log “<span class="italics1">Hello World!”</span>to the console.</p>
+
+    <p class="body">Now start your app using <span><code class="codeintext">sails lift</code></span>, and after a second or two, you should see the message <span><code class="codeintext">Hello World!</code></span> appear in the terminal window. So what did we just do here?  Figure 5.1illustrates what happened when we started the Sails server.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.1  After <span class="codeannotationcueballs">① </span>  we started the Sails server the <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">bootstrap.js</code></span> file was executed, in which our code logged <span><code class="codeintext1">Hello World!</code></span> to the terminal.  Then, <span class="codeannotationcueballs">③ </span>  we passed control back to Sails by calling <span><code class="codeintext1">cb()</code></span>. At that point, Sails went about its business, completing the process of lifting the server.</p>
+
+    <p class="body">After <span class="codeannotationcueballs">① </span>  we ran <span><code class="codeintext">sails lift</code></span>, but before Sails started listening for incoming requests, <span class="codeannotationcueballs">② </span>  Sails loaded the <span><code class="codeintext">bootstrap.js</code></span> file and executed our custom code.  This bit worked just like JavaScript in the browser, except since this is back-end code, <span><code class="codeintext">console.log()</code></span>wrote a message to the terminal.  In a blocking language like PHP or Java, that would be it!  But since Node.js is non-blocking, many library functions are asynchronous.  Because of this, the bootstrap function is <span class="italics">itself</span> asynchronous—which just means that it provides a callback.  Instead of returning from the bootstrap function, we invoke the callback function, <span><code class="codeintext">cb()</code></span>, to <span class="codeannotationcueballs">③ </span>  return control to Sails.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Whenever you implement an asynchronous function, it is critical that you explicitly call the provided callback, also known as an <span class="italics1">outlet</span>.  Otherwise, you will never pass control back to whatever called your asynchronous function in the first place! In the case of the function defined in <span><code class="codeintext1">bootstrap.js</code></span>, if we forget to call the callback, then the Sails server would never start.  Instead, it would hang until it eventually timed out and produced an error, telling us “The bootstrap function is taking too long.”</p>
+    </div>
+
+    <p class="body">Now that we’ve dipped our toe into implementing an asynchronous function, we’re ready to write some more meaningful back-end code for the bootstrap function.  We’ll start off by using model methods to look up information from the database.</p>
+
+    <h2 class="head" id="heading_id_7">5.3   A deeper understanding of model methods</h2>
+
+    <p class="body">After looking at the requirements we put together at the beginning of the chapter, we see that our next task is to determine whether or not any existing records exist in the <span><code class="codeintext">Video</code></span> model. To do this we’ll use a model method: <span><code class="codeintext">.count()</code></span>. Since we’re interested in counting the number of videos, as opposed to partridges, golden rings, or any other nouns which might be represented by tables in our database, we’ll access <span><code class="codeintext">.count()</code></span> as a method of the <span><code class="codeintext">Video</code></span> model: by calling <span><code class="codeintext">Video.count()</code></span>.</p>
+
+    <p class="body">Remember back in chapter 4, when we ran <span><code class="codeintext">sails generate video</code></span> from the command-line?  We already saw how this created a model definition file in <span><code class="codeintext">brushfire/api/models/</code></span>, and we witnessed the effect that it had on the blueprint API.  But there was another handy side effect: When we lift our app, Sails builds a JavaScript dictionary called <span><code class="codeintext">Video</code></span> and exposes it as a global variable.</p>
+
+    <p class="body">This gives us automatic access to <span><code class="codeintext">Video</code></span> from anywhere in our app, including the <span><code class="codeintext">bootstrap.js</code></span> file. So let’s use it!</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Besides <span><code class="codeintext1">Video.count(),</code></span> the <span><code class="codeintext1">Video</code></span> dictionary provides a smorgasbord of other methods for fetching, analyzing, and manipulating the videos stored in our database.. We’ll look at another one of those, <span><code class="codeintext1">Video.create(),</code></span> later in this chapter.</p>
+    </div>
+
+    <h3 class="head1" id="heading_id_8">5.3.1   Using the <span><code class="codeintext1">Video.count()</code></span>model method</h3>
+
+    <p class="body">Unsurprisingly, the <span><code class="codeintext">Video.count()</code></span>method returns the number of records in the <span><code class="codeintext">Video</code></span> model.  We need to figure out whether there are <span class="italics">any</span> videos already in the database, so we can just count the records.  If it’s greater than zero, then we know we’ve already got at least one video. So let’s take that for a spin.  Open <span><code class="codeintext">brushfire/config/bootstrap.js</code></span> in Sublime and add the following code from listing 5.2.</p>
+
+    <p class="codelistingcaption">Listing 5.2  Count the records in the Video model</p><code class="codebcxspfirst">module.exports.bootstrap = function(cb) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  Video.count().exec(function(err, numVideos) {      <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    if (err) {</code> <code class="codebcxspmiddle">      return cb(err);     <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (numVideos &gt; 0) {     <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">      console.log('Number of video records: ', numVideos);</code> <code class="codebcxspmiddle">return cb();                 <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">// TODO: Seed the database with videos from YouTube.   <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">    console.log('There are no video records.');        <span class="codeannotationcueballs1">❻ </span></code> <code class="codebcxspmiddle">    return cb();             <span class="codeannotationcueballs1">❼ </span></code> <code class="codebcxspmiddle">  });</code> <code class="codebcxspmiddle">};</code><code class="codebcxsplast"> </code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Execute <span><code class="codeintext1">Video.count()</code></span>.  This is asynchronous, like <span><code class="codeintext1">setTimeout().</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  When <span><code class="codeintext1">Video.count()</code></span>finishes, it runs this callback.  It receives either an error or the number of videos. If an error occurred, bail out through our outlet, <span><code class="codeintext1">cb()</code></span>.  This is the asynchronous equivalent of throwing an exception.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  Otherwise, check <span><code class="codeintext1">numVideos</code></span> to see whether there are any videos in the database yet.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  If so, we’ll simply execute <span><code class="codeintext1">cb()</code></span>to pass control back to Sails.  No seeding today.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❺ </span>  If we made it here, there are no existing records. So we need to seed the database.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❻ </span>  But for now, we just log a message to the console.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❼ </span> Finally, execute the bootstrap function’s callback, passing control back to Sails.</p>
+
+    <p class="body">Stop Sails using <span><code class="codeintext">ctrl-c</code></span> and restart it using <span><code class="codeintext">sails lift</code></span>. If you have existing records in the <span><code class="codeintext">Video</code></span> model, our custom code in the bootstrap will execute log the number of existing video records. Otherwise, if no existing Video records exist, it will log a message saying so. Either way, it returns control back to Sails so it can finish the lifting process, as shown in figure 5.2.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.2 The .count() method calculates the number of records in the Video model, then depending on the result, our code logs the appropriate message.  Either way, we pass control back to Sails and it finishes lifting our app.</p>
+
+    <p class="body">Now that we know how to check whether the <span><code class="codeintext">Video</code></span> model contains any records, we can move on to the next requirement: programmatically searching YouTube for cat videos.</p>
+
+    <h2 class="head" id="heading_id_9">5.4   Introducing machinepacks</h2>
+
+    <p class="body">In chapter 1, we learned about NPM packages as away to take advantage of reusable open-source code.  This works really well, but there’s an even easier way. For many years, when you wanted to access a third party API from Sails, you had the following choices:</p>
+
+    <p class="listbulletcxspfirst">·   If the 3<span class="superscript">rd</span> party API was hosted, you could look up the documentation and access it using an HTTP library like <a class="pcalibre8 pcalibre5" href="https://www.npmjs.com/package/request">https://www.npmjs.com/package/request</a>.</p>
+
+    <p class="listbulletcxspmiddle">·   You could copy and paste some code from a tutorial.</p>
+
+    <p class="listbulletcxsplast">·   You could search for an existing NPM package and learn how to use it from its README file.  Then, if you trusted it enough and understood the documentation, you could make it a dependency of your project and access it via <span><code class="codeintext">require</code></span>.</p>
+
+    <p class="body">Any of these strategies are viable, but they can be problematic.  For one thing, there are unavoidable differences in the way that various 3<span class="superscript">rd</span> party APIs work.  But what causes more confusion for many developers is that, even amongst different NPM packages for the same API, usage can vary dramatically. <span class="italics">Machinepacks</span> and the <span class="italics">machine specification</span> were designed specifically to overcome these inconsistencies.</p>
+
+    <p class="body">The <span class="italics">machine specification</span> is a set of conventions for writing JavaScript functions, with a particular emphasis on open-source distribution. These standardized JavaScript functions, called machines, are designed to make it easier to write code in Node.js.</p>
+
+    <p class="body">Every machine provides a terse verb phrase (&lt;140 characters), which describes its purpose—whether it’s sending an email, translating a text file, or fetching a web page. It declares inputs, which tell us what arguments we need to pass in.  And it declares exits, which serve two major purposes: To tell us what (if any) type of return value we can expect, and to give us an easy way to handle certain exceptions or edge cases which might possibly arise.</p>
+
+    <p class="callout">It is this <span class="italics">declarative</span> nature of machines makes them self-documenting, easy to understand, and most importantly, consistent and easy to use, no matter the use case.</p>
+
+    <p class="body">Machines are packaged together in <span class="italics">machinepacks,</span> which are simply a way of packaging up and publishing related machines. We’ll start by using a package called <span><code class="codeintext">machinepack-youtube</code></span> which will allow us to interact with the YouTube API.</p>
+
+    <h3 class="head1" id="heading_id_10">5.4.1   Finding a package to work with the YouTube API</h3>
+
+    <p class="body">We know we need to access the YouTube API to search for cat videos. But where to start?  Like most things in life, let’s google it.  Search for “youtube machinepack”, or just navigate your browser to <a class="pcalibre8 pcalibre5" href="http://node-machine.org/machinepacks">http://node-machine.org/machinepacks</a>.</p>
+
+    <p class="body">Node-Machine.org is a documentation site maintained by the Sails.js team.  Any time a new open-source machinepack (or a new version of an existing pack) is published to the NPM registry, Node-Machine.org updates the documentation page for each of the methods (aka machines) in that pack. Each page includes metadata about what a particular machine does, the inputs it expects, the exit callbacks it knows how to handle, and sample code you can copy and paste into your app.</p>
+
+    <p class="body">Here you’ll find a list of available machinepacks. Use CMD+F, or scroll down until you find <span class="italics">YouTube</span>.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.3  The page for <span><code class="codeintext1">machinepack-youtube</code></span> provides a list of methods, called <span class="italics1">machines</span>. In this case, all of the of machines  are related to the YouTube API.</p>
+
+    <p class="body">Reviewing the list of machines, we see one that looks particularly promising: <span><code class="codeintext">.searchVideos()</code></span>. This machine claims to list YouTube videos that match a specified search query. That sounds pretty good, particularly if we were to send in a search query like “cats”. Let’s get more details by selecting <span><code class="codeintext">.searchVideos()</code></span>from the machines list.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.4 The <span><code class="codeintext1">.searchVideos()</code></span> machine page includes <span class="codeannotationcueballs">① </span>  example code that you can copy and paste into your own project, <span class="codeannotationcueballs">② </span>  the inputs expected by the machine, including their data types and whether they’re required or optional,  and <span class="codeannotationcueballs">③ </span>  what you can expect when the machine exits.</p>
+
+    <p class="body">The manpage for <span><code class="codeintext">.searchVideos()</code></span>on Node-Machine.org provides an extensive description of the machine including <span class="codeannotationcueballs">① </span>  example code, <span class="codeannotationcueballs">② </span>  available required and optional inputs and their types, as well as <span class="codeannotationcueballs">③ </span>  what to expect as a result of executing the machine also known as <span class="italics">exits</span>. Before we can use <span><code class="codeintext">.searchVideos()</code></span> or <span><code class="codeintext">machinepack-youtube</code></span> we need to install it into our project.</p>
+
+    <h3 class="head1" id="heading_id_11">5.4.2   Installing a machinepack</h3>
+
+    <p class="body">The <span><code class="codeintext">machinepack-youtube</code></span> package is installed exactly like we installed the <span><code class="codeintext">sails-generate-static</code></span> package in chapter 3. From the terminal window type:</p><code class="codeb">~/brushfire $npm install machinepack-youtube --save</code>
+
+    <div class="sgc3">
+      <p class="sidebarc">This will install <span><code class="codeintext1">machinepack-youtube</code></span> into your project’s local dependencies in <span><code class="codeintext1">brushfire/node_modules/</code></span> (as opposed to installing it as a global dependency like we initially did with Sails).</p>
+    </div>
+
+    <p class="body">By running <span><code class="codeintext">npm install machinepack-youtube</code></span>, we told the local NPM command-line tool to download source files for this package and install them as a local dependency in <span><code class="codeintext">/brushfire/node_modules/</code></span>.  And since we added the <span><code class="codeintext">--</code></span> flag, the  dependency was also recorded in <span><code class="codeintext">/brushfire/package.json</code></span>.  This is so that the next time we run <span><code class="codeintext">npm install</code></span> by itself to install <span class="italics">all dependencies</span> of our project, the proper version <span><code class="codeintext">machinepack-youtube</code></span> will be installed automatically.  But where did the source files for <span><code class="codeintext">machinepack-youtube</code></span> come from? The files are published and stored in the NPM registry, as visualized by <a class="pcalibre8 pcalibre5" href="http://npmjs.com">http://npmjs.com</a>. Let’s take a quick look at the NPM registry.</p>
+
+    <h3 class="head1" id="heading_id_12">5.4.3   Exploring NPM</h3>
+
+    <p class="body">The <span class="underline">NPM</span> registry contains literally hundreds of thousands of modules. Navigate your browser to: <a class="pcalibre8 pcalibre5" href="https://www.npmjs.com/package/machinepack-youtube">https://www.npmjs.com/package/machinepack-youtube</a>. You should see the main page for <span><code class="codeintext">machinepack-youtube</code></span> similar to figure 5.5.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.5  The main page for <span><code class="codeintext1">machinepack-youtube</code></span> on the npmjs registry.</p>
+
+    <p class="body">So what is the difference between <span class="italics">node-machine.org</span> and <span class="italics">npmjs.com</span>?  The NPM registry is where you get the actual <span><code class="codeintext">machinepack-youtube</code></span> source files, whereas <span class="italics">Node-Machine.org</span>is the place for documentation on how to use them.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">In this book we’ll be users (not implementers) of NPM packages. For information about how to build your own NPM package, visit <a class="pcalibre8 pcalibre4 pcalibre5" href="http://node-machine.org">http://node-machine.org</a>.</p>
+    </div>
+
+    <p class="body">Now that we understand the mechanics, let’s take the <span><code class="codeintext">.searchVideos()</code></span>machine for a spin.</p>
+
+    <h3 class="head1" id="heading_id_13">5.4.4   Using machines</h3>
+
+    <p class="body">You’ll recall that our plan is to seed the <span><code class="codeintext">Video</code></span> model with cat videos from YouTube.  Now that we’ve installed a dependency that will allow us to do that easily, we’re ready to use it in our code. Importing a machinepack is no different than using <span><code class="codeintext">require()</code></span> to import any other Node module.</p>
+
+    <p class="body">In listing 5.3, we opened <span><code class="codeintext">brushfire/config/bootstrap.js</code></span> in Sublime and pasted in the example code from Node-Machine.org into the callback from the <span><code class="codeintext">.count()</code></span> method.</p>
+
+    <p class="callout">In subsequent examples, we’ll pull the <span><code class="codeintext">require()</code></span> call up at the very top of the file, instead of calling it inline.  This isn’t strictly necessary for performance reasons, since Node.js caches the result from <span><code class="codeintext">require()</code></span> calls, but it does make it much easier to see what dependencies a particular file is using.</p>
+
+    <p class="codelistingcaption">Listing 5.3Using<span><code class="codeintext1">.searchVideos()</code></span>in the bootstrap function</p><code class="codebcxspfirst">module.exports.bootstrap = function(cb) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  Video.count().exec(function(err, numVideos) {</code> <code class="codebcxspmiddle">    if (err) {</code> <code class="codebcxspmiddle">      return cb(err);</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (numVideos &gt; 0) {</code> <code class="codebcxspmiddle">      console.log('Existing video records: ', numVideos)</code> <code class="codebcxspmiddle">      return cb();</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">    var Youtube = require('machinepack-youtube');   <span class="codeannotationcueballs1">① </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    // List Youtube videos which match the specified search query.</code> <code class="codebcxspmiddle">    Youtube.searchVideos({    <span class="codeannotationcueballs1">② </span></code> <code class="codebcxspmiddle">      query: 'grumpy cat',</code> <code class="codebcxspmiddle">      apiKey: 'PLACE YOUR GOOGLE API KEY HERE',</code> <code class="codebcxspmiddle">      limit: 15,</code> <code class="codebcxspmiddle">    }).exec({</code> <code class="codebcxspmiddle">      // An unexpected error occurred.</code> <code class="codebcxspmiddle">      error: function(err) {</code> <code class="codebcxspmiddle">        console.log('an error: ', err);  <span class="codeannotationcueballs1">③ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">      // OK.</code> <code class="codebcxspmiddle">      success: function(result) {</code> <code class="codebcxspmiddle">console.log('the result: ', result);     <span class="codeannotationcueballs1">④ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    return cb();  <span class="codeannotationcueballs1">⑤ </span></code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">① </span> Import (aka “require”) the machinepack.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">② </span>  Execute the <span><code class="codeintext1">.searchVideos()</code></span> machine to search YouTube for “grumy cat” videos.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">③ </span>  If anything went wrong, this <span class="italics1">error</span> callback will be triggered with details about the error.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">④ </span>  Otherwise, the <span class="italics1">success</span> callback will be triggered with the result.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">⑤ </span>  Incorrect usage of the outlet callback (this is called <span class="italics1">before</span> we hear back from YouTube!)</p>
+
+    <p class="body">By <span class="codeannotationcueballs">① </span>  assigning the result of calling <span><code class="codeintext">require()</code></span>in a variable (<span><code class="codeintext">YouTube</code></span>), we have access to all the methods (machines)of <span><code class="codeintext">machinepack-youtube</code></span> from any of our code in this file. When our app lifts and runs the bootstrap,<span class="codeannotationcueballs">② </span>  our <span><code class="codeintext">.searchVideos()</code></span>instruction will run.  Under the covers, it calls out to the YouTube API and waits for a result.  When it finishes, one of our two different callbacks will run:.  We’ll either <span class="codeannotationcueballs">③ </span>  log errors or <span class="codeannotationcueballs">④ </span>  log our output.</p>
+
+    <p class="body">But there’s a bug in our code!  <span class="bodychar">Restart Sails via</span> <span><code class="codeintext">sails lift</code></span><span class="bodychar">. Depending upon whether records in your</span> <span><code class="codeintext">Video</code></span> <span class="bodychar">model exist, the terminal window will either display the number of records that exist or an error similar to figure 5.6 below.</span></p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.6  The terminal window might display the number of existing records in the <span><code class="codeintext1">Video</code></span> model.  But if no records exist, you will see this error, due to a bug in our example code.</p>
+
+    <p class="body">We’ll come back to fix this bug a bit later in the chapter.  But first, let’s make sure we can consistently reproduce the error.</p>
+
+    <p class="body">If you’ve created videos a few videos using blueprints, then you might have existing records in your <span><code class="codeintext">Video</code></span> model.  In order to reproduce this error, we need a way to remove all of these existing records. In chapter 4, we showed how to use shortcut blueprints to destroy records individually from the URL bar.  But if we have a lot of records, that can get kind of annoying.  Fortunately, there are a couple of easier ways to do this: in the Sails REPL (<span><code class="codeintext">sails console</code></span>) or simply by wiping the database altogether.  For now, since we’re still using the default disk database, let’s simply wipe all of the data that’s been created so far. Pop over to the terminal, and from the root of your project, type:</p><code class="codeb">~/brushfire $ rm –rf .tmp/localDiskDb.db</code>
+
+    <p class="body">That’s it! Any data that’s been created so far is gone.  And thanks to Sails’ auto-migrations, the next time we lift Sails, an empty database will be recreated.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We’ll go into more details about how Sails’ interacts with databases in the next chapter. For now, just know that the <span><code class="codeintext1">localDisk.db</code></span> is the file where the data for our default, development-only database resides. And any time you delete it, Sails will just create a new empty <span><code class="codeintext1">localDisk.db</code></span> file the next time you run <span><code class="codeintext1">sails lift</code></span>.</p>
+    </div>
+
+    <p class="body">Now, with no records, when we restart Sails with <span><code class="codeintext">sails lift</code></span> and the bootstrap function runs, triggering our <span><code class="codeintext">.searchVideos()</code></span>instruction.  If you’re following along, your database should be in the same state as ours; so you should definitely see the error we showed earlier back in figure 5.6.</p>
+
+    <p class="body">The problem here is that our<span><code class="codeintext">.searchVideos()</code></span>instruction (the code that calls the .<span><code class="codeintext">searchVideos()</code></span> machine) is not configured properly. Even though machines are standardized, every machine expects a particular set of inputs.  Like in any code, if the argument for a particular machine input is not provided correctly, then weird things can happen. We’ll take a closer look at machine inputs in the next section.</p>
+
+    <h3 class="head1" id="heading_id_14">5.4.5   Understanding machine inputs</h3>
+
+    <p class="body">Node-Machine.org provides detailed information about the inputs expected by each machine. This information includes what type of data each input accepts, whether the input is required or optional, and an example..</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The <span class="italics1">inputs</span> of a function or machine are its hypothetical expectations.  For example, the <span><code class="codeintext1">searchVideos()</code></span> machine has an input named <span><code class="codeintext1">query</code></span>.  <span class="italics1">Arguments</span> (also known as <span class="italics1">input values</span> or <span class="italics1">options</span>) are the actual values that we pass in to an <span class="italics1">instruction</span> (a particular occurrence of a function or machine) in our code. In <span><code class="codeintext1">bootstrap.js</code></span>, we are currently passing in the string “grumpy cat” as our argument for the <span><code class="codeintext1">query</code></span> input.</p>
+    </div>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.7  The <span><code class="codeintext1">.searchVideos()</code></span>machine takes three inputs: <span class="codeannotationcueballs">① </span>  the <span><code class="codeintext1">query</code></span> to use when searching YouTube, <span class="codeannotationcueballs">② </span> a Google developer API key, and <span class="codeannotationcueballs">③ </span>  an optional <span><code class="codeintext1">limit</code></span> on how many videos to return.</p>
+
+    <p class="body">The <span><code class="codeintext">searchVideos()</code></span> machine expects us to pass in a search <span><code class="codeintext">query</code></span> (like “grumpy cat”) and a Google <span><code class="codeintext">apiKey</code></span>. We already know that we’ll be searching for cat-related videos; that part is easy. We’ll just have to try a couple of different queries to see what returns the best results. We will, however, need to figure out how to obtain our own Google API key.</p>
+
+    <p class="body">Most APIs require some type of authentication in order to monitor usage, prevent abuse, and enforce rate limits.  For example, if we exceed 300 lookups per hour, a Google representative might send us an email to ask us how we like the YouTube API, and maybe even ask us to pay them some money.  This is called a “soft limit”.  But if we exceed 500 lookups in a single hour, we might just get shut out entirely for a couple of hours (a “hard limit”). Finally, if we send way too many requests, and we don’t get our act together and respond to Google’s email, we could eventually be banned from the YouTube API altogether.  Be sure to use a current email address when you sign up for developer APIs, and check it frequently when you deploy your app in production!</p>
+
+    <p class="body">Let’s take a look at how to obtain an API key for the YouTube API. Although Google’s exact user interface and steps change frequently, the basic principle is always more or less the same. For the sake of demonstration, here is how it works as of August 2016:</p>
+
+    <p class="listbulletcxspfirst">1. Create a Google account.</p>
+
+    <p class="listbulletcxspmiddle">2. Navigate your browser to <a class="pcalibre8 pcalibre5" href="https://console.developers.google.com/">https://console.developers.google.com/</a>.</p>
+
+    <p class="listbulletcxspmiddle">3. Create a “project”.</p>
+
+    <p class="listbulletcxspmiddle">4. Navigate to enable APIs.</p>
+
+    <p class="listbulletcxspmiddle">5. Navigate to the <span class="italics">Credentials</span> portion of your new “project” to access the API key.</p>
+
+    <p class="listbulletcxsplast"><span class="bodychar">6.</span> Click Create credentials. Then click Server key, provide a name for the key, and click Create.</p>
+
+    <p class="body">Voila! You should see an API key similar to the one shown in figure 5.8.  Go ahead and select it and copy it to your clipboard, since we’ll use it in our code momentarily. But leave this tab open, because we’re not quite done yet.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.8  Our shiny new <span class="codeannotationcueballs">① </span>  APIkey is displayed after completing the key creation process in the Google Developers Console.</p>
+
+    <p class="body">We’re almost there.  But there is one more important step in Google’s setup ritual.  Even though we have our Google API key now, if we were to try and use it to search for cat videos, Google’s servers would simply laugh, slap their knees, and respond with an error.  Presumably, this is because Google has so many different products, each with its own developer API, that they track them separately.  But whatever the reason, what that means for us is that we still need to <span class="italics">enable</span> the YouTube API in Google’s dashboard. To do that, navigate to the overview page and click the <span class="italics">YouTube Data API</span> link. At the top of the page, you should see a button titled: <span class="italics">Enable</span>. Take a deep breath, put your feet up, and click this button.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">This sort of setup flow varies between API providers, and it isn’t always the most intuitive process. You’ll probably encounter different names and styles of API keys: Sometimes they’re called “tokens”, “codes”, or “secrets”; and occasionally there will be two (or even three!) different strings you need to copy and paste.  For some legacy APIs, you might need to call the company and speak to a representative.  When in doubt, refer to the information on Node-Machine.org, or check out the company’s developer documentation.</p>
+    </div>
+
+    <p class="body">If you are following along on your computer, congratulations!  You just obtained a real Google API key and enabled access to the YouTube API. Now we can use that API key from our code in <span><code class="codeintext">bootstrap.js</code></span>, where we’ll pass it in to the <span><code class="codeintext">.searchVideos()</code></span> machine. But just pasting it in there would be kind of messy.  So instead, let’s look at a way we can store our new API key and any future credentials in one centralized location in the code base.</p>
+
+    <h3 class="head1" id="heading_id_15">5.4.6   Setting your own custom configuration in<span><code class="codeintext1">local.js</code></span></h3>
+
+    <p class="body">We could have just pasted our API key inline in the <span><code class="codeintext">bootstrap.js</code></span> file.  But there is a better way: custom configuration.  Sails provides built-in support for creating your own custom, app-specific configuration settings, using the same mechanism that it uses internally.</p>
+
+    <p class="body">As you might expect, the files in <span><code class="codeintext">brushfire/config/</code></span>contain settings for various parts of Sails.  When Sails starts, these configuration files are merged into one big dictionary called  <span><code class="codeintext">sails.config</code></span>. For the most part, the actual names given to each file don’t matter—they’re purely organizational.</p>
+
+    <p class="body">One notable exception is<span><code class="codeintext">local.js</code></span>, a configuration file with special meaning.  This file is designed for use in development, and it has two useful properties: First, any configuration we provide in <span><code class="codeintext">brushfire/config/local.js</code></span> takes precedence over the rest of the configuration files in our app. Second, this file is explicitly excluded from version control by the default <span><code class="codeintext">.gitignore</code></span> file that was created when we first generated our new Sails app.  This ensures that only people you explicitly share it with have access to the contents of <span><code class="codeintext">local.js</code></span>. If anyone with ill intentions gets access to our Google API key, they can use it to masquerade as us--or even to disrupt our application.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">If you aren’t familiar with Git, <span><code class="codeintext1">.gitignore </code></span>is just a hidden file at the top level of your project directory.  Its job is simply to specify a set of paths that Git should ignore; meaning that they are not subject to version control.  This is useful as a safeguard, since it prevents you from inadvertently uploading sensitive information to a remote repo like GitHub.  It is also handy for making your development tools more efficient for everyone on your team. For example, the default <span><code class="codeintext1">.gitignore</code></span> file in every new Sails app also ignores the <span><code class="codeintext1">brushfire/.tmp/</code></span> folder, since there is no reason to waste your time and bandwidth uploading a bunch of duplicate code every time you run <span><code class="codeintext1">git push</code></span>.</p>
+    </div>
+
+    <p class="body">Let’s add our Google API key to the <span><code class="codeintext">local.js</code></span> file. In Sublime, create <span><code class="codeintext">brushfire/config/local.js</code></span> and add the following code in listing 5.4.  Be sure to paste in your own Google API key.</p>
+
+    <p class="codelistingcaption">Listing 5.4 Adding to the <span><code class="codeintext1">local.js</code></span> file</p><code class="codebcxspfirst">module.exports.google = {</code> <code class="codebcxspmiddle">  apiKey: 'PLACE YOUR GOOGLE API KEY HERE'</code><code class="codebcxsplast">}</code>
+
+    <p class="body">Since we exported <span><code class="codeintext">google</code></span>, we’ll be able to access this dictionary as <span><code class="codeintext">sails.config.google</code></span> from anywhere in our application. Now let’s change our code in bootstrap.js to use grab the configured API key and pass it in to <span><code class="codeintext">.searchVideos()</code></span>.</p>
+
+    <h3 class="head1" id="heading_id_16">5.4.7   Using custom configuration in your code</h3>
+
+    <p class="body">Instead of pasting our API key directly into <span><code class="codeintext">bootstrap.js</code></span>, we decided to set it using Sails’ built-in support for custom, app-specific configuration. We configured the API key using the local.js file, but we could have done it any number of other ways: in a command-line option, in an environment variable, or in a different configuration file. But we still haven’t seen how to actually <span class="italics">use</span> that custom configuration setting in our code.  So let’s begin.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We’ve often been asked: “Why not just use environment variables?”  And the short answer is: “Sure, why not!”  You can write code in your Sails app that accesses the Node process’s environment variables by hand.  But that approach tends to be less maintainable.</p>
+
+      <p class="sidebarc">If, on the other hand, you build your app to expect custom configuration settings, you’ll be able to set them in any of the myriad ways you can set the built-in configuration provided by Sails—including environment variables.  Plus, by using Sails’ conventional approach, you help everyone on your team know what to expect, even across different apps.</p>
+    </div>
+
+    <p class="body">Open <span><code class="codeintext">brushfire/config/bootstrap.js</code></span> in Sublime, call <span><code class="codeintext">searchVideos()</code></span>, and plug in the configured API key as shown in listing 5.5.</p>
+
+    <p class="codelistingcaption">Listing 5.5Using custom configuration</p><code class="codebcxspfirst">var Youtube = require('machinepack-youtube');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports.bootstrap = function(cb) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  Video.count().exec(function(err, numVideos) {</code> <code class="codebcxspmiddle">    if (err) {</code> <code class="codebcxspmiddle">      return cb(err);</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (numVideos &gt; 0) {</code> <code class="codebcxspmiddle">      console.log('Existing video records: ', numVideos)</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      Youtube.searchVideos({</code> <code class="codebcxspmiddle">        query: 'grumpy cat',</code> <code class="codebcxspmiddle">apiKey: sails.config.google.apiKey,   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        limit: 15,</code> <code class="codebcxspmiddle">      }).exec({</code> <code class="codebcxspmiddle">      // An unexpected error occurred.</code> <code class="codebcxspmiddle">      error: function(err) {</code> <code class="codebcxspmiddle">        console.log('an error: ', err);</code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">      success: function(result) {</code> <code class="codebcxspmiddle">        console.log('the result: ', result);</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">}</code> <code class="codebcxspmiddle">});</code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  The API key that was provided as a custom configuration setting.</p>
+
+    <p class="body">Here’s an extra credit question: What would happen if we started the Sails server now? If you’re thinking that Sails would refuse to lift, because there’s a bug in our code, then you’re right! Take a close look at the code in listing 5.5.  Notice how we don’t call our own <span><code class="codeintext">cb()</code></span> (the callback from the bootstrap function) in either <span><code class="codeintext">success</code></span>or <span><code class="codeintext">error</code></span>?  Remember, the bootstrap function in Sails is asynchronous, so we <span class="italics">have to</span> call its callback when we’re finished.  Now that we’re <span class="italics">using</span> asynchronous functions (<span><code class="codeintext">Video.count()</code></span> and <span><code class="codeintext">YouTube.searchVideos()</code></span>), we aren’t finished until the last of <span class="italics">their</span> callbacks fire.</p>
+
+    <p class="body">If that doesn’t quite make sense yet, don’t worry.  We’ll show more examples of asynchronous flow control again and again throughout the rest of the book.  To start with, let’s take a closer look at machine exits.</p>
+
+    <p class="body"> </p>
+
+    <h3 class="head1" id="heading_id_17">5.4.8   Understanding machine exits</h3>
+
+    <p class="body">Exits are declarations of all of the possible outcomes of executing some code. If you’re familiar with a strongly typed language like Java, this might sound familiar.  Machines in JavaScript declare exits for the same reasons that methods in Java declare the exceptions they might throw, and the type of data they return, if any. The <span class="italics">success</span> exit of a machine is the “normal” scenario—the scenario where everything works and it returns normally.  The <span class="italics">error</span> exit of a machine is a sort of catchall.  It means something miscellaneous went wrong—whether it was the caller passing in invalid data, or an unhandled exception in the implementation of the machine.</p>
+
+    <p class="body">Every machine has a success exit and an error exit, and in many cases, these are the <span class="italics">only</span> exits that a machine exposes.  As you can see in figure 5.9, the <span><code class="codeintext">.searchVideos()</code></span> machine has only these two exits: success and error,.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.9 Node-Machine.org provides details about the exits of each machine in every open-source machinepack on NPM.</p>
+
+    <p class="body">On closer examination, we can see that the success exit provides an example of the data we’ll get back from the machine. In this case we’ll get an array of dictionaries, each of which contains five properties – <span><code class="codeintext">id</code></span><span class="italics">,</span> <span><code class="codeintext">url</code></span><span class="italics">,</span> <span><code class="codeintext">title</code></span><span class="italics">,</span> <span><code class="codeintext">description</code></span> <span class="italics">and</span> <span><code class="codeintext">publishedAt</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Machines use a special syntax called <span class="italics1">RTTC exemplar notation</span> to represent data types.  This ensures that every input and exit provides some sort of example, instead of just stating the expected or guaranteed data type.  In most cases, reading exemplar notation is obvious.  But if you see syntax you’re not sure about, see <a class="pcalibre8 pcalibre4 pcalibre5" href="http://github.com/node-machine/rttc">http://github.com/node-machine/rttc</a> for details.</p>
+    </div>
+
+    <p class="body">Now that we know the potential exits for the <span><code class="codeintext">.searchVideos()</code></span>machine, and we’re aware of what data we can expect, lets apply that knowledge in our code.</p>
+
+    <h3 class="head1" id="heading_id_18">5.4.9   Using callbacks</h3>
+
+    <p class="body">We’ll first want to handle the error exit. Most of the time this involves simply passing through the error to our outlet (the bootstrap function’s callback, <span><code class="codeintext">cb()</code></span>). To handle the success exit, we’ll log the result to the console, then pass control back to Sails by calling our outlet with no arguments. Open <span><code class="codeintext">brushfire/config/bootstrap.js</code></span> in Sublime and add the following to the machine exit in listing 5.6.</p>
+
+    <p class="codelistingcaption">Listing 5.6 Handling the exits for the <span><code class="codeintext1">.searchVideos</code></span> machine</p><code class="codebcxspfirst">var Youtube = require('machinepack-youtube');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports.bootstrap = function(cb) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">    Youtube.searchVideos({</code> <code class="codebcxspmiddle">      query: 'grumpy cat',</code> <code class="codebcxspmiddle">      apiKey: 'PLACE YOUR GOOGLE API KEY HERE',</code> <code class="codebcxspmiddle">      limit: 15,</code> <code class="codebcxspmiddle">    }).exec({</code> <code class="codebcxspmiddle">      error: function(err) {</code> <code class="codebcxspmiddle">        console.log('an error: ', err);         <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        return cb(err);</code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">      success: function(foundVideos) {          <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">console.log('the foundVideos: ', foundVideos);  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        return cb();</code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Pass <span><code class="codeintext1">err</code></span> as an argument to the callback</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  change the default <span><code class="codeintext1">result</code></span> to more descriptive <span><code class="codeintext1">foundVideos</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸   </span>Log the <span><code class="codeintext1">foundVideos</code></span> and then pass control back via the callback</p>
+
+    <p class="body">Next, restart Sails using <span><code class="codeintext">sails lift</code></span>. If  <span><code class="codeintext">Video.count()</code></span>doesn’t find any existing records, then the <span><code class="codeintext">.searchVideos()</code></span>machine will run and return a list of videos from the YouTube API. Head over to the terminal window and you should see that it logged an array of fifteen YouTube cat videos similar to listing 5.7.</p>
+
+    <p class="codelistingcaption">Listing 5.7 The <span><code class="codeintext1">foundVideos</code></span> from the <span><code class="codeintext1">.searchVideos()</code></span> machine</p><code class="codebcxspfirst">[</code> <code class="codebcxspmiddle">{</code> <code class="codebcxspmiddle">id: 'INscMGmhmX4',</code> <code class="codebcxspmiddle">url: 'https://youtube.com/watch?v=INscMGmhmX4',</code> <code class="codebcxspmiddle">title: 'The Original Grumpy Cat!',</code> <code class="codebcxspmiddle">description: 'http://grumpycats.com http://twitter.com/realgrumpycat http://facebook.com/theofficialgrumpycat http://instagram.com/realgrumpycat ...',</code> <code class="codebcxspmiddle">publishedAt: '2012-09-25T14:36:51.000Z'</code> <code class="codebcxspmiddle">},</code> <code class="codebcxspmiddle">  {</code> <code class="codebcxspmiddle">id: 'qc5PgtdcUBU',</code> <code class="codebcxspmiddle">    url: 'https://youtube.com/watch?v=qc5PgtdcUBU',</code> <code class="codebcxspmiddle">    title: 'Happiness Finds Grumpy Cat',</code> <code class="codebcxspmiddle">    description: 'Grumpy Cat will do anything to avoid Happiness. Friskies Grumpy Cat Variety Pack, available at PetSmart stores. Go get it! Subscribe to the Friskies YouTube ...',</code> <code class="codebcxspmiddle">    publishedAt: '2015-08-04T18:00:19.000Z'</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle">},</code><code class="codebcxsplast">...</code>
+
+    <p class="body">We could just save this fresh video data in our model right now. But the format of the data doesn’t quite match what our front end is expecting. The front end expects an array of dictionaries with a <span><code class="codeintext">src</code></span> and <span><code class="codeintext">title</code></span> property. But YouTube uses <span><code class="codeintext">url</code></span> instead of <span><code class="codeintext">src</code></span>—plus there are a bunch of extra properties that we don’t need right now.  We’ll fix that by marshaling the data in the next section.</p>
+
+    <h3 class="head1" id="heading_id_19">5.4.10   Marshaling data</h3>
+
+    <p class="body">Figure 5.10 compares the data received from running the <span><code class="codeintext">.searchVideos()</code></span> machine compared to what the format the front end is expecting.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.10  The <span class="codeannotationcueballs">① </span>  data returned by the YouTube API is not in the format that the <span class="codeannotationcueballs">② </span>  front-end requires.</p>
+
+    <p class="body">The differences are minor, but unless the data is exactly the same, our front-end won’t work. Luckily, Sails and Node.js use JavaScript, a language we’re already familiar with.  We can simply write code to transform the data from YouTube into the exact format our front-end is expecting. This way, our front-end doesn’t need to change.</p>
+
+    <p class="body">We’ve already used the <span><code class="codeintext">lodash</code></span> library on the front-end in chapter 3. The methods in <span><code class="codeintext">lodash</code></span> are so useful that, by default, Sails exposes it as a global variable automatically. </p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Like all global variables exposed by Sails, this can be disabled.  This usually only comes up if you want to use a specific version of Lodash different from the one used by Sails.</p>
+    </div>
+
+    <p class="body">So let’s use Lodash to marshal the data from YouTube. From Sublime, open <span><code class="codeintext">brushfire/config/bootstrap.js</code></span> and add the following code within the <span><code class="codeintext">success</code></span> callback of the <span><code class="codeintext">.searchVideos()</code></span> machine.</p>
+
+    <p class="codelistingcaption">Listing 5.8  Marshalling the returned data from the <span><code class="codeintext1">.searchVideos()</code></span> machine</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">success: function(foundVideos) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        _.each(foundVideos, function(video) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">          video.src = 'https://www.youtube.com/embed/' + video.id; <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">          delete video.description;            <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">          delete video.publishedAt;            <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">          delete video.id;                     <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">          delete video.url;                    <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        console.log(foundVideos);              <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">        return cb();                           <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Iterate over each video using <span><code class="codeintext1">_.each()</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  For each video, modify the <span><code class="codeintext1">src</code></span> so that it uses an appropriately formatted URL.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  Delete the properties we don’t need.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  Log the newly marshaled videos to the terminal..</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺   </span>Execute the bootstrap’s callback, returning control to Sails.</p>
+
+    <p class="body">The <span><code class="codeintext">title</code></span> property can remain as-is because it conforms to what the front-end expects. Next, we’ll add the <span><code class="codeintext">src</code></span> property combining a base URL with the <span><code class="codeintext">id</code></span>. We’ll then remove the <span><code class="codeintext">description</code></span>, <span><code class="codeintext">publishedAt</code></span>, <span><code class="codeintext">id</code></span> and <span><code class="codeintext">url.</code></span> Once again make sure you don’t have any records in the <span><code class="codeintext">Video model</code></span>. Restart Sails using <span><code class="codeintext">sails lift</code></span>. Returning to the terminal window you should see the transformed records displayed in the console. An example of one of a couple of the transformed records is included in listing 5.9.</p>
+
+    <p class="codelistingcaption">Listing 5.9 The <span><code class="codeintext1">transformed foundVideo records</code></span></p><code class="codebcxspfirst">[</code> <code class="codebcxspmiddle">{</code> <code class="codebcxspmiddle">title: 'The Original Grumpy Cat!',</code> <code class="codebcxspmiddle">  src: 'https://www.youtube.com/embed/INscMGmhmX4' },</code> <code class="codebcxspmiddle">  {</code> <code class="codebcxspmiddle">title: 'Happiness Finds Grumpy Cat',</code> <code class="codebcxspmiddle">    src: 'https://www.youtube.com/embed/qc5PgtdcUBU' },</code> <code class="codebcxspmiddle">  ...</code><code class="codebcxsplast">]</code>
+
+    <p class="body">So, we can see that marshaling code has transformed the data from the raw format returned from the YouTube API into a format our front end expects and can digest. We can now move to the final requirement -- creating records in the <span><code class="codeintext">Video model</code></span> using the newly transformed data.</p>
+
+    <h2 class="head" id="heading_id_20">5.5   Creating multiple records</h2>
+
+    <p class="body">Now that we have the data from YouTube transformed into the correct format for our application, adding it to the database through the model is trivial. Open <span><code class="codeintext">brushfire/config/bootstrap.js</code></span> file in Sublime and add the following code in listing 5.10.</p>
+
+    <p class="codelistingcaption">Listing 5.10  Creating multiple records in the database.</p><code class="codebcxspfirst">// In bootstrap.js:</code> <code class="codebcxspmiddle">success: function(foundVideos) {</code> <code class="codebcxspmiddle"> ...</code> <code class="codebcxspmiddle">Video.create(foundVideos).exec(function(err, videoRecordsCreated) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">if (err) {     <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">return cb(err);</code> <code class="codebcxspmiddle"> }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle"> console.log(videoRecordsCreated);  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle"> return cb();  <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">});</code> <code class="codebcxspmiddle">}</code><code class="codebcxsplast"> </code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Run <span><code class="codeintext1">Video.create()</code></span>and pass in <span><code class="codeintext1">foundVideos</code></span> array as an argument</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  When we hear back, if an error occurred, pass it into our outlet and bail.  This tells Sails to abort the lifting process.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  Log the array “returned” by Video.create<span><code class="codeintext1">()</code></span>.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span>  Call our outlet to return control to Sails</p>
+
+    <p class="body">The <span><code class="codeintext">Video.create()</code></span>model method is asynchronous, just like <span><code class="codeintext">Video.count()</code></span>. We’ll pass the transformed <span><code class="codeintext">foundVideos</code></span> array as its argument, and then, like <span><code class="codeintext">Video.count()</code></span> method, we’ll pass an anonymous function to <span><code class="codeintext">.exec()</code></span> which will bind it as a callback to the <span><code class="codeintext">Video.create()</code></span> method. The callback will be triggered when <span><code class="codeintext">Video.create()</code></span> has completed its attempt to create the records. If it’s unsuccessful, we’ll return an error as an argument via <span><code class="codeintext">err</code></span> to the callback and return control back to Sails. If it’s successful, we’ll log the results and return control back to Sails.</p>
+
+    <p class="body">For the final time make sure there are no records in the <span><code class="codeintext">Video</code></span> model. Restart Sails using <span><code class="codeintext">sails lift</code></span> and you should see the records that were created logged to the console. A couple of the Video model records are displayed in listing 5.11.</p>
+
+    <p class="codelistingcaption">Listing 5.11 The newly-created video records</p><code class="codebcxspfirst">[</code> <code class="codebcxspmiddle">{</code> <code class="codebcxspmiddle">title: 'The Original Grumpy Cat!',</code> <code class="codebcxspmiddle">    src: 'https://www.youtube.com/embed/INscMGmhmX4',</code> <code class="codebcxspmiddle">    createdAt: '2016-03-04T01:13:49.417Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-04T01:13:49.417Z',</code> <code class="codebcxspmiddle">    id: 1 },</code> <code class="codebcxspmiddle">  { title: 'Happiness Finds Grumpy Cat',</code> <code class="codebcxspmiddle">    src: 'https://www.youtube.com/embed/qc5PgtdcUBU',</code> <code class="codebcxspmiddle">    createdAt: '2016-03-04T01:13:49.418Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-04T01:13:49.418Z',</code> <code class="codebcxspmiddle">    id: 2 },</code> <code class="codebcxspmiddle">   ...</code><code class="codebcxsplast">]</code>
+
+    <p class="body">Next, let’s see our newly created records in action via our front end. Navigate your browser to localhost:1337/videos and your browser should look similar to figure 5.11.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/05_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 5.11  The transformed data from YouTube, now safely stored as new<span><code class="codeintext1">Video</code></span> records and displayed by the front end.</p>
+
+    <h2 class="head" id="heading_id_21">5.6   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   Writing custom back-end code in Sails.js isn’t all that different than the JavaScript you’re used to.  But since you call and implement asynchronous functions more often than you might be used to, there are some new rules to remember.</p>
+
+    <p class="listbulletcxspmiddle">·   If you are implementing an asynchronous function, then instead of returning, or throwing an error, trigger your callback. (For example, <span><code class="codeintext">cb().</code></span>)</p>
+
+    <p class="listbulletcxspmiddle">·   If you are calling an asynchronous function within some other code: Instead of expecting the asynchronous instruction to return data or wrapping it in a try/catch block, attach callback function(s) to receive either the result or the error.</p>
+
+    <p class="listbulletcxspmiddle">·   Sails allows you to configure a bootstrap function which executes every time you lift your app; specifically, just before the Sails server starts up.  This is particularly useful for seeding initial records in your database.</p>
+
+    <p class="listbulletcxspmiddle">·   You can <span><code class="codeintext">require()</code></span> and use any Node module in your Sails app, including any of the over 350,000 open-source packages available on NPM.  But since NPM packages often vary widely in their usage, it’s helpful to rely on machine packs whenever possible. Machine packs are standardized NPM packages that provide a systematic, reliable way to organize and use Node.js modules.  Like the other conventions we’ve looked at so far, machine packs are another way to save time and avoid technical debt by enforcing consistency across your code base.</p>
+
+    <p class="listbulletcxspmiddle">·   A special file in your app’s <span><code class="codeintext">config/</code></span> folder, called<span><code class="codeintext">local.js</code></span>, allows you to set custom configuration without checking it in to version control.  This is particularly useful for plugging in sensitive credentials, like API keys.</p>
+
+    <p class="listbulletcxsplast">·   By default, model methods are automatically exposed on global variables that correspond with the names of each of your models.  This allows you to fetch, analyze, and manipulate records in your database, from custom code anywhere in your application.</p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,329 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">2    First Steps</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   Installing the necessary components of the technical stack</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Setting up the tools of your development environment</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Creating your first application</p>
+
+    <p class="cosummarybulletcxsplast">·   Cloning your first repository</p>
+
+    <p class="body">To get things started we’ll setup our development environment. This will consist of installing the necessary tools and underlying software to build Sails applications. We’ll then generate a Sails app to apply what we’ve learned in chapter 1. This chapter will also give us an opportunity to demystify the process of back end app creation and dismiss the idea that it has to be a long, drawn out process. This first application we’ll generate will be disposable. Yep, we said it, disposable. But that’s not a bad thing. It’s actually a feature. Sails is all about rapid development -- the ability to have an idea or concept, act on it immediately, create the app, and explore, your idea. The bottom line is, don’t be afraid to experiment. Nothing is wasted. Just relax, explore and have some fun!</p>
+
+    <h2 class="head" id="heading_id_3">2.1   Tools of the trade</h2>
+
+    <p class="body">Fortunately, developing modern web back-end applications doesn’t require a lot of tools. In fact, you just need:</p>
+
+    <p class="listbulletcxspfirst">·   Node.js</p>
+
+    <p class="listbulletcxspmiddle">·   Sails.js</p>
+
+    <p class="listbulletcxspmiddle">·   a text editor/integrated development environment (IDE)</p>
+
+    <p class="listbulletcxsplast">·   a command-line terminal (shell)</p>
+
+    <p class="body">Once installed the underlying applications require very little in the way of configuration. So let’s get busy.</p>
+
+    <h3 class="head1" id="heading_id_4">2.1.1   Mac, Windows, and Linux…oh my!</h3>
+
+    <p class="body">The decision of developing your application on a particular operating system is a matter of personal choice. We’re using OS X El Capitanon a MacBook. Most of the examples will be in this context, however, if you’re a Windows or Linux shop they’ll work just as well.</p>
+
+    <h3 class="head1" id="heading_id_5">2.1.2   Choosing a text editor versus an IDE</h3>
+
+    <p class="body">A text editor is a program that allows you to create and edit files that are stored as plain text. A traditional word processor like Word or Google Docs adds special formatting characters that are not displayed but stored when the file is saved. These special characters can interfere with the computer’s ability to interpret your source code. Therefore it is important that any text editor you decide to use stores its files as plain text.</p>
+
+    <p class="body">Like your choice of operating system, the choice of a text editor and/or IDE really depends upon your coding style. We use <span class="italics">Sublime Text</span> but there are many options:</p>
+
+    <p class="listbulletcxspfirst">·   Text Editors: Sublime Text, Textmate, Notepad++, Vim, Atom, Emacs</p>
+
+    <p class="listbulletcxsplast">·   IDEs: WebStorm, KomodoIDE, Visual Studio, Aptana Studio, Kodingen (cloud-based)</p>
+
+    <p class="body">So what's the difference between a text editor and an IDE? Traditionally, an IDE will have additional tools to automate your coding process like code completion, integration with version control, and added debugging. Over the last several years the lines between a text editor and an IDE have blurred.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span class="italics1">Bottom-line:</span> If you’re not already hooked on a particular editor, start with Sublime Text (there's a free trial) and then experiment with other choices until you find something that best fits your coding style.</p>
+    </div>
+
+    <h3 class="head1" id="heading_id_6">2.1.3   “Must have” tools</h3>
+
+    <p class="body">In the OSX world, Shift It has become an essential part of our development workflow. Through the use of hotkeys, you can control the placement of windows in your text editor, browser, or any other application. For example, suppose we want to compare two different files in different projects in Sublime Text. We can quickly use the hot-key ctrl-option-<span class="cambriamathintext">⌘-↑</span> to position the first window in the upper half of the screen and ctrl-option-<span class="cambriamathintext">⌘-↓</span> to position the other window in the lower half of the screen. Now these files are positioned so we can easily compare the code. See Figure 2.1.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.1  Comparing the code of two different projects in Sublime Text with ShiftIt.</p>
+
+    <p class="body">You will constantly move code windows and browser windows around during development and having ShiftIt makes this process a breeze. You can find ShiftIt at <a class="pcalibre8 pcalibre5" href="https://github.com/fikovnik/ShiftIt/releases">https://github.com/fikovnik/ShiftIt/releases</a>.</p>
+
+    <p class="body">Another indispensible tool we use on a daily basis is Postman. Postman makes it super easy to test your back-end endpoints via a simple user interface. In addition, Postman allows you to group often used requests into collections that can be accessed at any time. Collections are not just stored but also synced in real-time. If you work on multiple machines, you can use your Postman account to keep them in sync. Having an account allows you to manage collection links. You can upload collections and get a link that you can give out to others. Postman comes in two versions—a Chrome extension and an OS X installed application. We use the installed application version in the examples in this book. The Chrome extension mirrors all of the features that we’ll use in this book with the installed version. To install Postman navigate your browser to <a class="pcalibre8 pcalibre5" href="https://www.getpostman.com/apps">https://www.getpostman.com/apps</a>. We’ll begin to use Postman later in this chapter.</p>
+
+    <h3 class="head1" id="heading_id_7">2.1.4   Whoa, command-line? Terminal? W-what?</h3>
+
+    <p class="body">For those not familiar with the <span class="italics">command-line</span> <span class="italics">terminal</span> (commonly referred to as the Unix shell), this next section is for you. The <span class="italics">terminal</span> is a magical place where you can issue commands to your machine without the clutter of a graphical user interface. As a developer, a large portion of our lives is spent in the terminal. I realize that may sound depressing but you'll soon discover how productive you can be with this essential tool and wonder how you existed without it.</p>
+
+    <p class="head2">Where is the terminal?</p>
+
+    <p class="body">On Mac (OSX v10.11.2) you can find the terminal in <span><code class="codeintext">Applications/Utilities/Terminal.app</code></span>. When you first launch the terminal you'll see something like what is shown in figure 2.2.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.2  The <span class="codeannotationcueballs">① </span>  terminal consists of one or more <span class="codeannotationcueballs">② </span>  windows or tabs. Each window or tab contains a <span class="codeannotationcueballs">③ </span>  command-line where you type commands.</p>
+
+    <p class="body">In figure 2.2, the <span class="codeannotationcueballs">① </span>  terminal is the application we launched. You can open multiple <span class="codeannotationcueballs">② </span>  <span class="italics">windows</span> or tabs from the terminal, which gives you access to the <span class="codeannotationcueballs">③ </span> <span class="italics">command-line</span> where you issue commands. Note that your command-line prompt will likely look different than what’s pictured in figure 2.2.</p>
+
+    <h3 class="head1" id="heading_id_8">2.1.5   Installing Node</h3>
+
+    <p class="body">The best way to install Node for OS X or Windows is to use one of the installers shown in figure 2.3.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.3  The Node installation page for <span class="codeannotationcueballs">① </span>  windows, <span class="codeannotationcueballs">② </span>  OS X and Linux operating systems.</p>
+
+    <p class="body">If you're partial to Linux or SunOS, you can find the binaries for those operating systems as well. Once the installation is complete, open a terminal window and type:</p><code class="codeb">~ $ node –v</code>
+
+    <p class="body">This command will serve two purposes: verify that Node is installed as well as provide the version of Node. Now you’re ready to install Sails.</p>
+
+    <h3 class="head1" id="heading_id_9">2.1.6   Installing Sails</h3>
+
+    <p class="body">We use the Node package manager (npm) to install the Sails framework. The Node package manager (npm) was installed when we installed Node and is a way for developers to share and reuse code. Node applications are made up of these packages (or modules) that are stored in various JavaScript files. We can setup a list of files, called dependencies, that we rely upon for a given module in a file named <span><code class="codeintext">package.json</code></span>. The list of dependencies in the <span><code class="codeintext">package.json</code></span> will be used by npm to install the necessary files and folders. We’ll explore npm in more detail in the next section. Let's go back to <span class="italics">the</span> terminal window and install Sails from the command-line by typing:</p><code class="codeb">~ $ npm install sails –global</code>
+
+    <div class="sgc3">
+      <p class="sidebarc">You may have to use <span><code class="codeintext1">sudo npm install sails –g</code></span> where <span><code class="codeintext1">sudo</code></span> refers to <span class="italics1">super user</span>. The user you normally login as might not have the rights necessary to install something into a root folder. Using <span><code class="codeintext1">sudo</code></span> allows you to temporarily take on super user rights during installation. In Windows you may have to open the command prompt as a systems administrator.</p>
+
+      <p class="sidebarc">The <span><code class="codeintext1">–g</code></span> flag means that npm will install Sails globally, allowing you to generate Sails projects from anywhere in your file system.</p>
+    </div>
+
+    <p class="body">At this point the many files that make up Sails are downloaded and installed on your machine. With one simple command, <span><code class="codeintext">npm install Sails –g</code></span>, the package manager determines all of the necessary files to install Sails, finds them on the npm registry--<span class="italics">npmjs.org</span>, and installs them on your device.</p>
+
+    <h2 class="head" id="heading_id_10">2.2   How code is organized in Node.js</h2>
+
+    <p class="body">It is difficult to start a discussion about Node modules, packages, dependencies, and npm because all of the concepts are dependent on each other. The Node package manager (npm) makes it easy to aggregate, share and reuse existing JavaScript. The Node package manager enables you to aggregate JavaScript into <span class="italics">modules,</span> which expose functions and properties you can easily install and use in your project. In fact, Sails is itself an npm package. Hundreds of thousands of packages are warehoused on registries like <a class="pcalibre8 pcalibre5" href="https://www.npmjs.com/">https://www.npmjs.com/</a> and available for inclusion in your apps. Even better, once you install a package into your project, npm makes it easy to check for updates and install any dependencies that have changed. npm consists of three different technologies depicted in figure 2.4.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.4  npm consists of <span class="codeannotationcueballs">① </span>  a registry with hundreds of thousands of packages, <span class="codeannotationcueballs">② </span>  a command-line-interface application, and <span class="codeannotationcueballs">③ </span>  individual packages.</p>
+
+    <h3 class="head1" id="heading_id_11">2.2.1   What is a Node module?</h3>
+
+    <p class="body">A Node module aggregates related JavaScript code into a single unit. Technically, a module is just a file that “exports” something.  A Node.js file that does not export anything is usually called a <span class="italics">script</span>.  An NPM <span class="italics">package</span> is a directory of files that you install from NPM. But because NPM installs packages into a folder named <span><code class="codeintext">node_modules/</code></span>, many Node.js developers (including us, and Isaac, the creator of NPM) have become accustomed to using the terms “NPM package”, “NPM module”, “package”, and “module” interchangeably.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">In case you couldn’t guess, we’ll probably use the terms <span class="italics1">package</span> and <span class="italics1">module</span> interchangeably too.</p>
+    </div>
+
+    <p class="body">Node modules make source code reusable. Instead of taking a chunk of JavaScript and copying it from one project to another, you can instead put the code into a module and then require that module from another file. For the most part we’ll be consumers of modules in this book. Still, to really understand this concept, let’s look at a simple module we built. Listing 2.1 shows the source code of our module.</p>
+
+    <p class="codelistingcaption">Listing 2.1  the-ultimate-question Node module</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  answer: function() {</code> <code class="codebcxspmiddle">    return 42;</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  question: function() {</code> <code class="codebcxspmiddle">    return 'Sorry, Earth was destroyed before I was able to calculate the question.';</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="body">Instead of getting caught up in the details, this file named <span><code class="codeintext">index.js</code></span> creates a dictionary with two methods, <span><code class="codeintext">answer</code></span> and <span><code class="codeintext">question</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Remember our definition of a dictionary refers to the <span class="italics1">object</span> that’s declared using <span><code class="codeintext1">{}</code></span>curly braces<span class="italics1">.</span> For example: <span><code class="codeintext1">{ foo: 'bar' }</code></span> is a dictionary.</p>
+    </div>
+
+    <p class="body">There’s one other file in the module folder shown in listing 2.2. named <span><code class="codeintext">package.json</code></span>.</p>
+
+    <p class="codelistingcaption">Listing 2.2  The package.json file of the-ultimate-queestion module</p><code class="codebcxspfirst">{</code> <code class="codebcxspmiddle">  "name": "the-ultimate-question",</code> <code class="codebcxspmiddle">  "version": "1.0.0",</code> <code class="codebcxspmiddle">  "description": "A method to determine the meaning of life",</code> <code class="codebcxspmiddle">  "main": "index.js",</code> <code class="codebcxspmiddle">  "author": {</code> <code class="codebcxspmiddle">    "name": "Irl Nathan"</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  "license": "MIT"</code><code class="codebcxsplast">}</code>
+
+    <p class="body">The <span><code class="codeintext">package.json</code></span> file contains information about the module like name, version, author, and licensing. So this awe-inspiring module consists of two files—<span><code class="codeintext">index.js</code></span> and <span><code class="codeintext">package.json</code></span>. The repository can be found at: <a class="pcalibre8 pcalibre5" href="https://github.com/irlnathan/the-ultimate-question">https://github.com/irlnathan/the-ultimate-question</a>. Publishing a module goes beyond the scope of the book, but all it would take to publish it to the npmjs.org registry is issuing the command <span><code class="codeintext">npm publish</code></span> at the root of the module. Now let’s use our module in a Sails project.</p>
+
+    <h3 class="head1" id="heading_id_12">2.2.2   Creating our first Sails application</h3>
+
+    <p class="body">Let’s create our first application in Sails. Head back to the terminal window and from the <span class="italics">command line</span> type:</p><code class="codebcxspfirst">~ $ sails new firstApp<span class="codeinmincho">↵</span></code> <code class="codebcxsplast">info: Created a new Sails app `firstApp`!</code>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note that in the above example we displayed what you need to type, <span><code class="codeintext1">sails new firstApp</code></span> as well as what was returned <span><code class="codeintext1">info: Created a new Sails app `firstApp`!.</code></span></p>
+    </div>
+
+    <p class="body">The <span><code class="codeintext">new</code></span> command is part of the Sails command-line interface. We'll introduce other commands like <span><code class="codeintext">sails generate</code></span> in the next section. The command <span><code class="codeintext">sails new</code></span> generates the file and folder infrastructure of a boilerplate Sails application. Automating repetitive tasks like generating boilerplate code in your development workflow is a core feature of using the Sails framework.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note, earlier we installed the Sails framework globally on your device<span class="italics1">.</span> Each time you create a new Sails project, Sails installs itself as a dependency of your project: see figure 2.5.</p>
+    </div>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.5  The <span class="codeannotationcueballs">① </span>  globally installed version of Sails generated a new <span class="codeannotationcueballs">② </span>  Sails application and installed <span class="codeannotationcueballs">③ </span>  itself as a dependency of the new project.</p>
+
+    <p class="body">Your new project is completely self-contained and doesn’t rely upon you packaging up some other source files in addition to your project folder in order to deploy it. We can see the sails dependency by looking at <span class="italics">firstApp</span> <span><code class="codeintext">package.json</code></span> file in listing 2.3.</p>
+
+    <p class="codelistingcaption">Listing 2.3  firstApp’s <span><code class="codeintext1">package.json</code></span>  file</p><code class="codebcxspfirst">{</code> <code class="codebcxspmiddle">  "name": "firstApp",</code> <code class="codebcxspmiddle">  "private": true,</code> <code class="codebcxspmiddle">  "version": "0.0.0",</code> <code class="codebcxspmiddle">  "description": "a Sails application",</code> <code class="codebcxspmiddle">  "keywords": [],</code> <code class="codebcxspmiddle">  "dependencies": {</code> <code class="codebcxspmiddle">    "ejs": "2.3.4",</code> <code class="codebcxspmiddle">    "grunt": "0.4.5",</code> <code class="codebcxspmiddle">    "grunt-contrib-clean": "0.6.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-coffee": "0.13.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-concat": "0.5.1",</code> <code class="codebcxspmiddle">    "grunt-contrib-copy": "0.5.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-cssmin": "0.9.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-jst": "0.6.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-less": "1.1.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-uglify": "0.7.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-watch": "0.5.3",</code> <code class="codebcxspmiddle">    "grunt-sails-linker": "~0.10.1",</code> <code class="codebcxspmiddle">    "grunt-sync": "0.2.4",</code> <code class="codebcxspmiddle">    "include-all": "~0.1.6",</code> <code class="codebcxspmiddle">    "rc": "1.0.1",</code> <code class="codebcxspmiddle">    "sails": "~0.12.1",  <span class="codeannotationcueballs1">❶ </span>  </code> <code class="codebcxspmiddle">    "sails-disk": "~0.10.9"</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  Sails is a dependency of firstApp</p>
+
+    <p class="body">What is the impact of a dependency and how do we use a third party module? Glad you asked. Let’s put <span><code class="codeintext">the-ultimate-question</code></span> module to use in our new app.</p>
+
+    <h3 class="head1" id="heading_id_13">2.2.3   Using a module from NPM</h3>
+
+    <p class="body">In Chapter 1 we learned that a user-agent could make a request that triggers a route, that executes a controller action. The controller action can do stuff and then ultimately respond back to the requesting user-agent. Most of the book will expand on this process of satisfying requests with controller actions.</p>
+
+    <p class="body">Now that we have a project, go to the command line, make sure you’re in the root of the project and type:</p><code class="codebcxspfirst">~ $ cd firstApp<span class="codeinmincho">↵</span></code> <code class="codebcxsplast">~/firstApp $</code>
+
+    <p class="body">Next let’s install <span><code class="codeintext">the-ultimate-question</code></span> module into the <span class="italics">firstApp</span> project by typing:</p><code class="codebcxspfirst">~/firstApp $ npm install the-ultimate-question –save<span class="codeinmincho">↵</span></code> <code class="codebcxsplast">the-ultimate-question@1.0.0 node_modules/the-ultimate-question</code>
+
+    <p class="body">You can see the module as a dependency, by reopening the <span><code class="codeintext">firstApp/package.json</code></span> file in Sublime similar to listing 2.4.</p>
+
+    <p class="codelistingcaption">Listing 2.4  firstApp’s package.json with the-ultimate-question module as a dependency</p><code class="codebcxspfirst">{</code> <code class="codebcxspmiddle">  "name": "firstApp",</code> <code class="codebcxspmiddle">  "private": true,</code> <code class="codebcxspmiddle">  "version": "0.0.0",</code> <code class="codebcxspmiddle">  "description": "a Sails application",</code> <code class="codebcxspmiddle">  "keywords": [],</code> <code class="codebcxspmiddle">  "dependencies": {</code> <code class="codebcxspmiddle">    "ejs": "2.3.4",</code> <code class="codebcxspmiddle">    "grunt": "0.4.5",</code> <code class="codebcxspmiddle">    "grunt-contrib-clean": "0.6.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-coffee": "0.13.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-concat": "0.5.1",</code> <code class="codebcxspmiddle">    "grunt-contrib-copy": "0.5.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-cssmin": "0.9.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-jst": "0.6.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-less": "1.1.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-uglify": "0.7.0",</code> <code class="codebcxspmiddle">    "grunt-contrib-watch": "0.5.3",</code> <code class="codebcxspmiddle">    "grunt-sails-linker": "~0.10.1",</code> <code class="codebcxspmiddle">    "grunt-sync": "0.2.4",</code> <code class="codebcxspmiddle">    "include-all": "~0.1.6",</code> <code class="codebcxspmiddle">    "rc": "1.0.1",</code> <code class="codebcxspmiddle">    "sails": "~0.12.1",</code> <code class="codebcxspmiddle">    "sails-disk": "~0.10.9",</code> <code class="codebcxspmiddle">    "the-ultimate-question": "^1.0.0" <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  the-ultimate-module is now a dependency of firstApp.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">By making the module as a dependency we can copy the project without the node_modules folder and later install all the necessary dependencies by using <span><code class="codeintext1">npm install</code></span>.</p>
+    </div>
+
+    <p class="body">Now let’s generate a controller by typing:</p><code class="codebcxspfirst">~/firstApp $ sails generate controller life<span class="codeinmincho">↵</span></code> <code class="codebcxsplast">info: Created a new controller ("life") at api/controllers/LifeController.js!</code>
+
+    <p class="body">In Sublime, open <span><code class="codeintext">firstApp/api/controllers/LifeController.js</code></span> and add the following code in listing 2.5.</p>
+
+    <p class="codelistingcaption">Listing 2.5 Adding an action to the Life controller</p><code class="codebcxspfirst">var Meaning = require('the-ultimate-question'); <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  purpose: function(req, res) {  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    return res.json({  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">      answer: Meaning.answer(),</code> <code class="codebcxspmiddle">      question: Meaning.question()</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  using <span><code class="codeintext1">require</code></span> provides access to the methods in the module</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  the action is just a JavaScript function that’s triggered by the route</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span>  we’ll respond by executing the two module methods and returning the results as JSON</p>
+
+    <p class="body">Okay, let’s see all of this in action.</p>
+
+    <h3 class="head1" id="heading_id_14">2.2.4   Starting the Sails server</h3>
+
+    <p class="body">To start the <span class="italics">Sails server</span> head back to the terminal window and type:</p><code class="codeb">~/firstApp $ sails lift</code>
+
+    <p class="body">Your <span class="italics">terminal window</span> should look similar to figure 2.6.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.6  The Sails server up and running.</p>
+
+    <p class="body">The Sails server is now “listening” for requests. Navigate your browser to localhost:1337:/life/purpose and your browser should look similar to figure 2.7.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.7 The JSON response from the <span><code class="codeintext1">purpose</code></span> action.</p>
+
+    <p class="body">We’re also using the Chrome extension JSON View, which adds syntax highlighting. Figure 2.8 provides an overall illustration of what just happened.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.8  An overview of the <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">/life/purpose</code></span>.</p>
+
+    <p class="body">To recap: Your browser made a <span class="codeannotationcueballs">① </span> <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/life/purpose</code></span> on your behalf, which matched <span class="codeannotationcueballs">② </span>  a blueprint route and triggered <span class="codeannotationcueballs">③ </span>  the <span><code class="codeintext">purpose</code></span> action in the <span><code class="codeintext">LifeController</code></span>. The <span><code class="codeintext">purpose</code></span> action which is a JavaScript function, gained access to our previously installed <span><code class="codeintext">the-ultimate-question</code></span> module by using <span class="codeannotationcueballs">④ </span>  the <span><code class="codeintext">require</code></span> method and assigning the results to a dictionary we imported as <span><code class="codeintext">Meaning</code></span>. We then used <span class="codeannotationcueballs">⑤ </span>  the Meaning dictionary to execute two methods from the module and <span class="codeannotationcueballs">⑥ </span>  responded to the request using the results of the methods formatted as JSON. This flow in a nutshell is the foundation of creating a web application back end.</p>
+
+    <h3 class="head1" id="heading_id_15">2.2.5   What is localhost:1337?</h3>
+
+    <p class="body">The hostname <span><code class="codeintext">localhost</code></span> is shorthand for accessing your computer's local network services. Using <span><code class="codeintext">localhost</code></span> usually resolves to the address 127.0.0.1, which is a way of bypassing the outside network. What is the number <span><code class="codeintext">1337</code></span>? Think of the hostname, <span><code class="codeintext">localhost</code></span>, as the name of a city and a <span class="italics">portnumber,</span> <span><code class="codeintext">1337</code></span>, as a street address. Separate port numbers are a way to differentiate between applications that are trying to access your computer’s resources. So <span><code class="codeintext">localhost:1337</code></span> is a way to access your device and more importantly your project – <span class="italics">firstApp</span> at a particular port.</p>
+
+    <h3 class="head1" id="heading_id_16">2.2.6   Killing the server</h3>
+
+    <p class="body">Now that we understand how to <span class="italics">lift</span> a Sails server, let’s learn how to <span class="italics">lower</span> or close it. From the terminal window type <span><code class="codeintext">ctrl-c</code></span> and the terminal window then looks similar to Figure 2.9.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.9  The terminal window responds with the command prompt after closing the Sails server with ctrl-c.</p>
+
+    <p class="body">What would happen if you typed <span><code class="codeintext">sails lift</code></span> in two different tabs of the terminal window?  Let’s try it and see what happens. Restart sails in this tab using <span><code class="codeintext">sails lift</code></span><span class="italics">.</span> Next open a new tabbed window by typing <span class="cambriamathintext">⌘</span>-t.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span class="cambriamathin">⌘</span><span class="italics1">-t</span> opens a new <span class="italics1">terminal window</span> tab placing your <span class="italics1">command-line</span> prompt at the root folder of <span class="italics1">firstApp.</span></p>
+    </div>
+
+    <p class="body">Now start Sails in this new tab using <span><code class="codeintext">sails lift</code></span>and your terminal window should look similar to figure 2.10.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.10  Only one node application can be running on a particular port at the same time.</p>
+
+    <p class="body">What happens is you can’t run more than one Node application on a particular port at the same time and if you do Sails produces an error.</p>
+
+    <h2 class="head" id="heading_id_17">2.3   Online resources for this book</h2>
+
+    <p class="body">The bulk of <span class="italics">Sails in Action</span> teaches concepts through building an ongoing application. To prevent the book from becoming a multi-volume set, we’ve provided some additional resources online. The central aggregation of links to all resources can be found on the Sails in Action hub: <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/">http://sailsinaction.github.io/</a>. The hub contains links to:</p>
+
+    <p class="listbulletcxspfirst">·   Source files for each chapter stored on the popular Git repository-hosting site Github.</p>
+
+    <p class="listbulletcxspmiddle">·   Gists which are code snippets that correspond to each program listing in the book. For example, the book might list a small portion of the code to add to an existing source file. The gist will provide the entire file including the added portion for context.</p>
+
+    <p class="listbulletcxspmiddle">·   Mockup designs for pages of the application.</p>
+
+    <p class="listbulletcxsplast">·   API and endpoint references.</p>
+
+    <p class="body">The main Hub contains links for each chapter.</p>
+
+    <h3 class="head1" id="heading_id_18">2.3.1   Git and GitHub</h3>
+
+    <p class="body"><span class="italics">Git</span> is another technology that we use day-in and day-out. It is an indispensible part of our development flow and coupled with GitHub makes it possible to easily collaborate with others on projects. Version control is a way for you to track the state of one or more files over time and then restore a particular version to some prior state at will. Since this book is not about version control we’re going to give you enough information to install Git and clone existing repositories of the source code for each chapter of the book.</p>
+
+    <h3 class="head1" id="heading_id_19">2.3.2   Installing Git</h3>
+
+    <p class="body">Like installing Node, the easiest way to install Git is by using one of its installers. The installer for OSX can be found at: <a class="pcalibre8 pcalibre5" href="http://git-scm.com/download/mac"><span class="sgc47">http://git-scm.com/download/mac</span></a>. Once installed you'll want to configure Git to identify yourself with your comments. From the terminal window <span class="italics">type</span>:</p><code class="codebcxspfirst">~ $ git config --global user.name "Humphrey Bogart"</code> <code class="codebcxsplast">~ $ git config --global user.email <a class="pcalibre8 pcalibre5" href="mailto:hbogart@casablancaway.com">hbogart@casablancaway.com</a></code>
+
+    <p class="body">For more extensive information about using Git check out this great guide at: <a class="pcalibre8 pcalibre5" href="https://git-scm.com/docs">https://git-scm.com/docs</a>.</p>
+
+    <h3 class="head1" id="heading_id_20">2.3.3   What is a GitHub repo?</h3>
+
+    <p class="body">GitHub provides a secure back up of a local repository. It also has a powerful social network of developers with tools that make it easy to collaborate on a repository with people around the world. We’re going to use GitHub primarily for copying source files and folders that correspond with each chapter of the book.</p>
+
+    <p class="body">The Sails in Action hub, <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/">http://sailsinaction.github.io/</a>, contains links to an overview page for each chapter. Within that chapter is a link to one or more GitHub repositories. Most chapters will begin with a repo to clone to your local machine and an ending repo that contains all of the activities completed for that particular chapter. Why can’t I simply follow the examples in the book?  We wanted to provide you with meaningful front-end source code to utilize while learning back-end development. If we attempted to explain and provide the source code for the entire front end, we could have easily added hundreds of pages to the book. Therefore, for most chapters, we provide the fully baked front-end example before starting the chapter and leave back-end development to the pages of the book. If we don’t add assets at the beginning of a chapter you’ll be given the choice of continuing with a project from the previous chapter or cloning a repository that gets you up to date before starting a chapter.</p>
+
+    <h3 class="head1" id="heading_id_21">2.3.4   Cloning a repo</h3>
+
+    <p class="body">Copying a remote repository is known as <span class="italics">cloning.</span> By cloning a repository we can rapidly obtain all of the files of a particular project. Let’s give it a try. Open a browser and navigate to <a class="pcalibre8 pcalibre5" href="https://github.com/mikermcneil/cursors">https://github.com/mikermcneil/cursors</a>. Your browser should look similar to figure 2.11.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.11. A remote GiHub repository with <span class="codeannotationcueballs">① </span>  links to all files in the repo as well as <span class="codeannotationcueballs">② </span>  a link to clone the repo.</p>
+
+    <p class="body">This repo contains <span class="codeannotationcueballs">① </span>  files and folders of a Sails app that we’ll install and briefly explore. Copy <span class="codeannotationcueballs">② </span>  the link: <a class="pcalibre8 pcalibre5" href="https://github.com/mikermcneil/cursors.git">https://github.com/mikermcneil/cursors.git</a>  in figure 2.11. Open the terminal window and <span><code class="codeintext">cd</code></span> to a folder where you’d like to place this project. After installing Git use the following command to clone the remote repository:</p>
+
+    <p class="body"> </p><code class="codebcxspfirst">~ $ git clone <a class="pcalibre8 pcalibre5" href="https://github.com/mikermcneil/cursors.git">https://github.com/mikermcneil/cursors.git</a></code> <code class="codebcxspmiddle">Cloning into 'cursors'...</code> <code class="codebcxspmiddle">remote: Counting objects: 260, done.</code> <code class="codebcxspmiddle">remote: Total 260 (delta 0), reused 0 (delta 0), pack-reused 260</code> <code class="codebcxspmiddle">Receiving objects: 100% (260/260), 373.27 KiB | 0 bytes/s, done.</code> <code class="codebcxspmiddle">Resolving deltas: 100% (92/92), done.</code> <code class="codebcxspmiddle">Checking connectivity... done</code><code class="codebcxsplast">~ $</code>
+
+    <p class="body">Note that the number of files in your count might vary. Next, <span><code class="codeintext">cd</code></span> into the <span><code class="codeintext">cursors</code></span> folder and type:</p><code class="codeb">~/cursors $ npm install</code>
+
+    <p class="body">The command <span><code class="codeintext">npm install</code></span> will look for the dependencies in the <span><code class="codeintext">package.json</code></span> file in the root of the <span class="italics">cursors</span> module and install the necessary dependencies. The cursors application is an example of using WebSockets we first introduced in chapter 1. Start the application by typing:</p><code class="codeb">~/cursors $ sails lift</code>
+
+    <p class="body">Now open a browser and navigate to localhost:1337<span class="italics">.</span>Open another browser window in incognito-mode and navigate to localhost:1337. Enter in a phony name when prompted for each browser window. Your browsers should look similar to figure 2.12.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/02_12.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 2.12  The cursors Sails project in action.</p>
+
+    <p class="body">Every time you move the mouse, Sails is sending the position of your cursor to the other browser. This simple example demonstrates the power of WebSockets within Sails. Now that we know how to clone a repo, we’re almost ready to start  exploring Sails in earnest by building a real world application.</p>
+
+    <h2 class="head" id="heading_id_22">2.4   Documentation and community support</h2>
+
+    <p class="body">Sails has a growing community of developers. Some of the more heavily trafficked areas include:</p>
+
+    <p class="listbulletcxspfirst">·   <span class="bold">Official Documentation:</span> <a class="pcalibre8 pcalibre5" href="http://sailsjs.org/documentation">http://sailsjs.org/documentation</a></p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Stack overflow:</span> Use the ”sails.js” tag</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Gitter (chat):</span> <a class="pcalibre8 pcalibre5" href="https://gitter.im/balderdashy/sails">https://gitter.im/balderdashy/sails</a></p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Google Groups:</span> sails.js</p>
+
+    <p class="listbulletcxsplast">·   <span class="bold">Irc:</span> #sailsjs</p>
+
+    <h2 class="head" id="heading_id_23">2.5   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   The Sails technical stack consists of Node.js, Sails.js, a text editor and the command-line shell.</p>
+
+    <p class="listbulletcxspmiddle">·   You start the Sails server via <span><code class="codeintext">sails lift</code></span> and close the server with <span><code class="codeintext">ctrl-c</code></span>.</p>
+
+    <p class="listbulletcxspmiddle">·   You use <span><code class="codeintext">npm install</code></span> to install Node modules into a project.</p>
+
+    <p class="listbulletcxsplast">·   Sails applications can incorporate other node modules by using the <span><code class="codeintext">require()</code></span> method.</p>
+  </div>
+</body>
+</html>

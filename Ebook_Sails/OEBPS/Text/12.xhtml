@@ -1,0 +1,471 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">12    Embedded Data and Associations</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   Using embedded records and associations to create relationships between models in Sails</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Reducing duplicative code by creating a service in Sails</p>
+
+    <p class="cosummarybulletcxsplast">·   Understanding the differences between one-way and two-way associations</p>
+
+    <p class="body">In chapter eleven we examined the new requirements of a market-based pivot that significantly enhanced and extended the features of Brushfire. We applied our <span class="italics">front-end-first</span> <span class="italics">approach</span> to the requirements. Using this approach compelled us to make design decisions in advance of implementing the back end there by reducing the likelihood of second-guessing based upon inadequate information. Essentially we wanted to eliminate questions that begin with “<span class="italics">I didn’t know that…</span>” Our work in chapter 11 produced a set of documented decision points in the API Reference, wireframes, as well as a functioning front-end with simulated back-end responses.</p>
+
+    <p class="body">Up to this point in our application we haven’t had to concentrate on the organization of models and the underlying database of Brushfire. We began the book by creating and storing URLs of YouTube videos in a <span><code class="codeintext">video</code></span> <span class="italics">model</span> first using an array on the front-end to simulate a database and  then storing the array using Sails NoSQL in memory database. We expanded the initial model/database implementation to include storing information about users in a <span><code class="codeintext">user</code></span> model and then stored <span><code class="codeintext">user</code></span> records in a PostgreSQL database. With our new feature requirements, we now have a need to take the added models to support those features and relate them together. For example, a <span><code class="codeintext">user</code></span> record will be associated with the <span><code class="codeintext">tutorial</code></span> records they create. This chapter will examine our new models, their relationships, and how to fulfill the requirements of requests using Sails associations.</p>
+
+    <h2 class="head" id="heading_id_3">12.1   Obtaining the example materials for this chapter</h2>
+
+    <p class="body">If you’ve been following along in chapter 11 with an existing project, you can continue to use that project in this chapter. If you want to start from this chapter and move forward, clone the following repo: <a class="pcalibre8 pcalibre5" href="https://github.com/sailsinaction/brushfire-ch11-end">https://github.com/sailsinaction/brushfire-ch11-end</a>. After cloning the repo, install the Node module dependencies via <span><code class="codeintext">npm install</code></span>. You will  also want to add the local.js file we created in chapter 11. In Sublime, create a new file in <span><code class="codeintext">brushfire/config/local.js</code></span> and add the following code in listing 12.1.</p>
+
+    <p class="codelistingcaption">Listing 12.1 Adding to the local.js file</p><code class="codebcxspfirst">module.exports.blueprints = {</code> <code class="codebcxspmiddle">  shortcuts: true,</code> <code class="codebcxspmiddle">  prefix: '/bp',</code> <code class="codebcxspmiddle">};</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports.connections = {</code> <code class="codebcxspmiddle">  myPostgresqlServer: {</code> <code class="codebcxspmiddle">    adapter: 'sails-postgresql',</code> <code class="codebcxspmiddle">    host: 'localhost',</code> <code class="codebcxspmiddle">    database: 'brushfire'</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle">};</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports.mailgun =  {</code> <code class="codebcxspmiddle">  apiKey: 'ADD YOUR MAILGUN API KEY HERE',</code> <code class="codebcxspmiddle">  domain: 'ADD YOUR MAILGUN DOMAIN HERE',</code> <code class="codebcxspmiddle">  baseUrl: 'http://localhost:1337'</code><code class="codebcxsplast">};</code>
+
+    <h2 class="head" id="heading_id_4">12.2   Understanding relationships between data</h2>
+
+    <p class="body">We’ve established that a model is an abstract representation of a noun, like a <span><code class="codeintext">User</code></span>. You probably recognize figure 12.1 by now.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.1 A model consists of <span class="codeannotationcueballs">① </span>  attributes, <span class="codeannotationcueballs">② </span>  methods, <span class="codeannotationcueballs">③ </span>  settings, and <span class="codeannotationcueballs">④ </span>  an adapter.</p>
+
+    <p class="body">Each model has details about the types of attributes it contains, the methods used to find, create, update and destroy records, and information related to where and how the records are stored. We use models to organize, access and modify records whose values are part of the requirements of requests generated from the frontend.</p>
+
+    <h3 class="head1" id="heading_id_5">12.2.1   Brushfire models after the pivot</h3>
+
+    <p class="body">After the pivot, the Brushfire repo now contains the following models:</p>
+
+    <p class="listbulletcxspfirst">·   user –holds values about a user</p>
+
+    <p class="listbulletcxspmiddle">·   tutorial –holds values about a tutorial</p>
+
+    <p class="listbulletcxspmiddle">·   video –holds values about a video</p>
+
+    <p class="listbulletcxspmiddle">·   rating –holds values about a rating</p>
+
+    <p class="listbulletcxsplast">·   chat – holds values a chat message (implemented in chapter 14)</p>
+
+    <p class="body">These models will be explored when they are used to implement the remaining Brushfire features. Post pivot, we also have requests that require records from multiple models. For example, the tutorial detail page contains attributes from four different models as shown in figure 12.2.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.2 The Tutorial detail page contains information from the user, tutorial, video, and rating models.</p>
+
+    <p class="body">Let’s look at how we can set up relationships to more effectively access and modify the attributes of records across multiple models.</p>
+
+    <h3 class="head1" id="heading_id_6">12.2.2   Relationships between models</h3>
+
+    <p class="body">Figure 12.3 illustrates some of the inherent relationships between Brushfire models.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.3  Models have relationships that go in different directions depicted by the arrows in the diagram.</p>
+
+    <p class="body">Each of the relationships in figure 12.3share two important characteristics:  the direction of the reference between models and the number of records referenced:</p>
+
+    <p class="listbulletcxspfirst">·   <span class="bold">Direction (One-way or Two-way reference):</span>A relationship has a two-way reference if both models require the ability to <span><code class="codeintext">find</code></span>, <span><code class="codeintext">create</code></span>, <span><code class="codeintext">update</code></span> or <span><code class="codeintext">destroy</code></span> records in each model. For example, between the <span><code class="codeintext">user</code></span> and <span><code class="codeintext">tutorial</code></span> models there is a need for a user to find all tutorials created by that user and for the tutorial to find the user that created it. This relationship requires a two-way reference.</p>
+
+    <p class="listbulletcxsplast">·   <span class="bold">Quantity (One or Many):</span>Does the related model have a relationship with one record or multiple records? Between the <span><code class="codeintext">user</code></span> and <span><code class="codeintext">tutorial</code></span> models, the user can “own” multiple tutorials, however, a tutorial can only be “owned” by one user.</p>
+
+    <p class="body">So we know that relationships exist, but how are they implemented between models? There are three ways to create relationships in models and their records in Sails:</p>
+
+    <p class="listbulletcxspfirst">·   <span class="bold">Embedding values</span> - We can embed values from one model’s record into another model’s record and then maintain each embedded value for each record. For example, the <span><code class="codeintext">tutorial</code></span> model could embed the sort order of the <span><code class="codeintext">video</code></span> records for a tutorial as an array of dictionaries. This works as long as you don’t need to query on the embedded value of the record. We’ll expand on this in the next section.</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">One-way association reference</span> - We can use Waterline associations to create a one-way reference association between two models and then maintain each reference.</p>
+
+    <p class="listbulletcxsplast">·   <span class="bold">Two-way association reference</span> - We can use Waterline associations to create a two-way referenced association between two models and maintain a single reference for both associations.</p>
+
+    <p class="body">We will implement all three types of relationships in order to fully understand how they work and when to use them.</p>
+
+    <h2 class="head" id="heading_id_7">12.3   Associating data using embedded JSON</h2>
+
+    <p class="body">Remember embedding means we’re adding the actual values of one record to another record and then manually syncing those values on both records when they change. We are going to implement the back-end requirements for the <span class="italics">Create tutorial page</span> to create all three types of relationships. Let’s first look at the wireframe for the view in figure 12.4.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.4  The <span class="italics1">Create Tutorial page</span> contains two parameters and two requests.</p>
+
+    <p class="body">The <span class="italics">Create tutorial request</span> requirements from the API reference are shown in figure 12.5.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.5  The <span class="italics1">Create tutorial</span> request reference contains a <span class="codeannotationcueballs">① </span>  description, the <span class="codeannotationcueballs">② </span>  method and path of the request, the <span class="codeannotationcueballs">③ </span>  back-end notes, <span class="codeannotationcueballs">④ </span>  incoming parameters, <span class="codeannotationcueballs">⑤ </span>  target action, <span class="codeannotationcueballs">⑥ </span>  response type, and <span class="codeannotationcueballs">⑦ </span>  response.</p>
+
+    <p class="body">The request expects us to take the incoming <span><code class="codeintext">title</code></span> and <span><code class="codeintext">description</code></span> parameters and to create a new tutorial. We need to associate the new tutorial record with the currently authenticated <span><code class="codeintext">user</code></span> and then respond with the new tutorial <span><code class="codeintext">id</code></span> as JSON. So our task on the back end is to create a record in the <span><code class="codeintext">tutorial</code></span> model that embeds the <span><code class="codeintext">user</code></span> who created it, as well as to update a record in the <span><code class="codeintext">user</code></span> model that embeds the new <span><code class="codeintext">tutorial</code></span>.</p>
+
+    <h3 class="head1" id="heading_id_8">12.3.1   Setting up an embedded relationship</h3>
+
+    <p class="body">First let’s setup the models with attributes that will hold our embedded values. In Sublime, open <span><code class="codeintext">brushfire/api/models/Tutorial.js</code></span> and <span><code class="codeintext">brushfire/api/models/User.js</code></span>. The models should look similar to figure 12.6.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.6  The <span><code class="codeintext1">user</code></span> model contains <span class="codeannotationcueballs">① </span>  a <span><code class="codeintext1">tutorials</code></span> attribute--that will hold the embedded array of <span><code class="codeintext1">tutorial</code></span> dictionaries as JSON and <span class="codeannotationcueballs">② </span>  an <span><code class="codeintext1">owner</code></span> attribute that will hold the embedded <span><code class="codeintext1">username</code></span> dictionary as JSON.</p>
+
+    <p class="body">The <span><code class="codeintext">tutorials</code></span> attribute in the <span><code class="codeintext">user</code></span> model will keep track of the tutorials created by the currently authenticated user agent. This will enable us to query on the <span><code class="codeintext">user</code></span> model to obtain a list of the tutorials created by that user. The <span><code class="codeintext">user</code></span> model can contain one or more tutorials to be stored as an array of dictionaries in JSON. The <span><code class="codeintext">owner</code></span> attribute in the <span><code class="codeintext">tutorial</code></span> model will keep track of which user created the tutorial.</p>
+
+    <h3 class="head1" id="heading_id_9">12.3.2   Creating a record with embedded JSON</h3>
+
+    <p class="body">We now must implement the back-end <span><code class="codeintext">createTutorial</code></span> action to fulfill the requirements of the <span class="italics">Create tutorial</span> request. When a user agent fills out the form on the <span class="italics">Create tutorial page</span> and clicks the <span class="italics">save</span> button, the front end makes an Angular AJAX <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/tutorials</code></span>, triggering the <span><code class="codeintext">createTutorial</code></span> action of the <span><code class="codeintext">Tutorial</code></span> controller. So let’s start adding code to the action. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/TutorialController.js</code></span> and add the code to validate the incoming parameters in the existing <span><code class="codeintext">createTutorial</code></span> action in listing 12.2.</p>
+
+    <p class="codelistingcaption">Listing 12.2 The <span><code class="codeintext1">createTutorial</code></span> action - Validating incoming parameters</p><code class="codebcxspfirst">  createTutorial: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!_.isString(req.param('title'))) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    return res.badRequest();</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!_.isString(req.param('description'))) {  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      return res.badRequest();</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">  },</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  validate the <span><code class="codeintext1">title</code></span> parameter as a string</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  validate the <span><code class="codeintext1">description</code></span> parameter as a string</p>
+
+    <p class="body">We are using <span class="italics">lodash’s</span><span><code class="codeintext">_.isString()</code></span>method to assure that the incoming parameters are both defined and of the proper type. Next we must query for the <span><code class="codeintext">user</code></span> using the currently authenticated user agent. In Sublime, add the following to the <span><code class="codeintext">createTutorial</code></span> action in listing 12.3.</p>
+
+    <p class="codelistingcaption">Listing 12.3 The createTutorial action – find the currently authenticated user</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">    User.findOne({ </code> <code class="codebcxspmiddle">      id: req.session.userId          <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    }).exec(function(err, foundUser){</code> <code class="codebcxspmiddle">      if (err) return res.negotiate;  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      if (!foundUser) return res.notFound();</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Find the user using the currently authenticated user-agent and the criteria</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  Handle any errors and if the user is not found</p>
+
+    <p class="body">Now we can create the <span><code class="codeintext">tutorial</code></span> using the incoming parameters and assign the embedded <span><code class="codeintext">username</code></span> attribute with the username found in the <span><code class="codeintext">user</code></span> record. In Sublime, add the following code to the <span><code class="codeintext">createTutorialaction</code></span> action in listing 12.4.</p>
+
+    <p class="codelistingcaption">Listing 12.4  The <span><code class="codeintext1">createTutorial</code></span> action – create the tutorial and update <span><code class="codeintext1">owner</code></span></p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">    Tutorial.create({                             <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        title: req.param('title'),                <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        description: req.param('description'),    <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        owner: { username: foundUser.username },  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">      }).exec(function(err, createdTutorial){</code> <code class="codebcxspmiddle">        if (err) return res.negotate(err);        <span class="codeannotationcueballs1">❹ </span></code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Create the tutorial</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  Add incoming parameters</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  Add the username dictionary from the found user record</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span> Handle any errors</p>
+
+    <p class="body">We will complete the action by updating the <span><code class="codeintext">user</code></span> record with the embedded <span><code class="codeintext">tutorial</code></span> array of dictionaries, and then we will return the <span><code class="codeintext">id</code></span> of the new tutorial as JSON. In Sublime, add the following code in listing 12.5.</p>
+
+    <p class="codelistingcaption">Listing 12.5  The <span><code class="codeintext1">createTutorial</code></span> action – update the <span><code class="codeintext1">tutorials</code></span> attribute</p><code class="codebcxspfirst">        foundUser.tutorials = [];    <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        foundUser.tutorials.push({   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">          title: req.param('title'),</code> <code class="codebcxspmiddle">          description: req.param('description'),</code> <code class="codebcxspmiddle">          created: foundUser.createdAt,</code> <code class="codebcxspmiddle">          updated: foundUser.updatedAt,</code> <code class="codebcxspmiddle">          id: foundUser.id</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">        User.update({</code> <code class="codebcxspmiddle">          id: req.session.userId                      <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        }, {</code> <code class="codebcxspmiddle">          tutorials: foundUser.tutorials              <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">        })</code> <code class="codebcxspmiddle">        .exec(function(err){</code> <code class="codebcxspmiddle">          if (err) return res.negotiate(err);         <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">          return res.json({id: createdTutorial.id});  <span class="codeannotationcueballs1">❻ </span></code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code><code class="codebcxsplast">  },</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Assign an empty array to the <span><code class="codeintext1">tutorials</code></span> property.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  Push the properties of the tutorial record to the dictionary.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  Update the <span><code class="codeintext1">user</code></span> based upon the session <span><code class="codeintext1">userId.</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  Update the user record with the newly created array and dictionary.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❺ </span>  Handle any errors.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❻ </span>  rRespond with the newly created tutorial <span><code class="codeintext1">id.</code></span></p>
+
+    <p class="body">Notice that we’re copying the unique record <span><code class="codeintext">id</code></span>, <span><code class="codeintext">createdAt</code></span> date, and <span><code class="codeintext">updatedAt</code></span> date from the <span><code class="codeintext">tutorial</code></span> record as elements of our dictionary and embedded array. This combination of a separate <span><code class="codeintext">tutorial</code></span> model with an embedded JSON array in the <span><code class="codeintext">user</code></span> model is working. However, there are pitfalls to this approach.</p>
+
+    <h3 class="head1" id="heading_id_10">12.3.3   “Populating” embedded data</h3>
+
+    <p class="body">Let’s turn our attention to the <span class="italics">Edit tutorial page</span> shown in figure 12.7.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.7. The edit tutorial page contains 2 parameters and 2 requests.</p>
+
+    <p class="body">Unlike the <span class="italics">Create tutorial page</span>, the <span class="italics">Edit tutorial page</span> requires that we gather some <span><code class="codeintext">tutorial</code></span> attributes for the view. We will first alter the existing <span><code class="codeintext">editTutorial</code></span> action of the <span><code class="codeintext">PageController</code></span> to find the <span><code class="codeintext">tutorial</code></span> by using the incoming <span><code class="codeintext">tutorial id</code></span> parameter and we will find the <span><code class="codeintext">user</code></span> of the currently authenticated user agent via the session <span><code class="codeintext">userId</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note that we used the unary operator (+) to coerce the tutorial <span><code class="codeintext1">id</code></span> into a number. We did this to insure that <span><code class="codeintext1">id</code></span> we provide is a number and not a string.</p>
+    </div>
+
+    <p class="body">In Sublime, open <span><code class="codeintext">brushfire/api/controllers/PageController.js</code></span> and replace the fake <span><code class="codeintext">tutorials</code></span> dictionary with the <span><code class="codeintext">Tutorial.findOne()</code></span> method similar to listing 12.6.</p>
+
+    <p class="codelistingcaption">Listing 12.6 The <span><code class="codeintext1">editTutorial</code></span> action – Find the <span><code class="codeintext1">tutorial</code></span> and currently authenticated <span><code class="codeintext1">user</code></span></p><code class="codebcxspfirst">editTutorial: function(req, res) {</code> <code class="codebcxspmiddle">  Tutorial.findOne({   </code> <code class="codebcxspmiddle">    id: +req.param('id') <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  }).exec(function (err, foundTutorial){</code> <code class="codebcxspmiddle">    if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">    if (!foundTutorial) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        User.findOne({  </code> <code class="codebcxspmiddle">        id: +req.session.userId   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">     }).exec(function (err, foundUser) {</code> <code class="codebcxspmiddle">       if (err) return res.negotiate(err);  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">       if (!foundUser) {    <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">         sails.log.verbose('Session refers to a user who no longer exists- did you delete a user, then try to refresh the page with an open tab logged-in as that user?');</code> <code class="codebcxspmiddle">          return res.redirect('/tutorials');</code> <code class="codebcxspmiddle">       }</code><code class="codebcxsplast">    ...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Find the tutorial to edit using incoming <span><code class="codeintext1">id</code></span> parameter</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  Find the current <span><code class="codeintext1">user</code></span> using the session <span><code class="codeintext1">userId</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span> : Handle errors with <span><code class="codeintext1">res.negotiate()</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span> :Handle not found with a redirect.</p>
+
+    <p class="body">After finding the <span><code class="codeintext">tutorial</code></span> and the currently authenticated user agent we will check whether that <span><code class="codeintext">user</code></span> is the <span><code class="codeintext">owner</code></span> of the <span><code class="codeintext">tutorial</code></span>. In Sublime, add the following code in listing 12.7.</p>
+
+    <p class="codelistingcaption">Listing 12.7 The editTutorial action – Check for the owner and display or redirect</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">if (foundUser.username !== foundTutorial.owner.username) {       <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">          return res.redirect('/tutorials/'+foundTutorial.id);   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        return res.view('tutorials-detail-edit', {               <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">          me: {</code> <code class="codebcxspmiddle">            gravatarURL: foundUser.gravatarURL,</code> <code class="codebcxspmiddle">            username: foundUser.username,</code> <code class="codebcxspmiddle">            admin: foundUser.admin</code> <code class="codebcxspmiddle">          },</code> <code class="codebcxspmiddle">          tutorial: {</code> <code class="codebcxspmiddle">            id: foundTutorial.id,</code> <code class="codebcxspmiddle">            title: foundTutorial.title,</code> <code class="codebcxspmiddle">            description: foundTutorial.description,</code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">  ...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Check whether the currently authenticated user agent is the <span><code class="codeintext1">owner</code></span> of the <span><code class="codeintext1">tutorial.</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  if not redirect to the <span class="italics1">Tutorial page.</span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span>  Render the <span class="italics1">Edit tutorial page</span> with appropriate locals.</p>
+
+    <p class="body">If the <span><code class="codeintext">user</code></span> is the <span><code class="codeintext">owner</code></span> we render the <span class="italics">Edit Tutorial</span> page with the appropriate locals. If not, the browser is redirected back to the tutorial. Next, we implement the <span class="italics">Edit tutorial</span> request that actually updates the tutorial.</p>
+
+    <h3 class="head1" id="heading_id_11">12.3.4   Updating a record with embedded data</h3>
+
+    <p class="body">Now that we have the <span class="italics">Edit Tutorial page</span> displayed with appropriate <span><code class="codeintext">tutorialtitle</code></span> and <span><code class="codeintext">description</code></span>, let’s look at the requirements for the <span class="italics">Edit tutorial</span> request from the API reference shown in figure 12.8.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.8  The <span class="italics1">Edit tutorial</span> request reference contains a <span class="codeannotationcueballs">① </span>  description, the <span class="codeannotationcueballs">② </span>  method and path of the request, the <span class="codeannotationcueballs">③ </span>  back-end notes, <span class="codeannotationcueballs">④ </span>  incoming parameters, <span class="codeannotationcueballs">⑤ </span>  target action, <span class="codeannotationcueballs">⑥ </span>  response type, and <span class="codeannotationcueballs">⑦ </span>  response.</p>
+
+    <p class="body">The request requires us to update the <span><code class="codeintext">tutorial</code></span> with the incoming <span><code class="codeintext">title</code></span> and <span><code class="codeintext">description</code></span> parameters and then to respond with a <span><code class="codeintext">200</code></span> status. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/TutorialController.js</code></span> and begin implementing the action by adding code to validate the incoming parameters in the existing <span><code class="codeintext">createTutorial</code></span> action in listing 12.8.</p>
+
+    <p class="codelistingcaption">Listing 12.8  The <span><code class="codeintext1">updateTutorial</code></span> action - Validating incoming parameters</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">updateTutorial: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (!_.isString(req.param('title'))) {    // <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    return res.badRequest();</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (!_.isString(req.param('description'))) {   //  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    return res.badRequest();</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  Validates the incoming parameters</p>
+
+    <p class="body">Next we’ll find and update the <span><code class="codeintext">title</code></span> and <span><code class="codeintext">description</code></span> of the <span><code class="codeintext">tutorial</code></span> in listing 12.9.</p>
+
+    <p class="codelistingcaption">Listing 12.9 The updateTutorial action – update the tutorial</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">    User.findOne({</code> <code class="codebcxspmiddle">      id: req.session.userId</code> <code class="codebcxspmiddle">    }).exec(function (err, foundUser){</code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">      if (!foundUser) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      Tutorial.findOne({</code> <code class="codebcxspmiddle">        id: +req.param('id')</code> <code class="codebcxspmiddle">      })</code> <code class="codebcxspmiddle">      .exec(function(err, foundTutorial){</code> <code class="codebcxspmiddle">        if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">        if (!foundTutorial) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        if (foundUser.username != foundTutorial.owner.username) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">          return res.forbidden();</code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        Tutorial.update({                       <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">          id: +req.param('id')</code> <code class="codebcxspmiddle">        }, {</code> <code class="codebcxspmiddle">          title: req.param('title'),            <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">          description: req.param('description') <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        }).exec(function (err) {</code> <code class="codebcxspmiddle">          if (err) return res.negotiate(err);   <span class="codeannotationcueballs1">❹ </span></code><code class="codebcxsplast">          ...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Assure that the currently authenticated <span><code class="codeintext1">user</code></span> is the <span><code class="codeintext1">owner</code></span> of the <span><code class="codeintext1">tutorial.</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  Update the tutorial using the coerced <span><code class="codeintext1">id</code></span> parameter.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span> Pass in the <span><code class="codeintext1">title</code></span> and <span><code class="codeintext1">description</code></span> parameters to update.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span> Handle any errors.</p>
+
+    <p class="body">Since the <span><code class="codeintext">owner</code></span> of the tutorial doesn’t change we don’t need to update the <span><code class="codeintext">tutorial.owner</code></span> embedded attribute of the <span><code class="codeintext">tutorial</code></span> model.  But since the tutorial has been modified, we need to update the <span><code class="codeintext">user.tutorial</code></span> attribute on the <span><code class="codeintext">user</code></span> record. We will start the process of updating this embedded <span><code class="codeintext">tutorials</code></span> array in listing 12.10.</p>
+
+    <p class="codelistingcaption">Listing 12.10 The updateTutorial action – update the user’s tutorials attribute</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">          User.find().exec(function (err, users) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">            if (err) { return res.negotiate(err); }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            async.each(users, function (user, next){                  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">             var cachedTutorial = _.find(user.tutorials, { id: +req.param('id') });  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">              if (!cachedTutorial) {       <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">                return next();</code> <code class="codebcxspmiddle">              }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">              cachedTutorial.title = req.param('title');              <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">              cachedTutorial.description = req.param('description');  <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">              User.update({     <span class="codeannotationcueballs1">❻ </span></code> <code class="codebcxspmiddle">                id: user.id </code> <code class="codebcxspmiddle">              }, {</code> <code class="codebcxspmiddle">                tutorials: user.tutorials  <span class="codeannotationcueballs1">❼ </span></code> <code class="codebcxspmiddle">              })</code> <code class="codebcxspmiddle">              .exec(function (err) {</code> <code class="codebcxspmiddle">                if (err) { return next(err); }</code> <code class="codebcxspmiddle">                return next();  <span class="codeannotationcueballs1">❽ </span></code> <code class="codebcxspmiddle">              });</code> <code class="codebcxspmiddle">            }, function (err) {</code> <code class="codebcxspmiddle">              if (err) {return res.negotiate(err);}</code> <code class="codebcxspmiddle">              return res.ok();  <span class="codeannotationcueballs1">❾ </span></code> <code class="codebcxspmiddle">            });</code> <code class="codebcxspmiddle">          });</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">     ...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Find all <span><code class="codeintext1">user</code></span> records.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  Iterate over the found users using the <span><code class="codeintext1">async.each</code></span> method.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  Use the lodash find method to locate the tutorial dictionary that matches the <span><code class="codeintext1">tutorialid</code></span> parameter.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  If no tutorial is found go to the next <span><code class="codeintext1">user</code></span> record.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❺ </span>  If there’s a match for the embedded <span><code class="codeintext1">tutorial</code></span>, update the <span><code class="codeintext1">title</code></span> and <span><code class="codeintext1">description.</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❻   </span>Update the user using the <span><code class="codeintext1">id</code></span> of the currently iterated user record.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❼ </span>  Add the updated <span><code class="codeintext1">tutorials</code></span> array.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❽ </span>  Go to the next user.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❾ </span>  After iterating respond with <span><code class="codeintext1">res.ok()</code></span></p>
+
+    <p class="body">This is where things get a bit more verbose. In order to update the embedded <span><code class="codeintext">user.tutorials</code></span> array with the updated <span><code class="codeintext">title</code></span> and <span><code class="codeintext">description</code></span>, we first need to gather all users in memory and then search through each user’s <span><code class="codeintext">tutorials</code></span> attribute for a matching <span><code class="codeintext">tutorialid</code></span>. The function that loops through the array of <span><code class="codeintext">user</code></span> dictionaries needs to be asynchronous because it also contains <span><code class="codeintext">User.update(),</code></span>which is also asynchronous. This prevents <span><code class="codeintext">User.update()</code></span>from executing before the loop has a chance to iterate through all of the users as illustrated in figure 12.9.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.9. Using <span><code class="codeintext1">async.each()</code></span> allows us to iterate over the users to find the <span><code class="codeintext1">tutorial</code></span> before executing <span><code class="codeintext1">User.update()</code></span>.</p>
+
+    <p class="body">Once we determine the matching tutorial, we can update <span><code class="codeintext">user.tutorials</code></span> with it. Although this works, it seems like a lot of extra work to maintain both sides (<span><code class="codeintext">tutorial</code></span> and <span><code class="codeintext">user</code></span> models) of the embedded attributes.  There is also another issue related to server memory. As Brushfire gets more popular, there could be thousands, even millions of users. Given enough users, server memory could be exhausted by trying to load each user’s tutorials array. We need another way of handling relationships of large data sets between models. Fortunately Sails provides another approach through Waterline associations.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">There are situations where an embedded attribute is superior to an association. Later in this chapter we’ll use an embedded array to track the sort order of videos. A good candidate for an embedded value is when the information you are embedding will not be queried outside the context of the model where it’s being embedded.</p>
+    </div>
+
+    <h2 class="head" id="heading_id_12">12.4   Understanding Sails associations</h2>
+
+    <p class="body">Figure 12.10 illustrates the embedding approach we used in the last section by copying a record from a model and embedding it into a record from a different model.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.10  An illustration of embedding a record from one model into the record of another model. The <span class="codeannotationcueballs">① </span> <span><code class="codeintext1">user</code></span> record’s <span><code class="codeintext1">username</code></span> attribute is embedded in <span class="codeannotationcueballs">② </span>  the <span><code class="codeintext1">tutorial</code></span> record’s <span><code class="codeintext1">owner</code></span> attribute. The <span class="codeannotationcueballs">③ </span>  entire <span><code class="codeintext1">tutorial</code></span> record is embedded into <span class="codeannotationcueballs">④ </span>  the <span><code class="codeintext1">user</code></span> record’s <span><code class="codeintext1">tutorials</code></span> attribute.</p>
+
+    <p class="body">This requires us to maintain information that might change in two different places – in the model and in the embedded location. Associations setup a reference between models instead of copying and embedding parts of a record from another model as illustrated in figure 12.11.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.11  An illustration of associating a record from one model into the record of another model. The <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">user</code></span> record’s <span><code class="codeintext1">id</code></span> value is now referenced in <span class="codeannotationcueballs">② </span>  the <span><code class="codeintext1">tutorial</code></span> record’s <span><code class="codeintext1">owner</code></span> attribute. The <span class="codeannotationcueballs">③ </span>  <span><code class="codeintext1">tutorial</code></span> record’s <span><code class="codeintext1">id</code></span> is now referenced in <span class="codeannotationcueballs">④ </span>  the <span><code class="codeintext1">user</code></span> record’s <span><code class="codeintext1">tutorials</code></span> attribute. Note that the user record’s <span><code class="codeintext1">tutorials</code></span> attribute will not be displayed as an array. To obtain what’s in the <span><code class="codeintext1">tutorials</code></span> attribute we will use the <span><code class="codeintext1">populate</code></span> method later in this chapter.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Another way to think of an association is similar to a shortcut or alias to a file or folder in OSX's finder or Window’s file explorer. The shortcut when clicked opens a file or folder without having to have a copy of the contents of the file or folder.</p>
+    </div>
+
+    <p class="body">But how are the references turned into what is referenced? How do we exchange a reference for the actual values of the record being referenced? We’re getting a little ahead of ourselves, but later in this chapter we’ll show you how to use the <span><code class="codeintext">populate</code></span> method to “populate” a reference with the actual record values the reference is pointing to. What’s important now is to understand that with associations any update to a referenced record’s attributes (other than the `id` that references them) is automatically "in sync" with the record that’s referencing it. If there was ever a need for an illustration for a tongue twisting concept, this is it! In figure 12.12, if we update the <span><code class="codeintext">title</code></span> of the <span><code class="codeintext">tutorial</code></span> record, the <span><code class="codeintext">tutorials</code></span> reference in the <span><code class="codeintext">user</code></span> model remains the same. When we exchange the <span><code class="codeintext">tutorials</code></span> attribute for <span><code class="codeintext">tutorial</code></span> the updated <span><code class="codeintext">title</code></span> is displayed.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_12.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.12  Before <span class="codeannotationcueballs">① </span>  the <span><code class="codeintext1">title</code></span> of the <span><code class="codeintext1">tutorial</code></span> record is changed, if we exchange the <span><code class="codeintext1">tutorials</code></span> attribute reference for the actual <span><code class="codeintext1">tutorial</code></span> record values we get a title of “The best of Douglas Crockford on JavaScript.” After <span class="codeannotationcueballs">② </span>  the <span><code class="codeintext1">title</code></span> of the <span><code class="codeintext1">tutorial</code></span> record is changed, exchanging the <span><code class="codeintext1">tutorials</code></span> attribute reference for the actual <span><code class="codeintext1">tutorial</code></span> record values will produce a title of “The best of Nikola Tesla on Electricity.” Thus the reference remains “in sync” after changes.</p>
+
+    <p class="body">Therefore, referencing another record through an association eliminates the requirement to update both records in the relationship. In order to use the association we need to configure our models to use them. We will do that in the next section.</p>
+
+    <h3 class="head1" id="heading_id_13">12.4.1   Configuring an association between two models</h3>
+
+    <p class="body">Configuring an association is a simple process of adding an attribute to a model that tells Sails:</p>
+
+    <p class="listbulletcxspfirst">·   the model to associate to,</p>
+
+    <p class="listbulletcxspmiddle">·   whether to associate one record, also called a <span><code class="codeintext">model</code></span> association or many records, also called  a <span><code class="codeintext">collection</code></span> association and…</p>
+
+    <p class="listbulletcxsplast">·   in the case of a <span><code class="codeintext">collection</code></span>, whether it’s a one-way or a two-way association</p>
+
+    <p class="body">For example, in figure 12.13, let’s take a look at the <span><code class="codeintext">user</code></span> and <span><code class="codeintext">tutorial</code></span> models, and specifically the attributes related to the relationship we have configured.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_13.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.13  The <span><code class="codeintext1">user</code></span> model contains <span class="codeannotationcueballs">① </span>  a <span><code class="codeintext1">tutorials</code></span> attribute that configures a <span><code class="codeintext1">collection</code></span> association between the <span><code class="codeintext1">user</code></span> and <span><code class="codeintext1">tutorial</code></span> models. The <span><code class="codeintext1">tutorials</code></span> model contains <span class="codeannotationcueballs">② </span>  an <span><code class="codeintext1">owner</code></span> attribute that configures a <span><code class="codeintext1">model</code></span> association between the <span><code class="codeintext1">tutorial</code></span> and <span><code class="codeintext1">user</code></span> models.</p>
+
+    <p class="body">The <span><code class="codeintext">user</code></span> model employs the same attribute name we used with the embedded technique – <span><code class="codeintext">tutorials</code></span>. We want to set up an associated reference to all <span><code class="codeintext">tutorials</code></span> created by this <span><code class="codeintext">user</code></span>. Since this references multiple records, a <span><code class="codeintext">collection</code></span> association will be used. Because this is a <span><code class="codeintext">collection</code></span> association, we can configure it to be a one-way or two-way reference. We’ll explore two-way references later in this section. For now we use a one-way reference that doesn’t require any further configuration. In Sublime, open <span><code class="codeintext">brushfire/api/models/User.js</code></span> and add the <span><code class="codeintext">tutorials</code></span> association attribute in listing 12.11.</p>
+
+    <p class="codelistingcaption">Listing 12.11 The <span><code class="codeintext1">user</code></span> model’s <span><code class="codeintext1">tutorials</code></span> collection association attribute</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">passwordRecoveryToken: {</code> <code class="codebcxspmiddle">  type: 'string'</code> <code class="codebcxspmiddle">},</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">tutorials: {                <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  collection: 'tutorial',   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">},</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  The <span><code class="codeintext1">tutorials</code></span> attribute</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  Configuring a <span><code class="codeintext1">collection</code></span> with the <span><code class="codeintext1">tutorial</code></span> model to reference</p>
+
+    <p class="body">Now let’s create the association in the <span><code class="codeintext">tutorials</code></span> model. In Sublime, open <span><code class="codeintext">brushfire/api/models/Tutorial.js</code></span> and add the <span><code class="codeintext">owner</code></span> association attribute in listing 12.12.</p>
+
+    <p class="codelistingcaption"> Listing 12.12 The <span><code class="codeintext1">tutorial</code></span> model’s <span><code class="codeintext1">owner</code></span> association attribute</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">description: {</code> <code class="codebcxspmiddle">  type: 'string'</code> <code class="codebcxspmiddle">},</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">owner: {   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  model: 'user'</code> <code class="codebcxspmiddle">},</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> The <span><code class="codeintext1">owner</code></span> attribute</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  Configuring the <span><code class="codeintext1">model</code></span> association with the <span class="italics1">user</span> model</p>
+
+    <p class="body">The <span><code class="codeintext">tutorial</code></span> model employs the same attribute name we used with the embedded technique – <span><code class="codeintext">owner</code></span>. We want to set up an associated reference to a single <span><code class="codeintext">user</code></span> so we’ll use a <span><code class="codeintext">model</code></span> association. At first this can be confusing. However, all this means is that the <span><code class="codeintext">owner</code></span> attribute when populated will produce a single record – a <span><code class="codeintext">user</code></span>. Let’s head back to our <span><code class="codeintext">createTutorial</code></span> action in the <span><code class="codeintext">Tutorial</code></span> controller and start using these associations.</p>
+
+    <h3 class="head1" id="heading_id_14">12.4.2   Using .add(), .remove(), and .save()</h3>
+
+    <p class="body">When a user agent creates a <span><code class="codeintext">tutorial</code></span> we have two references to keep in sync – one for the <span><code class="codeintext">user</code></span> model and one for the <span><code class="codeintext">tutorial</code></span> model. With a <span><code class="codeintext">collection</code></span> association we use <span><code class="codeintext">.add()</code></span> to add a reference and <span><code class="codeintext">.remove()</code></span>to remove a reference. With a <span><code class="codeintext">model</code></span> association we add the <span><code class="codeintext">id</code></span> of the record we want to associate. In Sublime open <span><code class="codeintext">brushfire/api/controllers/TutorialController.js</code></span> and add the following code to the <span><code class="codeintext">createTutorial</code></span> action in listing 12.13.</p>
+
+    <p class="codelistingcaption">Listing 12.13 Refactored <span><code class="codeintext1">createTutorial</code></span> action using associations</p><code class="codebcxspfirst">createTutorial: function(req, res) {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">  User.findOne({</code> <code class="codebcxspmiddle">    id: req.session.userId</code> <code class="codebcxspmiddle">  }).exec(function(err, foundUser){</code> <code class="codebcxspmiddle">    if (err) return res.negotiate;</code> <code class="codebcxspmiddle">    if (!foundUser) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    Tutorial.create({</code> <code class="codebcxspmiddle">      title: req.param('title'),</code> <code class="codebcxspmiddle">      description: req.param('description'),</code> <code class="codebcxspmiddle">         owner: foundUser.id,   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      videoOrder: [],</code> <code class="codebcxspmiddle">    }).exec(function(err, createdTutorial){</code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      foundUser.tutorials.add(createdTutorial.id);  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      foundUser.save(function (err) {   <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">          return res.json({id: createdTutorial.id});</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code><code class="codebcxsplast">  },</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Add the <span><code class="codeintext1">id</code></span> of the <span><code class="codeintext1">user</code></span> that created the <span><code class="codeintext1">tutorial</code></span> to add the associated reference.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷   </span>Use the <span><code class="codeintext1">.add()</code></span>method to add a reference to the <span><code class="codeintext1">tutorials</code></span> attribute of the <span><code class="codeintext1">user</code></span> model.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸   </span>Use <span class="italics1">the</span> <span><code class="codeintext1">save()</code></span>method to save the changes to the <span><code class="codeintext1">user</code></span> model<span class="italics1">.</span></p>
+
+    <p class="body">When a <span><code class="codeintext">user</code></span> creates a <span><code class="codeintext">tutorial</code></span> we first add the <span><code class="codeintext">id</code></span> of that user to the <span><code class="codeintext">owner</code></span> attribute of the currently authenticated user agent. This provides a reference to the <span><code class="codeintext">tutorial</code></span> record from the <span><code class="codeintext">user</code></span> record. We then use <span><code class="codeintext">.add()</code></span> to add the <span><code class="codeintext">id</code></span> of the newly created <span><code class="codeintext">tutorial</code></span> to the user’s <span><code class="codeintext">tutorials</code></span> attribute. This provides a reference to the <span><code class="codeintext">user</code></span> record from the <span><code class="codeintext">tutorial</code></span> record. Now that we have setup the references we can use the <span><code class="codeintext">.populate()</code></span>method to add a snapshot of the record or records referenced by a particular association at the time of the query. Head back to the <span><code class="codeintext">createTutorial</code></span> action in Sublime at <span><code class="codeintext">brushfire/api/controllers/TutorialController.js</code></span> and add the following code in listing 12.14.</p>
+
+    <p class="codelistingcaption">Listing 12.14 Demonstrating the use of <span><code class="codeintext1">.populate()</code></span> to transform a referenced link into a dictionary or an array of dictionaries</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">createTutorial: function(req, res) {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">foundUser.save(function (err) {</code> <code class="codebcxspmiddle">          if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">          User.findOne({</code> <code class="codebcxspmiddle">            id: req.session.userId</code> <code class="codebcxspmiddle">          })</code> <code class="codebcxspmiddle">          .populate('tutorials')       <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">          .exec(function (err, demoUser){</code> <code class="codebcxspmiddle">            if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">            console.log('demoUser: ', demoUser);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            Tutorial.findOne({</code> <code class="codebcxspmiddle">            id: createdTutorial.id</code> <code class="codebcxspmiddle">          })</code> <code class="codebcxspmiddle">            .populate('owner')  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">            .exec(function (err, demoTutorial){</code> <code class="codebcxspmiddle">              if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">              console.log('demoTutorial: ', demoTutorial);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">              return res.json({id: createdTutorial.id});</code> <code class="codebcxspmiddle">            });</code> <code class="codebcxspmiddle">          });</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Returning a “snapshot” of the user’s <span><code class="codeintext1">tutorials</code></span> attribute</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  Returning a “snapshot” of the tutorial’s <span><code class="codeintext1">owner</code></span> attribute</p>
+
+    <p class="body">Now when a <span><code class="codeintext">user</code></span> creates a <span><code class="codeintext">tutorial</code></span> the terminal window will contain a log similar to figure 12.14.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_14.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.14  Before using <span><code class="codeintext1">.populate()</code></span>the <span><code class="codeintext1">user</code></span> and <span><code class="codeintext1">tutorial</code></span> records contain references whose value is the <span><code class="codeintext1">id</code></span> of the associated record.  After using .populate() those references are “populated” with <span class="codeannotationcueballs">① </span>  the <span><code class="codeintext1">tutorial</code></span> record and <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">username</code></span> attribute of the user record.</p>
+
+    <p class="body">So with associations we have the benefits of the embedded technique without the inherent syncing requirements and memory challenges.</p>
+
+    <h3 class="head1" id="heading_id_15">12.4.3   Using via to create a two-way association</h3>
+
+    <p class="body">Earlier we discussed the possibility of using a two-way reference with collection associations. When a collection association has a second model that points back to it, we have the option of using the <span><code class="codeintext">via</code></span> parameter. Using <span><code class="codeintext">via</code></span> reduces the number of references we need to manage in the association. In our current example, the <span><code class="codeintext">user</code></span> model has a <span><code class="codeintext">collection</code></span> referencing the <span><code class="codeintext">tutorial</code></span> model and the <span><code class="codeintext">tutorial</code></span> model has a <span><code class="codeintext">reference</code></span> to the user model. If we add the <span><code class="codeintext">via</code></span> parameter to the user’s <span><code class="codeintext">collection</code></span> model when we update one reference, then the other reference is automatically in sync. In Sublime, open <span><code class="codeintext">brushfire/api/models/User.js</code></span>and add the following parameter to the <span><code class="codeintext">user</code></span> model in listing 12.15.</p>
+
+    <p class="codelistingcaption">Listing 12.15 Using the <span><code class="codeintext1">via</code></span> parameter in the user’s tutorials collection attribute.</p><code class="codebcxspfirst">    ...</code> <code class="codebcxspmiddle">    tutorials: {</code> <code class="codebcxspmiddle">      collection: 'tutorial',</code> <code class="codebcxspmiddle">      via: 'owner'  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    },</code><code class="codebcxsplast">    ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  Adding a <span><code class="codeintext1">via</code></span> parameter to the collection</p>
+
+    <h3 class="head1" id="heading_id_16">12.4.4   Refactoring an action to use associations</h3>
+
+    <p class="body">To understand the advantages of <span><code class="codeintext">via</code></span> let’s refactor the <span><code class="codeintext">createTutorial</code></span> action to utilize <span><code class="codeintext">via</code></span> by opening <span><code class="codeintext">brushfire/api/controllers/TutorialController.js</code></span> in Sublime and the code in listing 12.16</p>
+
+    <p class="codelistingcaption">Listing 12.16 Refactoring the <span><code class="codeintext1">createTutorial</code></span> action to take advantage of the <span><code class="codeintext1">via</code></span></p><code class="codebcxspfirst">      ...</code> <code class="codebcxspmiddle">    User.findOne({</code> <code class="codebcxspmiddle">      id: req.session.userId</code> <code class="codebcxspmiddle">    })</code> <code class="codebcxspmiddle">    .exec(function(err, foundUser){</code> <code class="codebcxspmiddle">      if (err) return res.negotiate;</code> <code class="codebcxspmiddle">      if (!foundUser) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      Tutorial.create({</code> <code class="codebcxspmiddle">        title: req.param('title'),</code> <code class="codebcxspmiddle">        description: req.param('description'),</code> <code class="codebcxspmiddle">        owner: foundUser.id,    <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      })</code> <code class="codebcxspmiddle">      .exec(function(err, createdTutorial){</code> <code class="codebcxspmiddle">        if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        return res.json({id: createdTutorial.id});</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code><code class="codebcxsplast">    },</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  We can add a reference once and both associations are in sync.</p>
+
+    <p class="body">Previously when a user created the <span><code class="codeintext">tutorial</code></span> we updated the <span><code class="codeintext">owner</code></span> attribute in the <span><code class="codeintext">tutorial</code></span> model and the <span><code class="codeintext">tutorials</code></span> attribute in the <span><code class="codeintext">user</code></span> model. By adding the <span><code class="codeintext">via</code></span> parameter we can update either reference and the other reference is kept in sync automatically. So above in listing 12.16 when we updated the <span><code class="codeintext">owner</code></span> parameter reference of the <span><code class="codeintext">tutorial</code></span> model, there was no need to update the <span><code class="codeintext">tutorials</code></span> parameter reference in the <span><code class="codeintext">user</code></span> model.</p>
+
+    <h3 class="head1" id="heading_id_17">12.4.5   Using .populate()</h3>
+
+    <p class="body">The <span><code class="codeintext">editTutorial</code></span> action of the <span><code class="codeintext">Page</code></span> controller determines whether the currently authenticated user agent is the creator of the tutorial. Within the action we compare the results of a query from the <span><code class="codeintext">user</code></span> model to a query from the <span><code class="codeintext">tutorial</code></span> model. Since we are using associations, the value of the <span><code class="codeintext">tutorial.owner.username</code></span> will be <span><code class="codeintext">null</code></span>.  This is because the <span><code class="codeintext">owner</code></span> property is now an association model reference and returns the <span><code class="codeintext">id</code></span> of a <span><code class="codeintext">user</code></span> record and not the entire record. We need to replace the value of <span><code class="codeintext">tutorial.owner</code></span> from a user record <span><code class="codeintext">id</code></span> to a snapshot of the record itself. In Sublime, open brushfire/api/controllers/PageController.js and add the following code to the <span><code class="codeintext">editTutorial</code></span> action in listing 12.17.</p>
+
+    <p class="codelistingcaption">Listing 12.17 Refactoring the <span><code class="codeintext1">editTutorial</code></span> action to take advantage of associations</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  editTutorial: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    Tutorial.findOne({</code> <code class="codebcxspmiddle">      id: +req.param('id')</code> <code class="codebcxspmiddle">    })</code> <code class="codebcxspmiddle">    .populate('owner')  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    .exec(function (err, foundTutorial){</code><code class="codebcxsplast">      if (err) return res.negotiate(err);</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  populate the <span><code class="codeintext1">owner</code></span> association reference</p>
+
+    <p class="body">By populating the <span><code class="codeintext">owner</code></span> association reference, the value for <span><code class="codeintext">foundTutorial.owner</code></span> will be replaced with a snapshot of the <span><code class="codeintext">user</code></span> record. Our comparison of the currently authenticated user agent <span><code class="codeintext">username</code></span> with the <span><code class="codeintext">username</code></span> of the <span><code class="codeintext">tutorial.owner.username</code></span> will now work as required.</p>
+
+    <p class="body">Now we can remove all of the code for the <span><code class="codeintext">updateTutorial</code></span> which involved propagating the changes to the embedded <span><code class="codeintext">tutorials</code></span> array attribute in the <span><code class="codeintext">user</code></span> model. Remember with the association reference, we simply need to update the record that changes and all references to that record are in sync. In Sublime open <span><code class="codeintext">brushfire/api/controllers/TutorialController.js</code></span> and refactor the <span><code class="codeintext">updateTutorial</code></span> action similar to listing 12.18.</p>
+
+    <p class="codelistingcaption">Listing 12.18 Refactoring the <span><code class="codeintext1">updateTutorial</code></span> action to take advantage of the <span class="italics1">association</span></p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  updateTutorial: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!_.isString(req.param('title'))) {</code> <code class="codebcxspmiddle">      return res.badRequest();</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!_.isString(req.param('description'))) {</code> <code class="codebcxspmiddle">      return res.badRequest();</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    Tutorial.update({</code> <code class="codebcxspmiddle">      id: +req.param('id')</code> <code class="codebcxspmiddle">    },{</code> <code class="codebcxspmiddle">      title: req.param('title'),</code> <code class="codebcxspmiddle">      description: req.param('description')</code> <code class="codebcxspmiddle">    }).exec(function (err) {</code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.ok();</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">  ...</code>
+
+    <p class="body">Using associations substantially eliminates a lot of syncing overhead we’d need to do manually. We will use these techniques to complete more of the back-end requirements of Brushfire.</p>
+
+    <h3 class="head1" id="heading_id_18">12.4.6   Refactoring bootstrap.js to use associations</h3>
+
+    <p class="body">Post pivot, we need to adjust the way we create test records in the bootstrap. Our needs go beyond simply test users and now includes tutorials, videos and ratings. The techniques  used to create the test data go beyond the scope of the book. A link to a  mini-tutorial for the bootstrap can be found off the main Hub link at: <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/">http://sailsinaction.github.io/</a>.  For now, make the following changes to <span><code class="codeintext">brushfire/api/config/bootstrap.js</code></span> in Sublime similar to listing 12.19.</p>
+
+    <p class="codelistingcaption">Listing 12.19 Changing the way we create test users in bootstrap.js</p><code class="codebcxspfirst">module.exports.bootstrap = function(cb) {</code> <code class="codebcxspmiddle">  var FixtureBootstrapper = require('../fixtures');</code> <code class="codebcxspmiddle">  return FixtureBootstrapper(cb);</code><code class="codebcxsplast">};</code>
+
+    <p class="body">Restart Sails using <span><code class="codeintext">sails lift</code></span> and navigate your browser to <span class="italics">localhost:1337/bp/user/find</span>. The Blueprint: find shortcuts is executed and three users are displayed. The user <span><code class="codeintext">sailsinaction</code></span> has tutorials, videos, and ratings. We’ll use these test records throughout the next chapters.</p>
+
+    <h2 class="head" id="heading_id_19">12.5   Using services</h2>
+
+    <p class="body">Much of what we do in page controller actions is transforming data into a format that the front end expects. The <span class="italics">Tutorial detail page</span> is currently using a simulated <span><code class="codeintext">tutorial</code></span> dictionary that was added when we cloned the project in chapter 11. The simulated dictionary also contains the <span><code class="codeintext">tutorial.owner</code></span> attribute of the <span><code class="codeintext">user</code></span> that created the tutorial. Let’s start refactoring the <span><code class="codeintext">tutorialDetail</code></span> action of the <span><code class="codeintext">page</code></span> controller by replacing the simulated dictionary with a query to the <span><code class="codeintext">tutorial</code></span> model.</p>
+
+    <h3 class="head1" id="heading_id_20">12.5.1   Example: Using associations for the tutorial detail page</h3>
+
+    <p class="body">We want to transition from using a simulated dictionary in the <span><code class="codeintext">tutorialDetail</code></span> action to an actual query to the <span><code class="codeintext">Tutorial</code></span> model. We’ll also need to populate the <span><code class="codeintext">owner</code></span> association reference to exchange the user <span><code class="codeintext">id</code></span> with an actual <span><code class="codeintext">user</code></span> record. In Sublime, open <span><code class="codeintext">brushfire/controllers/PageController.js</code></span> and replace the simulated dictionary in the <span><code class="codeintext">tutorialDetail</code></span> action with the following code in listing 12.20.</p>
+
+    <p class="codelistingcaption">Listing 12.20  Replacing the simulated <span><code class="codeintext1">tutorial</code></span> dictionary</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  tutorialDetail: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    Tutorial.findOne({  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      id: req.param('id')</code> <code class="codebcxspmiddle">    })</code> <code class="codebcxspmiddle">    .populate('owner')</code> <code class="codebcxspmiddle">    .exec(function(err, foundTutorial){</code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">      if (!tutorial) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">foundTutorial.owner = foundTutorial.owner.username; <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (!req.session.userId) {</code> <code class="codebcxspmiddle">        return res.view('tutorials-detail', {</code> <code class="codebcxspmiddle">          me: null,</code> <code class="codebcxspmiddle">          stars: foundTutorial.stars,</code> <code class="codebcxspmiddle">          tutorial: foundTutorial</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      User.findOne(req.session.userId)</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Replace <span><code class="codeintext1">tutorial</code></span> dictionary with <span><code class="codeintext1">Tutorial.findOne()</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  Transform the populated attribute into what the front end expects.</p>
+
+    <p class="body">Populating the <span><code class="codeintext">owner</code></span> association reference will replace the user <span><code class="codeintext">id</code></span> with a snapshot of the <span><code class="codeintext">user</code></span> record. Since the front end requires that the <span><code class="codeintext">owner</code></span> attribute contain the <span><code class="codeintext">username</code></span> of the user who created the <span><code class="codeintext">tutorial</code></span> we’ll transform it to contain just the <span><code class="codeintext">username</code></span>. Make sure Sails is running via <span><code class="codeintext">sails lift</code></span> and navigate your browser to <span class="italics">localhost:1337/tutorials/1</span> which should look similar to figure 12.15.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_15.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.15  The <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">username</code></span> attribute is displayed, however the <span class="italics1">Tutorial detail page</span> expects <span class="codeannotationcueballs">② </span>  the <span><code class="codeintext1">createdAt</code></span> and <span><code class="codeintext1">updatedAt</code></span> in the time ago format.</p>
+
+    <p class="body">The <span><code class="codeintext">username</code></span> is properly displayed, however the <span><code class="codeintext">createdAt</code></span> and <span><code class="codeintext">modifiedAt</code></span> attributes are not being displayed. Let’s fix that next.</p>
+
+    <h3 class="head1" id="heading_id_21">12.5.2   Using a service to consolidate duplicative code</h3>
+
+    <p class="body">Again looking at the API reference, we need to transform the <span><code class="codeintext">createdAt</code></span> and <span><code class="codeintext">modifiedAt</code></span> attributes from their current JSON time stamp format, <span><code class="codeintext">2015-09-27T16:32:55.000Z</code></span> to the popular <span class="italics">time ago</span> format– <span><code class="codeintext">2 days ago</code></span>. At first it might appear that the best thing to do is declare a function similar to listing 12.21.</p>
+
+    <p class="codelistingcaption">Listing 12.21 Formatting the <span><code class="codeintext1">createdAt</code></span> date with  <span><code class="codeintext1">machinepack-datetime</code></span></p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">        foundTutorial.owner = foundTutorial.owner.username;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        var Datetime = require('machinepack-datetime');  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        var getTimeAgo = function (options) {   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">          var niceTimeAgoString = Datetime.timeFrom({</code> <code class="codebcxspmiddle">            toWhen: Datetime.parse({</code> <code class="codebcxspmiddle">              datetime: options.date  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">            }).execSync(),</code> <code class="codebcxspmiddle">              fromWhen: new Date().getTime()</code> <code class="codebcxspmiddle">            }).execSync();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">          return niceTimeAgoString;    <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">        };</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        foundTutorial.created = getTimeAgo({date: foundTutorial.createdAt});   <span class="codeannotationcueballs1">❺ </span></code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  Require the machinepack.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  Declare a function that will transform the date to time ago format.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  Pass the argument to the machine.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  Return the formatted date.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span>  Execute the function to format the date.</p>
+
+    <p class="body">This works, but it violates one of our internal truisms: <span class="italics">Never declare a function inside another function unless it’s a callback or deals with recursion</span>. Declaring a function within another function (e.g. inline) in Sails can lead to issues because:</p>
+
+    <p class="listbulletcxspfirst">1. We don't know when the code is going to run.</p>
+
+    <p class="listbulletcxsplast">2. We don't know if the code inside the function implementation is relying on closure scope for variables or function calls.</p>
+
+    <p class="listbody">AND…</p>
+
+    <p class="listbullet pcalibre7">3. When reading the code, it completely derails the linear flow of what's supposed to happen. It's as if in the book we interrupted ourselves in the middle of a paragraph and went on a tangent for three pages about cats. Although Chad’s mom would certainly approve, that would not make sense.</p>
+
+    <p class="body">If you look through the Brushfire API reference, you’ll find that we need to transform various dates into this format in no less than six different Brushfire actions. This violates another internal truism.  <span class="italics">if you’ve repeated code in 3 or more locations it’s time to think about writing a service</span>. But what is a service?</p>
+
+    <p class="body">A service is simply one or more functions declared within a dictionary that Sails globalizes making the functions available everywhere. The project you cloned in chapter 11 already contains the new service in <span><code class="codeintext">brushfire/api/services/DateTimeService.js</code></span> similar to listing 12.22.</p>
+
+    <p class="codelistingcaption"> Listing 12.22  Declaring the  Datetime service</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  getTimeAgo: function (options) {</code> <code class="codebcxspmiddle">    var Datetime = require('machinepack-datetime');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    var niceTimeAgoString = Datetime.timeFrom({</code> <code class="codebcxspmiddle">      toWhen: Datetime.parse({</code> <code class="codebcxspmiddle">        datetime: options.date</code> <code class="codebcxspmiddle">      }).execSync(),</code> <code class="codebcxspmiddle">      fromWhen: new Date().getTime()</code> <code class="codebcxspmiddle">    }).execSync();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    return niceTimeAgoString;</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="body">The name of the file will become the globalized name of the service. We’ve also added the suffix <span class="italics">Service</span> to the name to differentiate it from other globalized dictionaries such as models like <span><code class="codeintext">User.js</code></span>. Our preferred method signature for services that contain synchronous functions is <span><code class="codeintext">function(options) {}</code></span><span class="italics">. Our preferred method signature for asynchronous functions is</span> <span><code class="codeintext">function(options, cb){}</code></span>. In Sublime, open <span><code class="codeintext">brushfire/controllers/PageController.js</code></span> and add the code to transform createdAt and updatedAt attributes using our Datetime service similar to listing 12.23.</p>
+
+    <p class="codelistingcaption">Listing 12.23 Using the Datetime service</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">foundTutorial.owner = foundUser.username;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  foundTutorial.created = DatetimeService.getTimeAgo({date: foundTutorial.createdAt});   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  foundTutorial.updated = DatetimeService.getTimeAgo({date: foundTutorial.updatedAt});   <span class="codeannotationcueballs1">❷ </span></code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶   </span>using the <span><code class="codeintext1">DatetimeService</code></span> to format <span><code class="codeintext1">createdAt</code></span> date value to time ago</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  using the <span><code class="codeintext1">DatetimeService</code></span> to format <span><code class="codeintext1">updatedAt</code></span> date value to time ago</p>
+
+    <p class="body">Restart Sails using <span><code class="codeintext">sails lift</code></span> and navigate your browser to <span class="italics">localhost:1337/tutorials/1</span> and you should see something similar to figure 12.16.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/12_16.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 12.16 The <span class="italics1">Tutorial detail page</span> with <span class="codeannotationcueballs">① </span>  the <span><code class="codeintext1">username</code></span>, <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">created</code></span>, and <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">updated</code></span> properties formatted properly.</p>
+
+    <p class="body">The <span><code class="codeintext">username</code></span><span class="italics">,</span> <span><code class="codeintext">createdAt</code></span> and <span><code class="codeintext">updatedAt</code></span> properties are now in the format the frontend expects.</p>
+
+    <h2 class="head" id="heading_id_22">12.6   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   Relationships between models can be made using embedded attributes or association attributes.</p>
+
+    <p class="listbulletcxspmiddle">·   Model relationships have two important characteristics: the direction of the relationship and the quantity of the relationship</p>
+
+    <p class="listbulletcxspmiddle">·   The Sails ORM uses embedded attributes, models, and collections via associations.</p>
+
+    <p class="listbulletcxsplast">·   Embedded relationship should only be used if the attribute embedded will not need to be queried outside of the model.</p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,965 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">7    Custom Actions</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   Demystifying controllers, actions, and routes</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Developing custom action implementation requirements from requests</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Transitioning Blueprint actions into customs action</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Using the <span><code class="codeintext">req</code></span> and <span><code class="codeintext">res</code></span> dictionaries in actions</p>
+
+    <p class="cosummarybulletcxsplast">·   Completing a working user identity management system</p>
+
+    <p class="body">Recall that our clients have asked us to build functionality that allows them to control access to Brushfire and more specifically to indirectly control the content of the site. In a nutshell, we’re attempting to enable 24/7 ubiquitous cat content!  In chapter 6 we completed the first part of user identity management, which involved creating and configuring a <span><code class="codeintext">user</code></span> model that will hold attributes to identify a user. In this chapter we’ll connect front-end mockup requests to custom controller actions that use model methods to allow a user to create, modify and view their identity. Recall that the components of user identity management correlate to the front-end mockups outlined in table 7.1.</p>
+
+    <p class="tablecaption pcalibre7">Table 7.1 User Identity Management Components and Mock-up pages</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="18%" class="sgc161" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Compon</p>
+          </div>
+        </td>
+
+        <td char="27%" class="pcalibre7 sgc162" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Mockup</p>
+          </div>
+        </td>
+
+        <td char="53%" class="sgc163" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Description</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="18%" class="sgc164" valign="top">
+          <p class="tablebody">Creating a profile with a signup process.</p>
+        </td>
+
+        <td char="27%" class="sgc165" valign="top"><code class="tablecode">signup.html</code></td>
+
+        <td char="53%" class="sgc166" valign="top">
+          <p class="tablebody">The signup component allows a user to create an identity. Identity is based upon one or more unique pieces of information. In our user identity management we’ll prompt the user for a unique emailaddress and unique username. Either of these pieces of information can be used to identify a particular user. The signup process will also prompt the user to create a password. This password will later be used as proof of a claim to a particular identity.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="18%" class="sgc164" valign="top">
+          <p class="tablebody">Displaying a user profile.</p>
+        </td>
+
+        <td char="27%" class="sgc165" valign="top"><code class="tablecode">profile.html</code></td>
+
+        <td char="53%" class="sgc166" valign="top">
+          <p class="tablebody">The user profile component displays information about the user via the user record. The user also has the ability to edit, delete and later restore their profile.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="18%" class="sgc164" valign="top">
+          <p class="tablebody">Editing a user profile.</p>
+        </td>
+
+        <td char="27%" class="sgc165" valign="top"><code class="tablecode">edit-profile.html</code></td>
+
+        <td char="53%" class="sgc166" valign="top">
+          <p class="tablebody">Editing a user profile allows the user to edit various aspects of their user record.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="18%" class="sgc164" valign="top">
+          <p class="tablebody">Restoring a user profile.</p>
+        </td>
+
+        <td char="27%" class="sgc165" valign="top"><code class="tablecode">restore-profile.html</code></td>
+
+        <td char="53%" class="sgc166" valign="top">
+          <p class="tablebody">After a user authenticates successfully, this component allows a user to restore their deleted user profile.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="18%" class="sgc167" valign="top">
+          <p class="tablebody">Administering a user profile.</p>
+        </td>
+
+        <td char="27%" class="sgc168" valign="top"><code class="tablecode">admin-users.html</code></td>
+
+        <td char="53%" class="sgc169" valign="top">
+          <p class="tablebody">This component allows a designated admin user to perform administrative duties such as add admin privileges to other users as well as ban users from accessing the system.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">To keep our eye on the big picture remember that user identity management is part of the identity, authorization, personalization and access control system we’re building over chapters 6-10 and illustrated in figure 7.1.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.1  The four components of an identity, authentication, personalization and access control system.</p>
+
+    <p class="body">In chapter 6, we installed the front-end assets of user identity management. These interactive mockups were created based upon a set of requirements derived from the client’s initial demands. We then used the mockups to identify model requirements before implementing the actual user model.</p>
+
+    <p class="body">In this chapter we’ll again look to the front-end assets for guidance on the requirements of requests to our back-end API. As we’ll see shortly, the requirements of the API will go beyond the functionality of the blueprint actions we used in chapter four for finding, creating, updating and deleting records on the <span><code class="codeintext">video</code></span> model. Instead we’ll introduce custom actions that open up infinite possibilities for fulfilling the needs of front-end requests. Before we look at the mockups and start identifying the requirements of each request, let’s make sure we have a firm understanding of routes, controllers and actions.</p>
+
+    <h2 class="head" id="heading_id_3">7.1   Demystifying routes and actions</h2>
+
+    <p class="body">We introduced routes, controllers, and actions in chapter 1. Combined together they can represent an endpoint within an API. Recall that the route is implemented in JavaScript as a dictionary.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.2  An explicit route contains a route address and target.</p>
+
+    <p class="body">The key in the route dictionary is the request or route address, consisting of the HTTP method and path. The value is another dictionary called the target that consists of a controller and action. When a request is made the router looks for a matching route address and then executes the corresponding controller action. The controller is a name we give the dictionary that aggregates <span class="italics">actions</span> under a common resource. Here we named the controller <span><code class="codeintext">user</code></span> because the <span class="italics">actions</span> will all concern a <span><code class="codeintext">user</code></span>. We define custom actions in controller files located in the <span><code class="codeintext">brushfire/api/controllers/</code></span> folder. In Sublime open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> similar to listing 7.1.</p>
+
+    <p class="codelistingcaption">Listing 7.1  The UserController file</p><code class="codeb">module.exports = {};</code>
+
+    <p class="body">This is the controller that was generated when we created the <span><code class="codeintext">user</code></span> API in chapter 6 via <span><code class="codeintext">sails generate api user</code></span>. We’ve already demonstrated what we can do with an empty controller and empty model through blueprint routes and actions. Now, let’s add a custom action where we dictate what will occur instead of relying upon the fixed set of features in a blueprint action. Head back to Sublime and add a new custom action named <span><code class="codeintext">hello</code></span> in listing 7.2 to <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span>.</p>
+
+    <p class="codelistingcaption">Listing 7.2  A custom <span><code class="codeintext1">hello</code></span> action in the <span><code class="codeintext1">user</code></span> controller.</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  hello: function(req, res) {     <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  console.log('Hello World!');  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> an action is a function with the arguments <span><code class="codeintext1">reg</code></span>and <span><code class="codeintext1">res</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  the body of the action does our bidding, in this case logs some text to the console</p>
+
+    <p class="body">Our new custom <span><code class="codeintext">hello</code></span> action will log “Hello World!” to the console. Let’s see this action.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">If you’ve been following along from chapter 6, you’re good to go. If, however, you want to begin your Brushfire journey from here, head to section 7.2.1 for instructions on obtaining the necessary assets to begin this chapter.</p>
+    </div>
+
+    <p class="body">Restart the Sails server via <span><code class="codeintext">sails lift</code></span><span class="italics">.</span> In Postman make a <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/user/hello</code></span> similar to figure 7.3.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.3  We made a <span class="codeannotationcueballs">① </span> <span><code class="codeintext1">GET</code></span> request to <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">/user/hello</code></span> but there’s something wrong, however, with the action because the <span class="codeannotationcueballs">③ </span>  loading message gets displayed and then times out.</p>
+
+    <p class="body">Our <span class="italics">Hello World!</span> message is logged to the console in figure 7.4.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.4  The mess from our custom action is logged to the console.</p>
+
+    <p class="body">However, there’s an issue with the request. Postman continues to display a loading message until it gets tired of waiting and tells us that the request didn’t get a response. Recall from chapter 1 that web applications use the HTTP request/response protocol to communicate. We made a request but our action didn’t complete the transaction with a response. Let’s fix that.</p>
+
+    <h3 class="head1" id="heading_id_4">7.1.1   Introducing res.json()</h3>
+
+    <p class="body">We need a way to respond to a request in the <span><code class="codeintext">hello</code></span> action. As it turns out, there are many ways to respond to a request. We’ll use the <span><code class="codeintext">.json()</code></span> method of the <span><code class="codeintext">res</code></span> dictionary to respond to the request. The <span><code class="codeintext">res.json()</code></span> method responds with a <span><code class="codeintext">200</code></span> status code and whatever we provide as an argument to the method, formatted as JSON to the user-agent that made the request. In Sublime, add the following response to <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in listing 7.3.</p>
+
+    <p class="codelistingcaption">Listing 7.3  Adding a response to the <span><code class="codeintext1">hello</code></span> action in the <span><code class="codeintext1">user</code></span> controller.</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  hello: function(req, res) {                  </code> <code class="codebcxspmiddle">return res.json('Hello World!'); <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> execute a method from the <span><code class="codeintext1">res</code></span> dictionary to respond to the request</p>
+
+    <p class="body">Restart Sails using <span><code class="codeintext">sails lift</code></span> and make the same <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/user/hello</code></span> in Postman.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.5  Again we’re making a <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">GET</code></span> request to <span class="codeannotationcueballs">② </span> <span><code class="codeintext1"> /user/hello</code></span>. Now that we’ve added a response in the action, Postman receives the response and <span class="codeannotationcueballs">③ </span>  displays it.</p>
+
+    <p class="body">Now when the request triggers the <span><code class="codeintext">hello</code></span> action a response is sent back with our Hello World! Message completing the request/response transaction. Notice that we also added <span><code class="codeintext">return</code></span> before <span><code class="codeintext">res.json</code></span>. This makes <span><code class="codeintext">res.json()</code></span> a terminal method.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">A <span class="italics1">terminal method</span> is generally the last line of code an action will execute for a given request. We use <span><code class="codeintext1">return</code></span> as an indicator that nothing else will execute with respect to the request after this line of code.</p>
+    </div>
+
+    <p class="body">You might be wondering how we got the <span><code class="codeintext">.json()</code></span> method from the <span><code class="codeintext">res</code></span> argument in the first place. The <span><code class="codeintext">req</code></span> and <span><code class="codeintext">res</code></span> arguments in our <span><code class="codeintext">hello</code></span> action are JavaScript dictionaries provided by Sails. The details of how they’re created are not important. Instead it’s important to understand that, like all JavaScript dictionaries, they can have methods (functions) and properties. These methods and properties are tied to the request and response. For example, not surprisingly, in a <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/user/hello</code></span><span class="italics">,</span> the <span><code class="codeintext">req</code></span> dictionary provides access to details about the request like the type of HTTP method used via <span><code class="codeintext">req.method</code></span>. In this case, the <span><code class="codeintext">req.method</code></span> property would return <span><code class="codeintext">GET</code></span>.</p>
+
+    <p class="body">We have one more bit of unfinished business to cover. How was our custom <span class="italics">hello</span> action triggered without an explicit route?  The answer lies in a third type of Blueprint: route called <span class="italics">Blueprint: actions routes</span>.</p>
+
+    <h3 class="head1" id="heading_id_5">7.1.2   Automatic routing for custom actions</h3>
+
+    <p class="body"><span class="italics">Action blueprint routes, aka blueprint action routes</span>, are shadow routes derived from custom actions found in controllers. When the server starts via <span><code class="codeintext">sails lift</code></span>, Sails examines each controller for custom actions.  For each one it finds, Sails binds a shadow route, which it determines by combining the controller name and the action name. Like other blueprint routes, action blueprint routes are considered shadow routes because they don’t exist explicitly in the <span><code class="codeintext">brushfire/config/routes.js</code></span> file.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The naming here can be kind of confusing.  Just remember that <span class="italics1">blueprint actions</span> are  built-in controller actions that you don’t have to write yourself. And <span class="italics1">blueprint routes</span> are built-in, implicit routes that you don’t have to include in your routes.js file.  Terminology like “action blueprints”, “shortcut blueprints”, and “RESTful blueprints” just relate to different categories of blueprint routes that are enabled by default in Sails.</p>
+    </div>
+
+    <p class="body">Instead they’re available unless overridden using the same path in the <span><code class="codeintext">routes.js</code></span> file or disabled in <span><code class="codeintext">brushfire/config/blueprints.js</code></span>. So for our <span><code class="codeintext">hello</code></span> action, the following shadow routes are created in table 7.2 each time the Sails server starts.</p>
+
+    <p class="tablecaption pcalibre7">Table 7.2  Action blueprint routes for the <span class="italics1">hello action</span></p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="33%" class="sgc71" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Method</p>
+          </div>
+        </td>
+
+        <td char="33%" class="sgc71" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Path</p>
+          </div>
+        </td>
+
+        <td char="33%" class="sgc71" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">action</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc74" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">GET</code></span></p>
+        </td>
+
+        <td char="33%" class="sgc74" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">/user/hello/:id?</code></span></p>
+        </td>
+
+        <td char="33%" class="sgc81" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">hello</code></span></p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc74" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">POST</code></span></p>
+        </td>
+
+        <td char="33%" class="sgc74" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">/user/hello/:id?</code></span></p>
+        </td>
+
+        <td char="33%" class="sgc81" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">hello</code></span></p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc74" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">PUT</code></span></p>
+        </td>
+
+        <td char="33%" class="sgc74" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">/user/hello/:id?</code></span></p>
+        </td>
+
+        <td char="33%" class="sgc81" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">hello</code></span></p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="33%" class="sgc72" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">DELETE</code></span></p>
+        </td>
+
+        <td char="33%" class="sgc72" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">/user/hello/:id?</code></span></p>
+        </td>
+
+        <td char="33%" class="sgc79" valign="top">
+          <p class="tablebody2cxsplast"><span><code class="codeintext">hello</code></span></p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">These routes speed up initial development by deferring the need to create an explicit route for each action.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">What’s up with the <span><code class="codeintext1">:id?</code></span> at the end of each path? We’ll cover this extensively in chapter 8, however, for now, <span><code class="codeintext1">:id?</code></span> lets Sails know that if there’s a value after <span><code class="codeintext1">/user/hello</code></span>, treat it as a variable named <span><code class="codeintext1">id</code></span>.</p>
+    </div>
+
+    <p class="body">Ultimately we’ll want to consolidate all routes explicitly in <span><code class="codeintext">brushfire/config/routes.js</code></span>. But for now, we can defer that task to chapter 8 and use the automation of blueprints instead.</p>
+
+    <p class="body">Let’s review. We know an action is simply a handler function that’s bound to a particular request via a route. We also know that we have access to properties and methods of the request and response in an action through the <span class="italics">req</span> and <span class="italics">res</span> dictionary arguments. Finally, we know that each request needs a corresponding response. Now that we have a solid foundation of how <span class="italics">controller/actions</span> work, let’s start identifying the custom actions we’ll need to fulfill the front-end mockup requests and requirements for user identity management.</p>
+
+    <h2 class="head" id="heading_id_6">7.2   Identifying the requirements for our custom actions</h2>
+
+    <p class="body">We’ll again use our front-end mockups to guide the design of our back-end. Instead of simply looking for model requirements we’ll examine the requests on each page to identify the custom actions necessary to satisfy the requirements of each front-end request. An overview of Brushfire’s mockup pages is displayed in Figure 7.6.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.6  We can use these mockups to identify the requests on each page as well as the requirements and expectations of each endpoint.</p>
+
+    <p class="body">You can see the end result of identifying the requirements by clicking the API Reference link on the chapter 7 Hub here: <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/chapter-7/">http://sailsinaction.github.io/chapter-7/</a> or directly at: <a class="pcalibre8 pcalibre5" href="https://docs.google.com/spreadsheets/d/10TGFjMKx9lRMbxV8pFdBU-efw_947LMefPFSsiFC0hQ/edit?usp=sharing">https://docs.google.com/spreadsheets/d/10TGFjMKx9lRMbxV8pFdBU-efw_947LMefPFSsiFC0hQ/edit?usp=sharing</a>.</p>
+
+    <h3 class="head1" id="heading_id_7">7.2.1   Obtaining the example materials for this chapter</h3>
+
+    <p class="body">You have two options with regard to setting up your Brushfire assets for this chapter. If you’ve completed chapter 6 you’re all set and can simply use your existing project here. If you haven’t completed chapter 6, you can clone the end of chapter 6Github repo at: <a class="pcalibre8 pcalibre5" href="https://github.com/sailsinaction/brushfire-ch6-end.git">https://github.com/sailsinaction/brushfire-ch6-end.git</a> and start from there.  Remember to use <span><code class="codeintext">npm install</code></span> in the terminal window from the root of the project after you clone the repo.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span class="bold1">If you do choose the cloning option</span>, don’t forget to add the <span><code class="codeintext1">brushfire/config/local.js</code></span> file with your Google API key from chapter 5 (section 5.4.6) as well as starting your local PostgreSQL <span><code class="codeintext1">brushfire</code></span> database from chapter 6 (section 6.4.2).</p>
+    </div>
+
+    <h2 class="head" id="heading_id_8">7.3   Handling a signup form</h2>
+
+    <p class="body">The first page we’ll review is the signup page. The signup page is responsible for creating a user’s initial identity<span class="italics">.</span> For each mockup we’ll identify:</p>
+
+    <p class="listbulletcxspfirst">·   all of the requests on the page including the request that initiated the display of the page itself.</p>
+
+    <p class="listbulletcxspmiddle">·   the inputs that will be sent with a request.</p>
+
+    <p class="listbulletcxsplast">·   the requirements and expectations of the response back to the front end.</p>
+
+    <p class="body">Figure 7.7shows three requests that are part of the signup page.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.7  The signup page mockup contains three endpoints. <span class="codeannotationcueballs">① </span>  The first request initiated the display of the <span><code class="codeintext1">signup</code></span> page, which is handled by an asset route. <span class="codeannotationcueballs">② </span>  The second request is a link to the <span><code class="codeintext1">restore-profile</code></span> page that’s handled by an asset route and <span class="codeannotationcueballs">③ </span>  is a <span><code class="codeintext1">POST</code></span> request to <span><code class="codeintext1">/user/signup</code></span> that will be handled by a custom controller action.</p>
+
+    <p class="body">Let’s review the requests we’ve identified in the API Reference. The first request is for the delivery of the signup page itself. Although not technically a request on the signup page, it makes sense to list the request and back-end component that responds with the page. In this case, the Sails asset-router responds to <span class="codeannotationcueballs">① </span>  the Angular AJAX <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/templates/signup.html</code></span>.</p>
+
+    <p class="body">The second request starts as an Angular front-end request to /#/restore-profile that triggers <span class="codeannotationcueballs">② </span>  a back-end <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/templates/restore-profile.html</code></span>. Sails handles this request with the asset-router.</p>
+
+    <p class="body">The third request is a <span class="codeannotationcueballs">③ </span> <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/user/signup</code></span>. This will trigger a custom <span><code class="codeintext">signup</code></span> action. Let’s review the requirements for this action by heading back to the API Reference. The first tab consists of our model requirements. A new column has been added for back-end validation and transformation requirements. We’ll implement the validations and transformations in a new custom action-- <span><code class="codeintext">signup</code></span>. The second tab contains our Endpoint Summary. We’ve altered the requirements of the <span class="italics">Add a user</span> endpoint. In chapter 6, we used the Blueprint create action to create a user based upon incoming form parameters. Our requirements, however, have expanded to include:</p>
+
+    <p class="listbulletcxspfirst">·   Back-end validation of parameters with appropriate error responses</p>
+
+    <p class="listbulletcxspmiddle">·   Creating a Gravatar image</p>
+
+    <p class="listbulletcxspmiddle">·   Encrypting the user’s password</p>
+
+    <p class="listbulletcxspmiddle">·   Creating a user record that consists of the <span><code class="codeintext">username</code></span>, <span><code class="codeintext">email</code></span>, <span><code class="codeintext">encryptedPassword</code></span>, <span><code class="codeintext">gravatarURL</code></span>, <span><code class="codeintext">deleted</code></span>, <span><code class="codeintext">admin</code></span>, and <span><code class="codeintext">banned</code></span> attributes</p>
+
+    <p class="listbulletcxsplast">·   Responding with an appropriate error or 200 status code and <span><code class="codeintext">username</code></span> as JSON</p>
+
+    <p class="body">In chapter 6 we used the Blueprint: <span class="italics">create</span> action via a <span class="italics">blueprint: RESTful route</span> to create a new user record as shown in figure 7.8.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.8  The incoming <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">POST</code></span> request to <span><code class="codeintext1">/user</code></span> matched <span class="codeannotationcueballs">② </span>  a blueprint RESTful route that triggered <span class="codeannotationcueballs">③ </span>  a blueprint: create action, that ultimately created <span class="codeannotationcueballs">④ </span>  the <span><code class="codeintext1">user</code></span> record.</p>
+
+    <p class="body">So a simple CRUD action will no longer satisfy the requirements of the request and will necessitate a custom action.</p>
+
+    <h3 class="head1" id="heading_id_9">7.3.1   Naming custom actions</h3>
+
+    <p class="body">Naming things is the most daunting recurring problem in programming. Even worse, we have an almost unlimited number of choices when deciding on a name for the action. We could use the traditional CRUD operation labels, in this case naming the action <span class="italics">create</span>. This would, however, overwrite the <span class="italics">blueprint: (create) action</span>. With all of that said, we think it’s more accurate to be descriptive in naming the action and will therefore use the name <span class="italics">signup</span>.</p>
+
+    <h3 class="head1" id="heading_id_10">7.3.2   Creating an action</h3>
+
+    <p class="body">To create the <span class="italics">signup</span> action, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and add the following code in Listing 7.4.</p>
+
+    <p class="codelistingcaption">Listing 7.4  The signup action</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">signup: function(req, res) {</code> <code class="codebcxspmiddle">    return res.json({</code> <code class="codebcxspmiddle">      email: req.param('email')</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <div class="sgc3">
+      <p class="sidebarc">What happened to the <span><code class="codeintext1">hello</code></span> action we created previously?  We deleted it and so should you.</p>
+    </div>
+
+    <p class="body">So let’s check out the new action. Make sure Sails is running via <span class="italics">sails lift</span> and in POSTMAN make a <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/user/signup</code></span> configured similarly to figure 7.9.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.9  Using POSTMAN we’ll create a new user with the custom <span><code class="codeintext1">signup</code></span> action. This will be a <span class="codeannotationcueballs">① </span> <span><code class="codeintext1">POST</code></span> request to <span><code class="codeintext1">localhost:1337/user/signup</code></span> with <span class="codeannotationcueballs">② </span>  an email parameter set to <span><code class="codeintext1">sailsinaction@gmail.com</code></span>. The <span><code class="codeintext1">signup</code></span> action responds with the <span class="codeannotationcueballs">③ </span>  email address as JSON and a <span><code class="codeintext1">200</code></span> status code.</p>
+
+    <p class="body">The <span><code class="codeintext">signup</code></span> action responds with the <span><code class="codeintext">email</code></span> as JSON and a <span><code class="codeintext">200</code></span> status code. Next, let’s take a look at the back-end validation requirements.</p>
+
+    <h3 class="head1" id="heading_id_11">7.3.3   Introducing req.param()</h3>
+
+    <p class="body">Reviewing the API Reference, specifically the Model Requirements tab, you’ll find the following Back-End Validation requirements in table 7.3.</p>
+
+    <p class="tablecaption pcalibre7">Table 7.3  Back-end Validation requirements for the <span><code class="codeintext1">user</code></span> model</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="50%" class="sgc170" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Attribute Name</p>
+          </div>
+        </td>
+
+        <td char="50%" class="sgc170" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Back-end Validation</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="50%" class="sgc171 pcalibre7" valign="top">
+          <p class="tablebody"><span><code class="codeintext">username</code></span></p>
+        </td>
+
+        <td char="50%" class="sgc172" valign="top">
+          <p class="tablelistbulletcxspfirst pcalibre7">·   Must be at least 6 characters.</p>
+
+          <p class="tablelistbulletcxspmiddle">·   The attribute is required.</p>
+
+          <p class="tablelistbulletcxsplast">·   Only Aa-Zz and 0-9.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="50%" class="sgc171 pcalibre7" valign="top">
+          <p class="tablebody"><span><code class="codeintext">email</code></span></p>
+        </td>
+
+        <td char="50%" class="sgc172" valign="top">
+          <p class="tablelistbulletcxspfirst pcalibre7">·   Must be at valid email address.</p>
+
+          <p class="tablelistbulletcxsplast">·   The attribute is required.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="50%" class="sgc173" valign="top">
+          <p class="tablebody"><span><code class="codeintext">password</code></span></p>
+        </td>
+
+        <td char="50%" class="sgc174" valign="top">
+          <p class="tablelistbulletcxspfirst pcalibre7">·   Must be at least 6 characters.</p>
+
+          <p class="tablelistbulletcxsplast">·   The attribute is required.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Recall that we even though we validate user input on the front-end, we must also validate on the back end to protect against requests made outside of the browser. Head back to <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and add the following validation code in listing 7.5.</p>
+
+    <p class="codelistingcaption">Listing 7.5  Validating the existence of parameters in the signup action.</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">signup: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (_.isUndefined(req.param('email'))) {   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        return res.badRequest('An email address is required!');  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (_.isUndefined(req.param('password'))) {</code> <code class="codebcxspmiddle">      return res.badRequest('A password is required!');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (req.param('password').length &lt; 6) {  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">      return res.badRequest('Password must be at least 6 characters!');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (_.isUndefined(req.param('username'))) {</code> <code class="codebcxspmiddle">      return res.badRequest('A username is required!');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (req.param('username').length &lt; 6) {</code> <code class="codebcxspmiddle">      return res.badRequest('Username must be at least 6 characters!');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!_.isString(req.param('username')) || req.param('username').match(/[^a-z0-9]/i)) {  <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">      return res.badRequest('Invalid username: must consist of numbers and letters only.');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    var options = {    <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">      email: req.param('email'),</code> <code class="codebcxspmiddle">      username: req.param('username'),</code> <code class="codebcxspmiddle">      password: req.param('password')</code> <code class="codebcxspmiddle">    };</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">   return res.json(options);   <span class="codeannotationcueballs1">❻ </span></code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  use a lodash <span><code class="codeintext1">isUndefined()</code></span>method to determine whether a request parameter is undefined</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  if a request parameter is undefined return a status code 400 bad request with a message</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  check value length</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  use a regular expression to assure only letters and numbers are used in the <span><code class="codeintext1">username</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❺ </span> build up a <span><code class="codeintext1">user</code></span> dictionary that contains the parameters</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❻ </span>  respond with the dictionary formatted as JSON</p>
+
+    <p class="body">We’re using the lodash <span><code class="codeintext">_.isUndefined()</code></span>method to check for the existence of form fields, now parameters.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">lodash describes itself as a modern JavaScript utility library. The library is accessible via the global underscore <span><code class="codeintext1">_</code></span> symbol. As its name suggests checks if a value is <span><code class="codeintext1">undefined</code></span>.</p>
+    </div>
+
+    <p class="body">We’re also introducing another useful method, <span><code class="codeintext">req.param()</code></span><span class="italics">.</span></p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span><code class="codeintext1">req.param()</code></span> searches the url path, query string, and body of the request for a specified parameter provided as an argument. For example, if a form field named <span><code class="codeintext1">username</code></span> is sent in the request, <span><code class="codeintext1">req.param(‘username’)</code></span> will return the value of the <span><code class="codeintext1">username</code></span> field.</p>
+    </div>
+
+    <p class="body">Also you may have noticed that if a value fails a validation test we respond with <span><code class="codeintext">res.badRequest()</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The <span><code class="codeintext1">res.badRequest()</code></span> method is a default response that sends a <span><code class="codeintext1">400</code></span> status code, which by convention means the request has some malformed syntax. We also pass a message that’s added to the error as an argument.</p>
+    </div>
+
+    <p class="body">We also check the length of the username and password to assure they have a minimum number of characters. Finally, we’re using a JavaScript regular expression to assure that the <span><code class="codeintext">username</code></span> only contains letters and numbers. Next, we need to assure the value for the email attribute has the proper syntax and we’ll use the validate machine to check the value.</p>
+
+    <h3 class="head1" id="heading_id_12">7.3.4   Validating email addresses</h3>
+
+    <p class="body">So far, we’ve been creating the necessary validations from scratch. Alternatively we could search the npm registry for an existing Node module to check the validity of the email attribute and fulfill the requirement in our custom action. In chapter 5, we introduced a third alternative we call node machines. Recall that machines are a single, clear purpose function that performs a particular task and are aggregated in machinepacks. Navigate your browser to <a class="pcalibre8 pcalibre5" href="http://node-machine.org/machinepack-emailaddresses/validate">http://node-machine.org/machinepack-emailaddresses/validate</a> and you should see a page similar to Figure 7.10.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.10  The  <span><code class="codeintext1">Emailaddresses.validate()</code></span> machine page provides example usage.</p>
+
+    <p class="body">The <span><code class="codeintext">Emailaddresses.validate()</code></span> machine takes a string as input and determines whether that string uses valid email address syntax. If it does, the machine will execute the <span><code class="codeintext">success</code></span> exit, if it’s invalid the <span><code class="codeintext">invalid</code></span> exit will be executed and if there’s an error, the <span><code class="codeintext">error</code></span> exit will be executed. Let’s add the example code and then our own code to handle each exit. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> and add the machine and custom handler code to the <span><code class="codeintext">signup</code></span> action of the <span><code class="codeintext">user</code></span> controller similar to listing 7.6.</p>
+
+    <p class="codelistingcaption">Listing 7.6  Using a machine to validate email addresses in the <span><code class="codeintext1">signup</code></span> action.</p><code class="codebcxspfirst">var Emailaddresses = require('machinepack-emailaddresses');         <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  signup: function(req, res) {</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">    return res.badRequest('Invalid username: must consist of numbers and letters only.');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    Emailaddresses.validate({</code> <code class="codebcxspmiddle">      string: req.param('email')      <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    }).exec({ </code> <code class="codebcxspmiddle">      error: function(err) {</code> <code class="codebcxspmiddle">        return res.serverError(err);  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">      invalid: function() {</code> <code class="codebcxspmiddle">        return res.badRequest('Doesn\'t look like an email address to me!'); <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">      success: function() {</code> <code class="codebcxspmiddle">        var options = {</code> <code class="codebcxspmiddle">          email: req.param('email'),</code> <code class="codebcxspmiddle">          username: req.param('username'),</code> <code class="codebcxspmiddle">          password: req.param('password')</code> <code class="codebcxspmiddle">        };</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        return res.json(options); <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> require the machinepack and assign it to the variable <span><code class="codeintext1">Emailaddress</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  add the email address as input <span><code class="codeintext1">via req.param('email')</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  return any errors via <span><code class="codeintext1">res.serverError()</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span>  upon success respond with <span><code class="codeintext1">res.json</code></span> returning the <span><code class="codeintext1">user</code></span> dictionary</p>
+
+    <p class="body">Next, we need to add the machinepack to the project. Head over to the terminal window and type:</p><code class="codeb">~/brushfire $npm install machinepack-emailaddresses --save</code>
+
+    <p class="body">Let’s see this in action. Restart Sails via <span><code class="codeintext">sails lift</code></span> and from within POSTMAN make another <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/user/signup</code></span> similar to figure 7.11.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.11  Using Postman, we’ll check the validity of the email attribute in the custom <span><code class="codeintext1">signup</code></span> action. We’ll generate a <span class="codeannotationcueballs">① </span> <span><code class="codeintext1">POST</code></span> request to<span><code class="codeintext1">/user/signup</code></span> with <span class="codeannotationcueballs">② </span>  an invalid email parameter, with the username and password parameters also provided. The signup action executed the invalid exit and responded with a <span><code class="codeintext1">400</code></span>code and message.</p>
+
+    <p class="body">The validate machine recognized that the email parameter used improper syntax and responded with an error message. With the email validation requirement fulfilled, let’s look at a transformation requirement-- encrypting the <span><code class="codeintext">password</code></span> (and yes we have a machine for that).</p>
+
+    <h3 class="head1" id="heading_id_13">7.3.5   Encrypting passwords</h3>
+
+    <p class="body">We don’t want to store passwords unencrypted. Therefore, we’ll use another machine from nodemachine.org to encrypt passwords for us. Navigate your browser to: <a class="pcalibre8 pcalibre5" href="http://node-machine.org/machinepack-passwords/encrypt-password">http://node-machine.org/machinepack-passwords/encrypt-password</a>, which should display the machinepack-passwords <span><code class="codeintext">.encryptPassword()</code></span>page similar to figure 7.12.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_12.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.12 We’ll use the <span><code class="codeintext1">Passwords.encryptPassword()</code></span> machine to encrypt a user’s password before it’s stored in the <span><code class="codeintext1">user</code></span> record.</p>
+
+    <p class="body">The <span><code class="codeintext">Passwords.encryptPassword()</code></span> machine takes a string as input and transforms it into an encrypted password. If successful, the machine will execute the <span><code class="codeintext">success</code></span> exit or if there’s an error, the <span><code class="codeintext">error</code></span> exit will be executed. Let’s add the example code with some custom handler code by opening <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and adding the following code similar to Listing 7.7.</p>
+
+    <p class="codelistingcaption">Listing 7.7  Adding the <span><code class="codeintext1">encryptPassword</code></span> machine to the signup action.</p><code class="codebcxspfirst">var Emailaddresses = require('machinepack-emailaddresses');</code> <code class="codebcxspmiddle">var Passwords = require('machinepack-passwords'); <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle">  signup: function(req, res) {</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">      success: function() {</code> <code class="codebcxspmiddle">        Passwords.encryptPassword({               <span class="codeannotationcueballs1">❷ </span>            </code> <code class="codebcxspmiddle">          password: req.param('password'),        <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        }).exec({</code> <code class="codebcxspmiddle">          error: function(err) {</code> <code class="codebcxspmiddle">               return res.serverError(err);</code> <code class="codebcxspmiddle">          },        </code> <code class="codebcxspmiddle">          success: function(result) {</code> <code class="codebcxspmiddle">            return res.json(result);              <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">          },</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>   added the require for <span><code class="codeintext1">Passwords</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  nest the encryptPasswords() machine with the success exit of the <span><code class="codeintext1">validate()</code></span> machine.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  pass the password parameter via <span><code class="codeintext1">req.param()</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span> respond with the <span><code class="codeintext1">result</code></span> as JSON</p>
+
+    <p class="body">It’s important to realize that we’re nesting the encryptPassword machine with the validate machine. We do this because the machines are asynchronous. That is, if executed independently we have no way of knowing the order each machine will be executed. By nesting the machines we know that the validate machine will complete execution before the <span><code class="codeintext">encryptPassword()</code></span> machine begins.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">In later chapters we’ll demonstrate another way to insure the sequence of asynchronous functions using a module named <span><code class="codeintext1">async</code></span><span class="italics1">.</span></p>
+    </div>
+
+    <p class="body">Before we can see this in action we need to install machinepack-passwords. Head over to the terminal window and type</p><code class="codeb">~/brushfire $ npm install machinepack-passwords --save</code>
+
+    <p class="body">Restart Sails using <span><code class="codeintext">sails lift</code></span> and make a <span><code class="codeintext">POST</code></span> request <span><code class="codeintext">to /user/signup</code></span> similar to figure 7.13.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_13.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.13  Using POSTMAN we’ll make <span class="codeannotationcueballs">① </span> <span><code class="codeintext1">POST</code></span> request to <span><code class="codeintext1">/user/signup</code></span> and pass <span class="codeannotationcueballs">② </span>  the <span><code class="codeintext1">password</code></span> parameter to the action, which will respond with <span class="codeannotationcueballs">③ </span>  the encrypted password.</p>
+
+    <p class="body">Now that we’ve encrypted the password let’s use the email address to fulfill our next requirement for a “nice” profile picture using the Gravatar machine.</p>
+
+    <h3 class="head1" id="heading_id_14">7.3.6   Profile images with Gravatar</h3>
+
+    <p class="body">A Gravatar is a globally recognized avatar maintained by the folks that produce WordPress. You can create an account using your email address and then upload an image that will be associated with that email. Different sites can then use an API to generate a URL that points to the associated image. Navigate your browser to: <a class="pcalibre8 pcalibre5" href="http://node-machine.org/machinepack-gravatar/get-image-url">http://node-machine.org/machinepack-gravatar/get-image-url</a>. We’re going to use a Node machine to generate the URL. The <span><code class="codeintext">Gravatar.getImageUrl()</code></span> machine has a single input, the email address. Open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and copy the usage example with some custom code similar to Listing 7.8.</p>
+
+    <p class="codelistingcaption">Listing 7.8  Adding the <span><code class="codeintext1">Gravatar.getImageUrl</code></span> synchronous machine</p><code class="codebcxspfirst">var Emailaddresses = require('machinepack-emailaddresses');</code> <code class="codebcxspmiddle">var Passwords = require('machinepack-passwords');</code> <code class="codebcxspmiddle">var Gravatar = require('machinepack-gravatar');         <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle">  signup: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">          success: function(result) {   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">            try {                       <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">              var gravatarURL = Gravatar.getImageUrl({  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">                emailAddress: req.param('email'),</code> <code class="codebcxspmiddle">              }).execSync();            <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">            } catch(err) {</code> <code class="codebcxspmiddle">              return res.serverError(err);</code> <code class="codebcxspmiddle">            }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            var options = {             <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">              email: req.param('email'),</code> <code class="codebcxspmiddle">              username: req.param('username'),</code> <code class="codebcxspmiddle">              encryptedPassword: result,</code> <code class="codebcxspmiddle">              gravatarURL: gravatarURL</code> <code class="codebcxspmiddle">            };</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            return res.json(options);   <span class="codeannotationcueballs1">❻ </span></code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  added the require for <span><code class="codeintext1">Gravatar</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  nest the machine within the success of the <span><code class="codeintext1">encryptPassword()</code></span> machine</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  return the results of the machine to <span><code class="codeintext1">gravatarURL</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  using the machine synchronously</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❺ </span>  build up the <span><code class="codeintext1">options</code></span> dictionary with attributes</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❻ </span>  respond with <span><code class="codeintext1">options</code></span> as JSON</p>
+
+    <p class="body">You may have also noticed that the machine is using <span><code class="codeintext">.execSync()</code></span> as the last function in the machine. This gives us the option of using a synchronous usage pattern, solet’s take this opportunity to configure it to execute synchronously. The usage pattern has two distinct differences in the synchronous usage of a machine. The first is that there’s no callback that passes an error and any result of the machine. Therefore, we need to provide a variable that will be assigned the value of a successfully returned result. The second difference is we’re wrapping the machine in a try/catch. This will handle any errors without crashing the application. Before we can see this in action, we need to install machinepack-gravatar. Head over to the terminal window and type</p><code class="codeb">~/brushfire $ npm install machinepack-gravatar --save</code>
+
+    <p class="body">Restart Sails using <span class="italics">sails lift</span> and make a <span class="italics">POST</span> request to <span class="italics">/user/signup</span> similar to figure 7.14.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_14.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.14  Using Postman we’ll make a <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">POST</code></span> request to <span><code class="codeintext1">/user/signup</code></span> and pass <span class="codeannotationcueballs">② </span>  the <span><code class="codeintext1">email</code></span> parameter to the action, which will respond with <span class="codeannotationcueballs">③ </span>  the gravatarURL.</p>
+
+    <p class="body">Let’s take a moment to reinforce why we used a <span><code class="codeintext">try/catch</code></span>. Go back into the UserController.js file and rename the <span><code class="codeintext">Gravatar.getImageUrl</code></span> to something like <span><code class="codeintext">Grvatar.getImageUrl</code></span>. In Postman make a <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/user/signup</code></span>. Take a look at the console and you should see an error that <span><code class="codeintext">Gr</code></span><span><code class="codeintext">a</code></span><span><code class="codeintext">vatar is not defined</code></span>, however, we didn’t crash the server. Next, remove the try/catch, restart Sails and make the same request. Without <span><code class="codeintext">the try/catch</code></span> we would not only have an error, but Brushfire would crash bringing the server down. Therefore, on those occasions when using a synchronous function, it’s important to wrap them in a <span><code class="codeintext">try/catch</code></span>. So now, we’ve validated our inputs, encrypted the password, and created a Gravatar URL. We’re ready to create a record for our user model.</p>
+
+    <h3 class="head1" id="heading_id_15">7.3.7   Creating user records</h3>
+
+    <p class="body">It’s now time to take the work we’ve done validating and preparing our attributes and create a user record with the <span><code class="codeintext">User.create()</code></span> model method. The <span><code class="codeintext">.create()</code></span> method uses the now familiar asynchronous usage pattern.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_15.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.15 This is an example of the <span class="codeannotationcueballs">② </span> <span><code class="codeintext1">.create()</code></span>model method of <span class="codeannotationcueballs">① </span>  the <span><code class="codeintext1">user</code></span> model. The attributes of the record to be created are passed as <span class="codeannotationcueballs">③ </span>  an argument to the method as a dictionary <span><code class="codeintext1">{}</code></span> or an array of dictionaries <span><code class="codeintext1">[{}]</code></span>. The <span class="codeannotationcueballs">④ </span> <span><code class="codeintext1">.exec()</code></span>method is also referred to as a deferred function. Using <span><code class="codeintext1">.exec()</code></span> will give us a bunch of flexibility to chain modifier methods together and to make the usage easier to read. For now, we'll be using <span><code class="codeintext1">.exec()</code></span> with an anonymous function as the callback. Within this callback we’ll pass <span class="codeannotationcueballs">⑤ </span>  any errors (6) as the first argument and <span class="codeannotationcueballs">⑥ </span>  the resulting data from the method. We can then use <span class="codeannotationcueballs">⑦ </span>  the body of the callback to respond or continue with another task.</p>
+
+    <p class="body">Add the options dictionary to the create method in Listing 7.9.</p>
+
+    <p class="codelistingcaption">Listing 7.9  Using the create model method to generate a new user record</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle">  signup: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">            var options = {</code> <code class="codebcxspmiddle">              email: req.param('email'),</code> <code class="codebcxspmiddle">              username: req.param('username'),</code> <code class="codebcxspmiddle">              encryptedPassword: result,</code> <code class="codebcxspmiddle">              gravatarURL: gravatarURL</code> <code class="codebcxspmiddle">            };</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            User.create(options).exec(function(err, createdUser) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">              if (err) {</code> <code class="codebcxspmiddle">                return res.negotiate(err);  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">              }</code> <code class="codebcxspmiddle">              return res.json(createdUser);  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">            });</code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  passed the <span><code class="codeintext1">options</code></span> dictionary to the <span><code class="codeintext1">User.create()</code></span> method</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  handle the error with <span><code class="codeintext1">res.negotiate(err)</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span>  return the created record as JSON</p>
+
+    <p class="body">So we passed the <span><code class="codeintext">options</code></span> dictionary into the <span><code class="codeintext">User.create()</code></span> method as an argument and responded to the request with the created record via <span><code class="codeintext">res.json(createdUser)</code></span>. Let’s take a look at this in action. Restart Sails using <span><code class="codeintext">sails lift</code></span> and make a <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/user/signup</code></span> similar to figure 7.16.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_16.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.16  The <span class="codeannotationcueballs">① </span>  POST request to localhost:1337/user/signup passes in <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">email</code></span>, <span><code class="codeintext1">username</code></span> and <span><code class="codeintext1">password</code></span> parameters and action responds with <span class="codeannotationcueballs">③ </span>  the created record.</p>
+
+    <p class="body">We’ve almost completed the signup portion of user identity management. The last issue to resolve is handling duplicate users.</p>
+
+    <h3 class="head1" id="heading_id_16">7.3.8   Preventing duplicate accounts</h3>
+
+    <p class="body">When we started this chapter the signup page assets made a <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/user</code></span> whenever a user clicked the <span class="italics">create user account</span> button<span class="italics">.</span> This path triggered the <span class="italics">Blueprint</span> <span class="italics">RESTful</span> <span class="italics">create route</span>. We now need to change that request’s path in the Angular controller to <span><code class="codeintext">/user/signup</code></span> to take advantage of our new custom controller action. In Sublime, open <span><code class="codeintext">brushfire/assets/js/controllers/signupPageController.js</code></span> and change the path in the Angular AJAX request to what’s shown in listing 7.10.</p>
+
+    <p class="codelistingcaption">Listing 7.10  Changing the AJAX path to use the new controller action</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">$scope.submitSignupForm = function(){</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $scope.signupForm.loading = true;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $http.post('/user/signup', {                          <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      email: $scope.signupForm.email,</code> <code class="codebcxspmiddle">      username: $scope.signupForm.username,</code> <code class="codebcxspmiddle">      password: $scope.signupForm.password</code> <code class="codebcxspmiddle">    })</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  replaced path from <span><code class="codeintext1">/user</code></span> to <span><code class="codeintext1">/user/signup</code></span></p>
+
+    <p class="body">So let’s see this in action now that we’ve attached our front-end <span><code class="codeintext">signup</code></span> page assets with the back-end <span><code class="codeintext">signup</code></span> controller action. Restart Sails via <span><code class="codeintext">sails lift</code></span> and navigate your browser to <span class="italics">localhost:1337/#/signup.</span> From the signup page create a user with an <span><code class="codeintext">email</code></span> of <span><code class="codeintext">sailsinaction@gmail.com,</code></span> the <span><code class="codeintext">username</code></span> of <span><code class="codeintext">sailsinaction</code></span> and a <span><code class="codeintext">password</code></span> of <span><code class="codeintext">abc123</code></span>. Click the back button on your browser and create a user with the same credentials you just created. Your browser should display an error message similar to figure 7.17.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_17.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.17  The front end displays an error dictionary return by the <span><code class="codeintext1">User.create()</code></span> model method that indicates that one of the unique validations has been violated.</p>
+
+    <p class="body">The <span><code class="codeintext">User.create()</code></span>model method returned an error dictionary similar to listing 7.11.</p>
+
+    <p class="codelistingcaption">Listing 7.11  The duplicate error message from the <span><code class="codeintext1">signup</code></span> action</p><code class="codebcxspfirst">{"email":</code> <code class="codebcxspmiddle">[{</code> <code class="codebcxspmiddle">"value":"sailsinaction@gmail.com",</code> <code class="codebcxspmiddle">"rule":"unique",</code> <code class="codebcxspmiddle">"message":"A record with that `email` already exists (`sailsinaction@gmail.com`)."</code> <code class="codebcxspmiddle">}]</code><code class="codebcxsplast">}</code>
+
+    <p class="body">That dictionary gives us a great deal of information. We now know the error has to do with the <span><code class="codeintext">email</code></span> attribute. We know its original value, that the error is a violation of the <span><code class="codeintext">unique</code></span> attribute validation, and now have a message explaining the error. If you take a look at <span><code class="codeintext">brushfire/assets/js/controllers/signupPageController.js</code></span> our front end expects a duplicate email address error dictionary to have a status property with a value of <span><code class="codeintext">409</code></span> and a <span><code class="codeintext">data</code></span> property with an appropriate error message string. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> and add the following responses to the <span><code class="codeintext">User.create()</code></span>model method in the <span><code class="codeintext">signup</code></span> action in listing 7.12.</p>
+
+    <p class="codelistingcaption">Listing 7.12  Handling duplicate <span><code class="codeintext1">email</code></span> and <span><code class="codeintext1">username</code></span> attribute errors</p><code class="codebcxspfirst">            ...</code> <code class="codebcxspmiddle">            var options = {</code> <code class="codebcxspmiddle">              email: req.param('email'),</code> <code class="codebcxspmiddle">              username: req.param('username'),</code> <code class="codebcxspmiddle">              encryptedPassword: result,</code> <code class="codebcxspmiddle">              gravatarURL: gravatarURL</code> <code class="codebcxspmiddle">            };</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            User.create(options).exec(function(err, createdUser) {</code> <code class="codebcxspmiddle">              if (err) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">                if (err.invalidAttributes &amp;&amp; err.invalidAttributes.email &amp;&amp; err.invalidAttributes.email[0] &amp;&amp; err.invalidAttributes.email[0].rule === 'unique') {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">                  return res.send(409, 'Email address is already taken by another user, please try again.');</code> <code class="codebcxspmiddle">                }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">                if (err.invalidAttributes &amp;&amp; err.invalidAttributes.username &amp;&amp; err.invalidAttributes.username[0] &amp;&amp; err.invalidAttributes.username[0].rule === 'unique') {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">                  return res.send(409, 'Username is already taken by another user, please try again.');</code> <code class="codebcxspmiddle">                }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">                return res.negotiate(err);</code> <code class="codebcxspmiddle">              }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">              return res.json(createdUser);</code> <code class="codebcxspmiddle">            });</code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="body">So now, if there’s a violation of the unique validation option we’ll respond with <span><code class="codeintext">res.send()</code></span> passing the status code and a message we want the front end to display. Let’s comment out the uglier front-end message so the user will see only the toastr message. In Sublime open brushfire/assets/js/controllers/signupPageController.js and comment the following in listing 7.13.</p>
+
+    <p class="codelistingcaption">Listing 7.13  Removing the general error message for unique violations</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">if (sailsResponse.status == 409) {</code> <code class="codebcxspmiddle">              toastr.error(sailsResponse.data);</code> <code class="codebcxspmiddle">   // $scope.signupForm.errorMsg = 'An unexpected error occurred: ' + (sailsResponse.data || sailsResponse.status);   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  return;</code> <code class="codebcxspmiddle">}</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  add comment tags to remove general error message</p>
+
+    <p class="body">Let’s see this in action. Restart Sails via <span><code class="codeintext">sails lift</code></span> and navigate your browser to <span class="italics">localhost:1337/#/signup.</span> Create a user with the familiar credentials <span><code class="codeintext">email</code></span> of <span><code class="codeintext">sailsinaction@gmail.com,</code></span> the <span><code class="codeintext">username</code></span> of <span><code class="codeintext">sailsinaction</code></span> and a <span><code class="codeintext">password</code></span> of <span><code class="codeintext">abc123</code></span>. Again click the back button and create the same user. You should now be seeing a toastr message similar to figure 7.18.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_18.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.18   The <span><code class="codeintext1">signup</code></span> page now reflects the appropriate error messages when a duplicate <span><code class="codeintext1">email</code></span> or <span><code class="codeintext1">username</code></span> attribute is attempted.</p>
+
+    <p class="body">Let’s do one more bit of refactoring that will also introduce custom responses.</p>
+
+    <h3 class="head1" id="heading_id_17">7.3.9   Understanding response methods</h3>
+
+    <p class="body">So far, we’ve used a few methods from <span><code class="codeintext">res</code></span> to respond to requests. Some of these response methods cannot be overridden or modified. We’ve already used two of these response methods:</p>
+
+    <p class="glossaryterm"><span><code class="codeintext">res.json()</code></span></p>
+
+    <p class="bodyb">The <span><code class="codeintext">res.json()</code></span> method encodes the provided data as JSON and sends it in the response.  If a number is passed in as the first argument, it will be interpreted as the status code to send, and the second argument will be sent as data (if it is present.) Otherwise, Sails will interpret the first argument as data to encode and send in the response, and it will default to using a status code of 200.</p>
+
+    <p class="glossaryterm"><span><code class="codeintext">res.send()</code></span></p>
+
+    <p class="bodybcxspfirst"><span><code class="codeintext">The res.send()</code></span> method is an all-purpose, low-level response method. It works almost exactly like res.json(), except that it only JSON-encodes dictionaries and arrays.  If a string is provided, it is sent verbatim in the response.  This is useful for working with more traditional data formats like XML or CSV.</p>
+
+    <p class="bodybcxsplast">There are also configurable responses. We say “configurable” because we can change their implementation by modifying the files in <span><code class="codeintext">brushfire/api/responses/</code></span>.We’ve already used a few of these response methods too:</p>
+
+    <p class="glossaryterm"><span><code class="codeintext">res.badRequest()</code></span></p>
+
+    <p class="bodyb">The <span><code class="codeintext">res.badRequest()</code></span> method is used to send a <span><code class="codeintext">400</code></span> response back down to the front end indicating that the request is invalid. This usually means it contained invalid parameters or tried to do something impossible based on our application logic.</p>
+
+    <p class="glossaryterm"><span><code class="codeintext">res.serverError(</code></span>)</p>
+
+    <p class="bodyb">Instead of the user-agent doing some wrong, the <span><code class="codeintext">res.serverError()</code></span> method sends a <span><code class="codeintext">500</code></span> response back down to the front end indicating that some kind of server error occurred.</p>
+
+    <p class="glossaryterm"><span><code class="codeintext">res.negotiate()</code></span></p>
+
+    <p class="bodyb">The <span><code class="codeintext">res.negotiate()</code></span>examines the incoming status message of an error and routes it to the appropriate response. So instead of determining the status message yourself in a controller/action and executing the appropriate response, <span><code class="codeintext">res.negotiate()</code></span> will do this for you. Note if the error doesn’t contain a status property, <span><code class="codeintext">res.negotiate()</code></span> defaults to <span><code class="codeintext">res.serverError()</code></span>. The remaining default responses can be found in table 7.4 below.</p>
+
+    <p class="tablecaption pcalibre7">Table 7.4 Sails response methods</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="21%" class="sgc175" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Response</p>
+          </div>
+        </td>
+
+        <td char="78%" class="sgc176" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Description</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc177" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">res.forbidden()</code></span></p>
+        </td>
+
+        <td char="78%" class="sgc178" valign="top">
+          <p class="tablebody2cxsplast">This method is used to send a <span><code class="codeintext">403</code></span> response back down to the front end indicating that the request is not allowed. This usually means the user-agent tried to do something it was not allowed to do, like change the password of another user.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc177" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">res.notFound()</code></span></p>
+        </td>
+
+        <td char="78%" class="sgc178" valign="top">
+          <p class="tablebody2cxsplast">This method is used to send a <span><code class="codeintext">404</code></span> response using either <span><code class="codeintext">res.json()</code></span> or <span><code class="codeintext">res.view()</code></span>. Called automatically when Sails receives a request, which doesn't match any of its explicit routes or route blueprints. When called manually from your app code, this method is normally used to indicate that the user-agent tried to find, update, or delete something that doesn't exist.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc179" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">res.ok()</code></span></p>
+        </td>
+
+        <td char="78%" class="sgc180" valign="top">
+          <p class="tablebody2cxsplast">This method is used to send a <span><code class="codeintext">200</code></span> response to the front end.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Wecan also create our own <span class="italics">custom</span> responses to refactor some of the code out of the <span><code class="codeintext">signup</code></span> controller action. Create a new file in Sublime named <span><code class="codeintext">brushfire/api/responses/alreadyInUse.js</code></span> and add the following code in listing 7.14.</p>
+
+    <p class="codelistingcaption">Listing 7.14  Adding a new custom response.</p><code class="codebcxspfirst">module.exports = function alreadyInUse (err){</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  // Get access to `res`</code> <code class="codebcxspmiddle">  // (since the arguments are up to us)</code> <code class="codebcxspmiddle">  var res = this.res;  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (err.invalidAttributes.email) {</code> <code class="codebcxspmiddle">    return res.send(409, 'Email address is already taken by another user, please try again.'); <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (err.invalidAttributes.username) {</code> <code class="codebcxspmiddle">    return res.send(409, 'Username is already taken by another user, please try again.');</code> <code class="codebcxspmiddle">  }                    <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">return res.send(500);</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  get access to the correct instance of <span><code class="codeintext1">res</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  provide the status code and custom error message for duplicate email addresses</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span>  provide the status code and custom error message for duplicate usernames</p>
+
+    <p class="body">This new response will determine whether the invalid attribute is an <span><code class="codeintext">email</code></span> or a <span><code class="codeintext">username</code></span> attribute and send the <span><code class="codeintext">409</code></span>response our front end requires. So let’s use this new response in the <span><code class="codeintext">signup</code></span> action. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> and replace the existing <span class="italics">responses</span> in the <span><code class="codeintext">User.create()</code></span>method of the <span><code class="codeintext">signup</code></span> action with our new custom response (similar to listing 7.15).</p>
+
+    <p class="codelistingcaption">Listing 7.15  Using the new custom response in the signup action</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">User.create(options).exec(function(err, createdUser) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (err) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (err.invalidAttributes &amp;&amp; err.invalidAttributes.email &amp;&amp; err.invalidAttributes.email[0] &amp;&amp; err.invalidAttributes.email[0].rule === 'unique') {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.alreadyInUse(err);</code> <code class="codebcxspmiddle"> }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle"> if (err.invalidAttributes &amp;&amp; err.invalidAttributes.username &amp;&amp; err.invalidAttributes.username[0] &amp;&amp; err.invalidAttributes.username[0].rule === 'unique') {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.alreadyInUse(err);</code> <code class="codebcxspmiddle"> }</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Let’s take this new response for a spin via <span><code class="codeintext">sails lift</code></span>. Navigate your browser to <span class="italics">localhost:1337/#/signup</span> and create the infamous user with an <span><code class="codeintext">email</code></span> of <span><code class="codeintext">sailsinaction@gmail.com.,</code></span>the <span><code class="codeintext">username</code></span> of <span><code class="codeintext">sailsinaction,</code></span> and a <span><code class="codeintext">password</code></span> of <span><code class="codeintext">abc123</code></span>. Again click the back button and create the same user. Your browser should display the identical toastr message from figure 7.18.</p>
+
+    <p class="body">That concludes the requirements for the <span><code class="codeintext">signup</code></span> page. We’re getting tired of creating a test user each time we restart the Sails server. Let’s add a test user in the bootstrap file.</p>
+
+    <h3 class="head1" id="heading_id_18">7.3.10   Quick diversion:  adding a dummy user in bootstrap.js</h3>
+
+    <p class="body">In chapter 5, we looked at using <span><code class="codeintext">brushfire/config/bootstrap.js</code></span> to setup the initial state of Brushfire. We’re currently seeding the video model with cat videos from YouTube. Let’s also add a test user to the bootstrap. Head back to Sublime and open <span><code class="codeintext">brushfire/config/bootstrap.js</code></span>. The source code for the bootstrap.js file can be found in gist number __ here: <a class="pcalibre8 pcalibre5" href="https://gist.github.com/sailsinaction/22601ba11f523acccd67">https://gist.github.com/sailsinaction/22601ba11f523acccd67</a>. The <span><code class="codeintext">createTestUsers()</code></span>function is almost identical to the <span><code class="codeintext">signup</code></span> action in the <span><code class="codeintext">user</code></span> controller. The main difference is we stripped out all of the references to the <span><code class="codeintext">res</code></span> and <span><code class="codeintext">req</code></span> dictionaries since they are not available when <span><code class="codeintext">bootstrap.js</code></span> is executed.</p>
+
+    <p class="body">Recall that the bootstrap originally determined whether any records existed in the <span><code class="codeintext">video</code></span> model. If records existed, the bootstrap returned control to Sails via the callback <span><code class="codeintext">cb</code></span> function to complete the startup process. Now if records exist for the <span><code class="codeintext">video</code></span> model, instead of giving back control to Sails, we’ll execute the <span><code class="codeintext">createTestUsers()</code></span> function. And if no records exist in the <span><code class="codeintext">video</code></span> model, the <span><code class="codeintext">createTestUsers()</code></span>function is executed after the <span><code class="codeintext">video</code></span> records are created. Once the user is created, control is passed back to Sails. In either event, we have a test user!  We can now move to building out the requirements for the <span><code class="codeintext">profile</code></span> page.</p>
+
+    <h2 class="head" id="heading_id_19">7.4   Providing data for a user profile page</h2>
+
+    <p class="body">After we add the <span><code class="codeintext">profile</code></span> action, the <span><code class="codeintext">profile</code></span> page displays the user’s email address, username, and Gravatar image as displayed in figure 7.19.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_19.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.19  The <span><code class="codeintext1">profile</code></span> page mockup contains four endpoints. <span class="codeannotationcueballs">① </span>  The first request initiated the display of the <span><code class="codeintext1">profile</code></span> page and is handled by an asset-route. <span class="codeannotationcueballs">② </span>  The second request is a <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">/user/profile/:id</code></span> for the initial profile information on the page. <span class="codeannotationcueballs">③ </span>  The third request is triggered by the <span class="italics1">edit</span> button to <span><code class="codeintext1">GET</code></span> the <span><code class="codeintext1">edit-profile</code></span> page and is handled by another asset route. <span class="codeannotationcueballs">④ </span>  The final request is a <span><code class="codeintext1">DELETE</code></span> request to <span><code class="codeintext1">/user/:id</code></span> and will be handled by a custom controller.</p>
+
+    <p class="body">Let’s review the requests we’ve identified in the API Reference. The first request is for the delivery of the profile page itself. The Sails asset-router responds to <span class="codeannotationcueballs">① </span>  the Angular AJAX <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/templates/profile.html</code></span>. The second request is triggered when the profile page initially loads and an <span class="codeannotationcueballs">② </span>  Angular AJAX <span><code class="codeintext">GET</code></span> request is made to <span><code class="codeintext">/user/profile/:id</code></span>. Sails handles this request with a custom <span><code class="codeintext">profile</code></span> action. The third request starts as an Angular front-end request to <span><code class="codeintext">/#/profile</code></span>, which triggers <span class="codeannotationcueballs">③ </span>  a <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/templates/edit-profile.html</code></span>. Sails handles this request with the asset-router. The fourth request is a <span class="codeannotationcueballs">④ </span> <span><code class="codeintext">DELETE</code></span> request to <span><code class="codeintext">/user/:id</code></span>. This will trigger a custom <span><code class="codeintext">delete</code></span> action that will remove the <span><code class="codeintext">user</code></span> record from the database. We’ll transition this request from a “hard” delete into a “soft” delete where the user has the option of later restoring the record. Let’s start implementation with the <span class="italics">Get profile</span> endpoint.</p>
+
+    <h3 class="head1" id="heading_id_20">7.4.1   Retrieving user profile information</h3>
+
+    <p class="body">To create the profile action open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and add the following code snippet in listing 7.16.</p>
+
+    <p class="codelistingcaption">Listing 7.16Adding the profile action.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">  },   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  profile: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.findOne(req.param('id')).exec(function foundUser(err, user) { <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (!user) return res.notFound();    <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      var options = {  <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">        email: user.email,</code> <code class="codebcxspmiddle">        username: user.username,</code> <code class="codebcxspmiddle">        gravatarURL: user.gravatarURL,</code> <code class="codebcxspmiddle">        deleted: user.deleted,</code> <code class="codebcxspmiddle">        admin: user.admin,</code> <code class="codebcxspmiddle">        banned: user.banned,</code> <code class="codebcxspmiddle">        id: user.id</code> <code class="codebcxspmiddle">      };</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    return res.json(user);  <span class="codeannotationcueballs1">❻ </span></code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  each action is separated with a comma</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  the <span><code class="codeintext1">.findOne()</code></span> model method searches for a particular record  based upon <span><code class="codeintext1">id</code></span> attribute</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  handle errors with <span><code class="codeintext1">res.negotiate()</code></span> passing the error as an argument</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  use <span><code class="codeintext1">res.notFound()</code></span> if no user record is found</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❺ </span>  build up the user to respond</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❻ </span>  return the <span><code class="codeintext1">user</code></span> record as JSON</p>
+
+    <p class="body">We’re using the <span><code class="codeintext">User.findOne()</code></span>model method to retrieve a single <span><code class="codeintext">user</code></span> record. This model uses <span class="italics">criteria</span> to find a particular user record as illustrated in figure 7.20.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_20.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.20 The findOne model method consists of <span class="codeannotationcueballs">① </span>  the model name, <span class="codeannotationcueballs">② </span>  model method, <span class="codeannotationcueballs">③ </span>  criteria, <span class="codeannotationcueballs">④ </span>  values, <span class="codeannotationcueballs">⑤ </span>  query method, the callback method with <span class="codeannotationcueballs">⑥ </span>  error and <span class="codeannotationcueballs">⑦ </span>  result arguments and <span class="codeannotationcueballs">⑧ </span>  callback body.</p>
+
+    <p class="body">In this case the criteria is the <span><code class="codeintext">id</code></span> of the record we want to find. Let’s give this new action a try. Restart Sails using <span><code class="codeintext">sails lift</code></span>. We know we have at least one test <span><code class="codeintext">user</code></span> generated on every <span><code class="codeintext">sails lift</code></span> that has an <span><code class="codeintext">id</code></span> of <span><code class="codeintext">1</code></span><span class="italics">.</span> Navigate your browser to <span class="italics">http://localhost:1337/#/profile/1</span>. This triggers an internal Angular route that loads the <span><code class="codeintext">brushfire/assets/templates/profile.html</code></span> page.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Why did we use the <span class="italics1">#</span> symbol in the path of our browser request? HTTP will ignore anything after the <span class="italics1">#</span> hash symbol. This allows other frameworks like Angular to come up with their own routing strategy. So the path <span class="italics1">#/profile/1</span> is actually being processed by Angular’s router.</p>
+    </div>
+
+    <p class="body">Now that we have a proper profile page let’s change the Angular <span><code class="codeintext">signupPageController.js</code></span> so that a user is redirected to the profile instead of blueprint: RESTful find route after <span><code class="codeintext">signup</code></span>. Open <span><code class="codeintext">brushfire/assets/js/controllers/signupPageController.js</code></span> in Sublime and make the change in listing 7.17.</p>
+
+    <p class="codelistingcaption">Listing 7.17 Changing the redirect to the profile page after signup</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">.then(function onSuccess(sailsResponse) {</code> <code class="codebcxspmiddle">  window.location = ‘#/profile/’ + sailsResponse.data.id;  <span class="codeannotationcueballs1">❶ </span></code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  changed the redirect to the profile page</p>
+
+    <p class="body">Next, we’ll look the <span class="italics">Remove profile</span> endpoint.</p>
+
+    <h3 class="head1" id="heading_id_21">7.4.2   Permanently deleting a user</h3>
+
+    <p class="body">When it comes to deleting records, our experience shows that clients prefer “soft” deletes versus “hard” deletes of data. With a soft delete, one can simply restore the data within an app by toggling an attribute of a record in the database. With a hard delete that data is gone forever.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We’re relying upon you to practice transparency in conveying to your users how their data is treated with respect to removal from your application.</p>
+    </div>
+
+    <p class="body">We’ll illustrate both ways of performing a delete, however, we’ll use soft deletes moving forward in Brushfire. We could use Blueprint routes to do a permanent delete, however, let’s see how to do this in a custom action. Open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and add the following code in Listing 7.18.</p>
+
+    <p class="codelistingcaption">Listing 7.18Adding a delete action to the user controller.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">profile: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">  delete: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!req.param('id')){                      <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.badRequest('id is a required parameter.');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.destroy({ <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      id: req.param('id')</code> <code class="codebcxspmiddle">    }).exec(function (err, usersDestroyed){</code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);       <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">      if (usersDestroyed.length === 0) {        <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">        return res.notFound();</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">      return res.ok();       <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  validate <span><code class="codeintext1">id</code></span> attribute</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  Use the <span><code class="codeintext1">.destroy()</code></span> model method passing in an <span><code class="codeintext1">id</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  handle any errors with <span><code class="codeintext1">.serverError()</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  check for the existence of a record by checking array length</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span>  on success respond with a <span><code class="codeintext1">200</code></span> status</p>
+
+    <p class="body">The <span><code class="codeintext">User.destroy()</code></span> model method takes criteria, in this case the <span><code class="codeintext">id</code></span> of the user we want to delete. We’ve handled any errors as well as if the <span><code class="codeintext">id</code></span> is not found. The front-end assets are initially configured to trigger a <span><code class="codeintext">DELETE</code></span> request to<span><code class="codeintext">/user/delete/:id</code></span> via the function <span><code class="codeintext">$scope.deleteProfile()</code></span>. So restart Sails using <span><code class="codeintext">sails lift</code></span> and navigate your browser to <span><code class="codeintext">localhost:1337/#profile/1</code></span>. Next, click the <span class="italics">Delete</span> button. The <span><code class="codeintext">user</code></span> record is deleted and the browser redirects to the <span><code class="codeintext">signup</code></span> page. But what if the user wants to restore their user account? If we use a hard delete they’re out of luck. However, we’re going to implement a soft delete system that will allow a user to easily restore their user profile.</p>
+
+    <h3 class="head1" id="heading_id_22">7.4.3   Soft-deleting a user record</h3>
+
+    <p class="body">Our goal is to provide a way for a user to delete their profile, removing access to it from Brushfire but not from the database. The user can then restore access if they provide an appropriate email/password combination. Implementing a soft delete system requires that an attribute exist in the model that can store the users deleted state. In chapter 6 we implemented this attribute as a Boolean and named it <span><code class="codeintext">deleted</code></span>. To trigger this request, we need to make a small change to the front end. Open <span><code class="codeintext">assets/templates/profile.html</code></span> in Sublime and change the <span><code class="codeintext">ng-click</code></span> directive value from <span><code class="codeintext">deleteProfile()</code></span> to <span><code class="codeintext">removeProfile()</code></span>in listing 7.19.</p>
+
+    <p class="codelistingcaption">Listing 7.19  <span class="italics1">Changing the front end to initiate a soft delete.</span></p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;a href="#/profile/edit/{{userProfile.properties.id}}" class="btn btn-lg btn-primary"&gt;Edit&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;a ng-click="removeProfile()" class="btn btn-lg btn-primary btn-danger"&gt;Delete&lt;/a&gt;      <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">&lt;/div&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code><code class="codebcxsplast">&lt;/div&gt;</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  insert <span class="italics1">removeProfile()</span> from the previous <span><code class="codeintext1">deleteProfile()</code></span><span class="italics1">.</span></p>
+
+    <p class="body">Next, let’s create a <span><code class="codeintext">removeProfile</code></span> custom action that will toggle the <span><code class="codeintext">deleted</code></span> attribute to <span><code class="codeintext">true</code></span> when the delete button is clicked on the <span><code class="codeintext">profile</code></span> page. Open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and add the following code in Listing 7.20.</p>
+
+    <p class="codelistingcaption">Listing 7.20  Adding the <span><code class="codeintext1">removeProfile</code></span> action to the <span><code class="codeintext1">user</code></span> controller.</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">delete: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">      return res.ok();</code> <code class="codebcxspmiddle">  });</code> <code class="codebcxspmiddle">},</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">removeProfile: function(req, res) {</code> <code class="codebcxspmiddle">         </code> <code class="codebcxspmiddle">    if (!req.param('id')){            <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.badRequest('id is a required parameter.');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.update({                     <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      id: req.param('id')</code> <code class="codebcxspmiddle">    },{</code> <code class="codebcxspmiddle">      deleted: true                             <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">    }, function(err, removedUser){</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);       <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">      if (removedUser.length === 0) {</code> <code class="codebcxspmiddle">        return res.notFound();</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.ok();                          <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  validate <span><code class="codeintext1">id</code></span> attribute</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  Use the <span><code class="codeintext1">.update()</code></span> model method passing in an <span><code class="codeintext1">id</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  toggle the <span><code class="codeintext1">deleted</code></span> attribute to <span><code class="codeintext1">true</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  handle any errors with <span><code class="codeintext1">res.negotiate()</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span>  on success respond with a <span><code class="codeintext1">200</code></span> status</p>
+
+    <p class="body">The <span><code class="codeintext">User.update()</code></span>method accepts criteria. In this case the <span><code class="codeintext">id</code></span> of the record we want to update. The second argument of the method is the information we want to update—<span><code class="codeintext">deleted: true.</code></span> Now clicking the <span class="italics">Delete</span> button will invoke the soft delete method and the page is redirected to the <span><code class="codeintext">signup</code></span> page.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The profile page is already equipped to handle a user that has been “deleted”. The profile controller will issue an error if there’s an attempt to display a record with the deleted attribute set to true.</p>
+    </div>
+
+    <p class="body">Now what if a user wants to restore their “deleted” user profile? For that we’ll implement the <span class="italics">restore profile</span> page.</p>
+
+    <h2 class="head" id="heading_id_23">7.5   Restoring user accounts</h2>
+
+    <p class="body">The <span><code class="codeintext">restore-profile</code></span> page displays a form for restoring a user profile given a correct <span><code class="codeintext">username</code></span> and <span><code class="codeintext">password</code></span> displayed in figure 7.21.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_21.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.21  The restore-profile page mockup contains two endpoints. <span class="codeannotationcueballs">① </span>  The first request initiated the display of the <span><code class="codeintext1">restore-profile</code></span> page and is handled by an asset-route. <span class="codeannotationcueballs">② </span>  The second request is a <span><code class="codeintext1">PUT</code></span> request to <span><code class="codeintext1">/user/restoreProfile</code></span> and is handled by a custom action.</p>
+
+    <p class="body">The <span><code class="codeintext">restore-profile</code></span> page is loaded when a user clicks the <span class="italics">restore account</span> link from the <span><code class="codeintext">signup</code></span> page. In this case, the Sails asset-router responds to <span class="codeannotationcueballs">① </span>  the Angular AJAX <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/templates/restore-profile.html</code></span>. The second request is a <span class="codeannotationcueballs">② </span>  <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/user/restoreProfile</code></span> passing the <span><code class="codeintext">email</code></span> and <span><code class="codeintext">password</code></span> <span class="italics">parameters</span> in an attempt to restore a <span><code class="codeintext">user</code></span> account.</p>
+
+    <h3 class="head1" id="heading_id_24">7.5.1   Building an action to restore a user profile</h3>
+
+    <p class="body">To create the <span><code class="codeintext">restoreProfile</code></span> action, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and add the following code in Listing 7.21.</p>
+
+    <p class="codelistingcaption">Listing 7.21  Adding the <span><code class="codeintext1">restoreProfile</code></span> action to the <span><code class="codeintext1">user</code></span> controller.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">removeProfile: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">      return res.ok();</code> <code class="codebcxspmiddle">  });</code> <code class="codebcxspmiddle">},</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  restoreProfile: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.findOne({                    <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      email: req.param('email')</code> <code class="codebcxspmiddle">    }, function foundUser(err, user) {</code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);       <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      if (!user) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      Passwords.checkPassword({                 <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        passwordAttempt: req.param('password'),</code> <code class="codebcxspmiddle">        encryptedPassword: user.encryptedPassword</code> <code class="codebcxspmiddle">      }).exec({</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        error: function(err) {                  <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">          return res.negotiate(err);</code> <code class="codebcxspmiddle">        },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        incorrect: function() {                 <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">          return res.notFound();</code> <code class="codebcxspmiddle">        },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        success: function() {</code> <code class="codebcxspmiddle">          User.update({                         <span class="codeannotationcueballs1">❻ </span></code> <code class="codebcxspmiddle">            id: user.id</code> <code class="codebcxspmiddle">          }, {</code> <code class="codebcxspmiddle">            deleted: false</code> <code class="codebcxspmiddle">          }).exec(function(err, updatedUser) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            return res.json(updatedUser);       <span class="codeannotationcueballs1">❼ </span></code> <code class="codebcxspmiddle">          });</code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  use the <span><code class="codeintext1">.findOne()</code></span> model method passing in the <span><code class="codeintext1">id</code></span> of the user to find</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  handle any errors</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  use the <span><code class="codeintext1">.checkPassword()</code></span> machine to compare passwords</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  handle any errors with <span><code class="codeintext1">res.negotiate()</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❺ </span>  handle an incorrect password with <span><code class="codeintext1">res.notFound()</code></span> response</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❻ </span>  on success update the <span><code class="codeintext1">user</code></span> and toggle the <span><code class="codeintext1">deleted</code></span> attribute to <span><code class="codeintext1">false</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❼ </span>  return the <span><code class="codeintext1">updatedUser</code></span> as JSON</p>
+
+    <p class="body">The request passes an <span><code class="codeintext">email</code></span> and <span><code class="codeintext">password</code></span> parameter for the profile to be restored. We first search for a user matching the email address with the <span><code class="codeintext">User.findOne</code></span> model method. If a matching email address is found we pass the associated <span><code class="codeintext">encryptedPassword</code></span> and the <span><code class="codeintext">password</code></span> parameter to the <span><code class="codeintext">.checkPassword()</code></span> machine. The machine is part of <span><code class="codeintext">machinepack-passwords</code></span> we already installed and required in the <span><code class="codeintext">user</code></span> controller. This machine encrypts the provided password parameter and compares it to the <span><code class="codeintext">encryptedPassword</code></span> attribute found by our <span><code class="codeintext">User.findOne()</code></span>query. If it’s a successful match we’ll update the <span><code class="codeintext">user</code></span> record setting the <span><code class="codeintext">deleted</code></span> attribute to <span><code class="codeintext">false</code></span> using the <span><code class="codeintext">User.update()</code></span> model method and respond with the updated record as JSON. The front end then redirects the user back to their profile. Known errors are handled by <span><code class="codeintext">res.notFound(err)</code></span>and unexpected errors are handled by <span><code class="codeintext">res.negotiate(err)</code></span>.</p>
+
+    <h2 class="head" id="heading_id_25">7.6   Editing user profiles</h2>
+
+    <p class="body">The <span><code class="codeintext">edit-profile</code></span> page allows users to edit their Gravatar URL, restore their Gravatar URL, and change their password as displayed in figure 7.22.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_22.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.22   The <span><code class="codeintext1">edit-profile</code></span> page mockup contains five endpoints. <span class="codeannotationcueballs">① </span>  The first request initiated the display of the <span><code class="codeintext1">edit-profile</code></span> page and is handled by an asset-route. <span class="codeannotationcueballs">② </span>  The second request is a <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">/user/profile/:id</code></span> for the initial profile information on the page. <span class="codeannotationcueballs">③ </span>  The third request is triggered by the <span class="italics1">Restore Gravatar URL with current email address</span> button and is a <span><code class="codeintext1">PUT</code></span> request to <span><code class="codeintext1">/user/restoreGravatarURL</code></span>, which is handled by a custom action. <span class="codeannotationcueballs">④ </span>  The fourth request is a <span><code class="codeintext1">PUT</code></span> request to <span><code class="codeintext1">/user/updateProfile</code></span> and is also handled by a custom action. <span class="codeannotationcueballs">⑤ </span>  The final request is a <span><code class="codeintext1">PUT</code></span> request to <span><code class="codeintext1">/user/changePassword</code></span> and is handled by a custom action.</p>
+
+    <p class="body">Let’s review the requests we’ve identified in the API Reference. The first request is for the delivery of the <span><code class="codeintext">edit-profile</code></span> page itself. The Sails asset-router responds to <span class="codeannotationcueballs">① </span>  the Angular AJAX <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/templates/edit-profile.html</code></span>. The second request is triggered when the profile page initially loads and an <span class="codeannotationcueballs">② </span>  Angular AJAX <span><code class="codeintext">GET</code></span> request is made to <span><code class="codeintext">/user/profile/:id</code></span>. The third request is when the user wants to restore their Gravatar image to their current email address via a <span class="codeannotationcueballs">③ </span> <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/user/restoreGravatarURL</code></span>. The fourth request is when the user wants to update their profile information via a <span class="codeannotationcueballs">④ </span> <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/user/updateProfile/:id</code></span> updates the user’s <span><code class="codeintext">gravatarURL</code></span> attribute. The final request updates the user’s password via a <span class="codeannotationcueballs">④ </span> <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/user/changePassword.</code></span> Let’s implement the APIs that will satisfy each request.</p>
+
+    <h3 class="head1" id="heading_id_26">7.6.1   Retrieving the record for a particular user</h3>
+
+    <p class="body">The <span><code class="codeintext">GET</code></span> request to<span><code class="codeintext">/user/findOne/:id</code></span> expects a response of a particular user’s profile information formatted as JSON. We’ve already created the <span><code class="codeintext">profile</code></span> custom action for the initial loading information of the <span><code class="codeintext">profile</code></span> page. Thereforewe will leverage the same endpoint for the <span><code class="codeintext">edit-profile</code></span> page.</p>
+
+    <h3 class="head1" id="heading_id_27">7.6.2   Retrieving a user’s Gravatar URL</h3>
+
+    <p class="body">To create the <span><code class="codeintext">restoreGravatarURL</code></span> action, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and add the following code in Listing 7.22.</p>
+
+    <p class="codelistingcaption">Listing 7.22  Adding the restoreGravatarURL action to the user controller.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">restoreProfile: function(req, res) {</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">            return res.json(updatedUser);</code> <code class="codebcxspmiddle">          });</code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">  });</code> <code class="codebcxspmiddle">},</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  restoreGravatarURL: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    try {                                   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      var restoredGravatarURL = gravatarURL = Gravatar.getImageUrl({   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        emailAddress: req.param('email')                                    </code> <code class="codebcxspmiddle">      }).execSync();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.json(restoredGravatarURL); <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    } catch (err) {</code> <code class="codebcxspmiddle">      return res.serverError(err);          <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  wrap a synchronous machine in a <span><code class="codeintext1">try/catch</code></span> since</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  pass the <span><code class="codeintext1">email</code></span> as an input to the machine</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  return the Gravatar URL as JSON</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span>  handle any errors with <span><code class="codeintext1">.serverError()</code></span></p>
+
+    <p class="body">The request passes the current user’s email address via the <span><code class="codeintext">email</code></span> parameter. We again use the .<span><code class="codeintext">getImageUrl()</code></span> machine to generate the Gravatar URL using the <span><code class="codeintext">email</code></span> parameter as the sole input. Because we’re using the synchronous version of the <span><code class="codeintext">.getImageUrl()</code></span> machine we’ll wrap it in a <span><code class="codeintext">try/catch</code></span> against Brushfire crashing if we get an error. Lastly we’ll respond with <span><code class="codeintext">res.json()</code></span> returning the generated URL to the front end.</p>
+
+    <h3 class="head1" id="heading_id_28">7.6.3   Saving updated profile information</h3>
+
+    <p class="body">To create the <span><code class="codeintext">updateProfile</code></span> action, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and add the code similar to listing 7.23.</p>
+
+    <p class="codelistingcaption">Listing 7.23  Adding the updateProfile action to the user controller.</p><code class="codebcxspfirst">var Emailaddresses = require('machinepack-emailaddresses');</code> <code class="codebcxspmiddle">var Passwords = require('machinepack-passwords');</code> <code class="codebcxspmiddle">var Gravatar = require('machinepack-gravatar');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">restoreGravatarURL: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">      return res.serverError(err);</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  updateProfile: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.update({                     <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      id: req.param('id')</code> <code class="codebcxspmiddle">    }, {</code> <code class="codebcxspmiddle">      gravatarURL: req.param('gravatarURL')  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    }, function(err, updatedUser) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);    <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.json(updatedUser);          <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  pass the <span><code class="codeintext1">id</code></span> of the user as argument to the <span><code class="codeintext1">.update()</code></span> model method</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  pass the <span><code class="codeintext1">gravatarURL</code></span> as the second argument</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  handle any errors with <span><code class="codeintext1">.serverError()</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span>  return the updated record as JSON</p>
+
+    <p class="body">The request passes the user’s <span><code class="codeintext">id</code></span> and <span><code class="codeintext">gravatarURL</code></span> as parameters. We use the <span><code class="codeintext">User.update()</code></span> model method to update the <span><code class="codeintext">user</code></span> record passing the <span><code class="codeintext">id</code></span> parameter as criteria for the first argument and the <span><code class="codeintext">gravatarURL</code></span> parameter to update as the second argument. Finally, we respond with the updated user record to the front end via <span><code class="codeintext">res.json()</code></span>.</p>
+
+    <h3 class="head1" id="heading_id_29">7.6.4   Updating a user’s password</h3>
+
+    <p class="body">To create the <span><code class="codeintext">changePassword</code></span> action, open <span class="italics">brushfire/api/controllers/UserController.js</span> in Sublime and add the code similar to listing 7.24.</p>
+
+    <p class="codelistingcaption">Listing 7.24 Adding a <span><code class="codeintext1">changePassword</code></span> action to the <span><code class="codeintext1">user</code></span> controller.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">  signup: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">  changePassword: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (_.isUndefined(req.param('password'))) {   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.badRequest('A password is required!');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (req.param('password').length &lt; 6) {       <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.badRequest('Password must be at least 6 characters!');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    Passwords.encryptPassword({                   <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      password: req.param('password'),</code> <code class="codebcxspmiddle">    }).exec({</code> <code class="codebcxspmiddle">      error: function(err) {</code> <code class="codebcxspmiddle">        return res.serverError(err);              <span class="codeannotationcueballs1">❸  </span></code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">      success: function(result) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        User.update({                             <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">          id: req.param('id')</code> <code class="codebcxspmiddle">        }, {</code> <code class="codebcxspmiddle">          encryptedPassword: result</code> <code class="codebcxspmiddle">        }).exec(function(err, updatedUser) {</code> <code class="codebcxspmiddle">          if (err) {</code> <code class="codebcxspmiddle">            return res.negotiate(err);</code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle">          return res.json(updatedUser);           <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  validate the incoming <span><code class="codeintext1">password</code></span> attribute</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  Use the <span><code class="codeintext1">.encryptPassword()</code></span> machine using the <span><code class="codeintext1">password</code></span> as an input</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  handle any errors with <span><code class="codeintext1">.serverError()</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  use the <span><code class="codeintext1">.update()</code></span> model method to update the <span><code class="codeintext1">user</code></span> record</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span>  return the updated user record as JSON</p>
+
+    <p class="body">This action is similar to the <span><code class="codeintext">signup</code></span> action. First we’ll verify the existence and length of the <span><code class="codeintext">password</code></span> parameter. Then we’ll update the user record by encrypting the password using the .<span><code class="codeintext">encryptPassword()</code></span>machine and pass the results to the <span><code class="codeintext">User.update()</code></span> model method. Finally, we’ll respond with <span><code class="codeintext">updatedUser</code></span> via <span><code class="codeintext">res.json()</code></span>. The final part of user identity management is implementing the administration page.</p>
+
+    <h2 class="head" id="heading_id_30">7.7   Administrative actions</h2>
+
+    <p class="body">The <span><code class="codeintext">administration</code></span> page will allow administrators to grant other users administrator privileges, ban users, and soft delete users from Brushfire as displayed in figure 7.23.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/07_23.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 7.23  The <span><code class="codeintext1">administration</code></span> page mockup contains five endpoints. <span class="codeannotationcueballs">① </span>  The first request initiated the display of the <span><code class="codeintext1">administration</code></span> page and is handled by an asset-route. <span class="codeannotationcueballs">② </span>  The second request is a <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">/user/adminUsers</code></span> for the profile information of all users. <span class="codeannotationcueballs">③ </span>  The third request is a toggle to the <span><code class="codeintext1">admin</code></span> attribute that triggers a <span><code class="codeintext1">PUT</code></span> request to <span><code class="codeintext1">/user/updateAdmin</code></span>, which is handled by a custom action. <span class="codeannotationcueballs">④ </span>  The fourth request is a <span><code class="codeintext1">PUT</code></span> request to <span><code class="codeintext1">/user/updateBanned</code></span> and is also handled by a custom action. <span class="codeannotationcueballs">⑤ </span>  The final request is a <span><code class="codeintext1">PUT</code></span> request to <span><code class="codeintext1">/user/updateDeleted</code></span> and is handled by a custom action.</p>
+
+    <p class="body">Let’s review the requests we’ve identified in the API Reference. The first request is for the delivery of the <span><code class="codeintext">administration</code></span> page itself. The Sails asset-router responds to <span class="codeannotationcueballs">① </span>  the Angular AJAX <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/templates/administration.html</code></span>. The second request is triggered when the administration page initially loads and an <span class="codeannotationcueballs">② </span>  Angular AJAX <span><code class="codeintext">GET</code></span> request is made to <span><code class="codeintext">/user/adminUsers</code></span>. The third request is when an administrator wants to change a user’s administrative state via a <span class="codeannotationcueballs">③ </span>  <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/user/updateAdmin</code></span>. The fourth request is when the user wants to update a user’s banned status via a <span class="codeannotationcueballs">④ </span>  <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/user/updateBanned</code></span>. The final request updates the user’s soft delete status via a <span class="codeannotationcueballs">⑤ </span> <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/user/updateDeleted.</code></span> Let’s implement the APIs that will satisfy each request. Obviously, we’ll want to limit access to the administration page to only those users who have the <span><code class="codeintext">admin</code></span> attribute set to <span><code class="codeintext">true</code></span>. That is controlling what is displayed on the front end based upon the user’s authenticated or logged in state as well as controlling back end access to API endpoints based upon the same authenticated state. We’ll be addressing that in chapters 8, 9, and 10. For now, let’s create the APIs that will satisfy each of the remaining requests.</p>
+
+    <h3 class="head1" id="heading_id_31">7.7.1   Listing all the users in the database</h3>
+
+    <p class="body">The <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/user/adminUsers</code></span> expects a response of an array of <span><code class="codeintext">user</code></span> record dictionaries. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> and add the <span><code class="codeintext">adminUsers</code></span> action in listing 7.25.</p>
+
+    <p class="codelistingcaption">Listing 7.25  Adding a <span><code class="codeintext1">adminUsers</code></span> action to the <span><code class="codeintext1">user</code></span> controller.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">changePassword: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">          return res.json(updatedUser);</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">adminUsers: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.find().exec(function(err, users){                <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);                 <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.json(users);                             <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  get all <span><code class="codeintext1">user</code></span> records via <span><code class="codeintext1">find</code></span> model method</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  return any errors using <span><code class="codeintext1">res.negotiate()</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span>  if successful respond with the <span><code class="codeintext1">users</code></span> array via <span><code class="codeintext1">res.json()</code></span></p>
+
+    <p class="body">We’re using the <span><code class="codeintext">User.find()</code></span>model method to retrieve all <span><code class="codeintext">user</code></span> records. Unlike the User.findOne() method, this method responds with an array of all <span><code class="codeintext">user</code></span> record dictionaries as JSON. This array is then displayed as a table in Angular on the front end.</p>
+
+    <h3 class="head1" id="heading_id_32">7.7.2   Updating administrative flags</h3>
+
+    <p class="body">There are three similar PUT requests to actions that update the state of the <span><code class="codeintext">admin</code></span>, <span><code class="codeintext">banned</code></span><span class="italics">,</span> and <span><code class="codeintext">deleted</code></span> attributes. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> and add the <span><code class="codeintext">updateAdmin</code></span>, <span><code class="codeintext">updateBanned</code></span>, and <span><code class="codeintext">updateDeleted</code></span> actions in listing 7.26.</p>
+
+    <p class="codelistingcaption">Listing 7.26  Adding <span><code class="codeintext1">updateAdmin</code></span>,  <span><code class="codeintext1">updateBanned</code></span> and  <span><code class="codeintext1">UpdateDeleted</code></span> actions.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">adminUsers: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">      return res.json(users);</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">updateAdmin: function(req, res) {</code> <code class="codebcxspmiddle">    User.update(req.param('id'), {              <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      admin: req.param('admin')                 <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    }).exec(function(err, update){</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">     if (err) return res.negotiate(err);        <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      res.ok();                                 <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  updateBanned: function(req, res) {</code> <code class="codebcxspmiddle">    User.update(req.param('id'), {</code> <code class="codebcxspmiddle">      banned: req.param('banned')</code> <code class="codebcxspmiddle">    }).exec(function(err, update){</code> <code class="codebcxspmiddle">     if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">      res.ok();</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  updateDeleted: function(req, res) {</code> <code class="codebcxspmiddle">    User.update(req.param('id'), {</code> <code class="codebcxspmiddle">      deleted: req.param('deleted')</code> <code class="codebcxspmiddle">    }).exec(function(err, update){</code> <code class="codebcxspmiddle">     if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">      res.ok();</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle">};</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> update the <span><code class="codeintext1">user</code></span> record using the <span><code class="codeintext1">id</code></span> parameter for the <span><code class="codeintext1">find</code></span> criteria</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  update the <span><code class="codeintext1">admin</code></span> attribute via the passed in <span><code class="codeintext1">admin</code></span> parameter</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  handle any errors with <span><code class="codeintext1">res.negotiate()</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❹ </span>  on success return a <span><code class="codeintext1">200</code></span> status with <span><code class="codeintext1">res.ok()</code></span>.</p>
+
+    <p class="body">Each request passes the user’s <span><code class="codeintext">id</code></span> and <span><code class="codeintext">attribute</code></span> to the <span><code class="codeintext">User.update()</code></span> method as parameters. We respond with a <span><code class="codeintext">200</code></span> response if successful. The front-end then displays a message to the user notifying them of a successful update or error.</p>
+
+    <h2 class="head" id="heading_id_33">7.8   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   An API consists of a route, a controller, and an action that combine to fulfill the requirement of a request.</p>
+
+    <p class="listbulletcxspmiddle">·   Blueprint actions routes automatically create routes for your custom actions.</p>
+
+    <p class="listbulletcxspmiddle">·   Blueprint routes and actions can be transitioned to custom actions to fulfill requests that go beyond basic CRUD operations.</p>
+
+    <p class="listbulletcxsplast">·   Front-end mockups can be used to identify the requirements of the request and fulfill the request with custom actions.</p>
+  </div>
+</body>
+</html>

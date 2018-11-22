@@ -1,0 +1,497 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">9    Authentication and Sessions</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   An introduction to authentication</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Challenge and determine the authenticity of a user’s claim to an identity</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Using sessions to save authentication state between requests</p>
+
+    <p class="cosummarybulletcxsplast">·   Create a way to route between application pages based upon authenticated state</p>
+
+    <p class="body">We are now well into the implementation of our identity, authorization, and access control system designed to make the world a safe place for cat videos. A user can now set up and manage their identity. The Brushfire front end is also personalized based upon a user’s simulated authenticated status. In this chapter we’ll create the authentication component and replace the simulated state with a user’s actual authenticated state. The goal of this authentication along with the work done in chapters 6-8 is to require a Brushfire user to be authenticated in order to add video content. That way, if a user violates the content policy and posts a forbidden dog video, our investor can disable the account with extreme prejudice. In chapter 10, we’ll wrap up the client’s requirements by locking down our back-end API based upon the user’s authenticated state.</p>
+
+    <h2 class="head" id="heading_id_3">9.1   What is authentication?</h2>
+
+    <p class="body">When we use the terms authentication or authenticated state, we’re referring to whether a user’s claim, on behalf of a user-agent(in our case a browser) is genuine or not. In order to provide authentication we first needed user identity. So we added a unique <span><code class="codeintext">email</code></span> address and unique <span><code class="codeintext">username</code></span> to the <span><code class="codeintext">user</code></span> model as key attributes of a user’s identity. We also added a <span><code class="codeintext">password</code></span> attribute that will later be used as proof of a claim to a particular identity. So our authentication component has three distinct sub-components:</p>
+
+    <p class="listbulletcxspfirst">·   <span class="bold">Sign-in process</span> - challenges the authenticity of a user’s claim to a specific identity from the front end via the login page and determines whether the claim is genuine on the back end via a controller action,</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Session store</span> - stores the results of the challenge, which is the authenticated state, between requests using sessions on the back end, and</p>
+
+    <p class="listbulletcxsplast">·   <span class="bold">Page controller</span> - routes requests between pages on the back end using a controller/action that takes the authenticated state from the session and passes that state via <span><code class="codeintext">locals</code></span> to <span><code class="codeintext">views</code></span> used by the front-end framework-- Angular.</p>
+
+    <p class="body">In summary, on each request of a view, the page controller checks whether the user is authenticated in the session store. It then passes the <span><code class="codeintext">locals</code></span> to the view template which gets rendered on the page thus storing the authenticated state on the page. That authenticated state is either a user’s record <span><code class="codeintext">id</code></span> (if they’re authenticated—logged in) or <span><code class="codeintext">null</code></span> (if they’re unauthenticated--logged out). We’ll spend the remainder of the chapter implementing each of these sub-components. A summary of where we’ve been and where we’re going can be found in figure 9.1.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/09_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 9.1 The four components of an identity, authentication, personalization and access control system.</p>
+
+    <h2 class="head" id="heading_id_4">9.2   The login process</h2>
+
+    <p class="body">We first need to challenge the user to authenticate and then test whether the proof—the <span><code class="codeintext">password</code></span> provided is genuine. We know this will consist of some front-end components making requests to our back-end API. As we’ve done throughout the book, let’s look at the front end for guidance on the requirements of our requests, routes and controller/actions.</p>
+
+    <h3 class="head1" id="heading_id_5">9.2.1   Obtaining the example materials for the chapter</h3>
+
+    <p class="body">You have two options with regard to setting up your Brushfire assets for this chapter. If you’ve completed chapter 8 you’re all set and can simply use your existing project here. If you haven’t completed chapter 8, you can clone the end of chapter 8 Github repo at: <a class="pcalibre8 pcalibre5" href="https://github.com/sailsinaction/brushfire-ch8-end.git">https://github.com/sailsinaction/brushfire-ch8-end.git</a> and start from there.  Remember to use <span><code class="codeintext">npm install</code></span> in the terminal window from the root of the project after you clone the repo.</p>
+
+    <p class="body"><span class="bold">If you do choose the cloning option</span>, don’t forget to add the <span><code class="codeintext">brushfire/config/local.js</code></span> file with your Google API key from chapter 5 (section 5.4.6) as well as starting your local PostgreSQL <span><code class="codeintext">brushfire</code></span> database from chapter 6 (section 6.4.2).</p>
+
+    <h3 class="head1" id="heading_id_6">9.2.2   Understanding the back-end for a login form</h3>
+
+    <p class="body">Before we lift Sails, let’s take a look at the requirements for the <span><code class="codeintext">login</code></span> action.  In figure 9.2, the home page contains a sign-in form that can trigger a <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/login</code></span> that passes in either an <span><code class="codeintext">email</code></span> address or <span><code class="codeintext">username</code></span> along with a <span><code class="codeintext">password</code></span> as parameters.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/09_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 9.2  The <span><code class="codeintext1">layout</code></span> navigation partial has a sign-in form that executes a <span><code class="codeintext1">PUT</code></span> request to <span><code class="codeintext1">/login</code></span> when the sign in button is clicked.</p>
+
+    <p class="body">The back end requirements of the <span><code class="codeintext">login</code></span> request are:</p>
+
+    <p class="listbulletcxspfirst">·   Query the <span><code class="codeintext">user</code></span> model for a record using <span><code class="codeintext">email</code></span> as a query criteria.</p>
+
+    <p class="listbulletcxspmiddle">·   If a <span><code class="codeintext">user</code></span> is not found send a 404 status as a response.</p>
+
+    <p class="listbulletcxspmiddle">·   If a <span><code class="codeintext">user</code></span> record is found compare the <span><code class="codeintext">encryptedPassword</code></span> of that <span><code class="codeintext">user</code></span> record with the <span><code class="codeintext">password</code></span> provided in the request.</p>
+
+    <p class="listbulletcxspmiddle">·   If the password doesn’t match the encryptedPassword send a 404 status as a response.</p>
+
+    <p class="listbulletcxsplast">·   If the password does match, create a session and send a 200 status as a response.</p>
+
+    <p class="body">Now that we have the requirements of the request, let’s create the custom Sails back-end route and controller/action that will be triggered when the front-end makes the request.</p>
+
+    <h3 class="head1" id="heading_id_7">9.2.3   Creating a /<span><code class="codeintext1">login</code></span> route</h3>
+
+    <p class="body">For our authentication system we’ll create custom routes to trigger each controller/action of the system. By doing this we can have a central place for back-end routes to our API. In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> and add the following route in listing 9.1.</p>
+
+    <p class="codelistingcaption">Listing 9.1  Adding the <span><code class="codeintext1">login</code></span> route</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">/*************************************************************</code> <code class="codebcxspmiddle"> * JSON API                                                  *</code> <code class="codebcxspmiddle"> *************************************************************/</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  'PUT /login': 'UserController.login',  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">/*************************************************************</code> <code class="codebcxspmiddle"> * Server-rendered HTML Page                                 *</code> <code class="codebcxspmiddle"> *************************************************************/</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> A <span><code class="codeintext1">PUT</code></span> request to <span><code class="codeintext1">/login</code></span> triggers the <span><code class="codeintext1">login</code></span> action in the <span><code class="codeintext1">UserController</code></span></p>
+
+    <p class="body">So now a <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/login</code></span> will trigger a <span><code class="codeintext">login</code></span> action within <span><code class="codeintext">UserController.js</code></span>. Next, let’s create the <span><code class="codeintext">login</code></span> action that will be triggered when the user clicks the <span class="italics">Sign in</span> button.</p>
+
+    <h3 class="head1" id="heading_id_8">9.2.4   Handling a login form</h3>
+
+    <p class="body">When the user clicks the <span class="italics">Sign in</span> button, the login action will be triggered. Let’s create that action. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> and add the <span><code class="codeintext">login</code></span> action in listing 9.2.</p>
+
+    <p class="codelistingcaption">Listing 9.2  Adding the <span><code class="codeintext1">login</code></span> action</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">login: function (req, res) {         </code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.findOne({                <span class="codeannotationcueballs1">① </span></code> <code class="codebcxspmiddle">      or : [</code> <code class="codebcxspmiddle">        { email: req.param('email') },</code> <code class="codebcxspmiddle">        { username: req.param('username') }</code> <code class="codebcxspmiddle">      ]</code> <code class="codebcxspmiddle">    }, function foundUser(err, createdUser) {</code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">      if (!createdUser) return res.notFound();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      Passwords.checkPassword({   <span class="codeannotationcueballs1">② </span></code> <code class="codebcxspmiddle">        passwordAttempt: req.param('password'),</code> <code class="codebcxspmiddle">        encryptedPassword: createdUser.encryptedPassword</code> <code class="codebcxspmiddle">      }).exec({</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        error: function (err){</code> <code class="codebcxspmiddle">          return res.negotiate(err);</code> <code class="codebcxspmiddle">        },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        incorrect: function (){</code> <code class="codebcxspmiddle">          return res.notFound();</code> <code class="codebcxspmiddle">        },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        success: function (){</code> <code class="codebcxspmiddle">        if (createdUser.deleted) {  <span class="codeannotationcueballs1">③ </span></code> <code class="codebcxspmiddle">            return res.forbidden("'Your account has been deleted. Please visit http://brushfire.io/restore to restore your account.'");</code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">         if (createdUser.banned) {  <span class="codeannotationcueballs1">④ </span></code> <code class="codebcxspmiddle">            return res.forbidden("'Your account has been banned, most likely for adding dog videos in violation of the Terms of Service. Please contact Chad or his mother.'");</code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">          return res.ok();         <span class="codeannotationcueballs1">⑤ </span></code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code><code class="codebcxsplast">  },</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">① </span>  look-up the user using the submitted <span><code class="codeintext1">email address</code></span> or <span><code class="codeintext1">username</code></span>.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">② </span>  if a user is found compare the submitted <span><code class="codeintext1">password</code></span> with the stored <span><code class="codeintext1">encryptedPassword</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">③ </span>  if a user’s <span><code class="codeintext1">deleted</code></span> property is <span><code class="codeintext1">true</code></span> return early with a <span><code class="codeintext1">403</code></span> forbidden status and message</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">④ </span>  if a user’s <span><code class="codeintext1">banned</code></span> property is <span><code class="codeintext1">true</code></span> return early with a <span><code class="codeintext1">403</code></span> forbidden status and message</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">⑤ </span>  if the passwords match return a <span><code class="codeintext1">200</code></span> status response</p>
+
+    <p class="body">Our <span><code class="codeintext">login</code></span> action fulfills the requirements we established earlier by analyzing the front-end request. To summarize, we use the <span class="codeannotationcueballs">① </span> <span><code class="codeintext">User.findOne()</code></span> model method to query the user model for a record using the submitted <span><code class="codeintext">email</code></span> field via <span><code class="codeintext">req.param('email')</code></span>or the <span><code class="codeintext">username</code></span> field via <span><code class="codeintext">req.param('username')</code></span>as criteria for the query.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">In the past our query dictionary contained a single parameter and value. For example: <span><code class="codeintext1">User.findOne({email: req.param('email')})</code></span>. This query dictionary uses the <span><code class="codeintext1">or</code></span> property with an array of values to use as criteria. Sails has a very powerful query language through Waterline where you can build up sophisticated queries. For a complete overview see <a class="pcalibre8 pcalibre4 pcalibre5" href="http://sailsjs.org/documentation/concepts/models-and-orm/query-language">http://sailsjs.org/documentation/concepts/models-and-orm/query-language</a>.</p>
+    </div>
+
+    <p class="body">The <span><code class="codeintext">User.findOne()</code></span> model method then returns either an error or a <span><code class="codeintext">user</code></span> record dictionary of the query results. We handle any errors with <span><code class="codeintext">res.negotiate(err)</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Recall that <span><code class="codeintext1">res.negotiate()</code></span> is a function that examines the provided error (err) and determines the appropriate error-handling behavior via the errors status property and routes it to one of the following responses on the <span><code class="codeintext1">res</code></span> dictionary: <span><code class="codeintext1">res.badRequest()</code></span> [400 errors], <span><code class="codeintext1">res.forbidden()</code></span>  [403 errors],  <span><code class="codeintext1">res.notFound()</code></span> [404 errors], or <span><code class="codeintext1">res.serverError()</code></span> [500 errors].</p>
+    </div>
+
+    <p class="body">If a <span><code class="codeintext">user</code></span> was not found we respond with a <span><code class="codeintext">404</code></span> <span class="italics">status</span> and our front-end code displays a message that the <span><code class="codeintext">email</code></span> address <span class="italics">or</span> <span><code class="codeintext">username</code></span><span class="italics">/</span><span><code class="codeintext">password</code></span> combination is invalid.</p>
+
+    <p class="body">In chapters 5 and 6 we introduced the concept of machines and machinepacks. In chapter 6 we used a machine in <span class="italics">machinepack-passwords</span> to encrypt passwords in our <span><code class="codeintext">signup</code></span> action. We’ll now use another <span class="italics">machine</span> in the same machinepack named <span><code class="codeintext">.checkPassword()</code></span>. The <span class="codeannotationcueballs">② </span>  <span><code class="codeintext">Passwords.checkPassword()</code></span><span class="italics">machine</span> compares thetwo incoming parameters as <span class="italics">inputs -- the</span> submitted <span><code class="codeintext">password</code></span> and the <span><code class="codeintext">encryptedPassword</code></span> attribute we found in the <span><code class="codeintext">user</code></span> record. The machine provides three possible exits – an <span><code class="codeintext">error</code></span> <span class="italics">exit</span>, an <span><code class="codeintext">incorrect</code></span> <span class="italics">exit</span><span><code class="codeintext">,</code></span> if the passwords don’t match, and a <span><code class="codeintext">success</code></span> <span class="italics">exit,</span> if the passwords do match.</p>
+
+    <p class="body">On success <span class="codeannotationcueballs">③ </span>  we’ll first check whether they’ve been deleted by checking the <span><code class="codeintext">deleted</code></span> property of the <span><code class="codeintext">user</code></span> dictionary. If the <span><code class="codeintext">deleted</code></span> property is <span><code class="codeintext">true</code></span> we’ll respond with a <span><code class="codeintext">403</code></span> forbidden status and message. Next, <span class="codeannotationcueballs">④ </span>  we’ll check whether the <span><code class="codeintext">user</code></span> record has been <span><code class="codeintext">banned</code></span> by inspecting the <span><code class="codeintext">banned</code></span> property. If the <span><code class="codeintext">banned</code></span> property is <span><code class="codeintext">true</code></span> we’ll again respond with a 403 forbidden status and message. Finally, if the <span><code class="codeintext">user</code></span> is not <span><code class="codeintext">deleted</code></span> or <span><code class="codeintext">banned</code></span> <span class="codeannotationcueballs">⑤ </span> we’ll send a <span><code class="codeintext">200</code></span> status via <span><code class="codeintext">res.ok()</code></span><span class="italics">.</span></p>
+
+    <p class="body">In order to see this in action we need to change the simulated state of the root route to a <span><code class="codeintext">null</code></span> state. In Sublime open <span><code class="codeintext">brushfire/config/routes.js</code></span> and change the <span><code class="codeintext">id</code></span> property to <span><code class="codeintext">null</code></span> in listing 9.3.</p>
+
+    <p class="codelistingcaption">Listing 9.3  <span class="italics1">Simulating  an unauthenticated state in the root route</span></p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">'GET /': {                                     </code> <code class="codebcxspmiddle">    view: 'homepage',</code> <code class="codebcxspmiddle">    locals: {</code> <code class="codebcxspmiddle">      me: {</code> <code class="codebcxspmiddle">        id: null    <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        gravatarURL: ' http://www.gravatar.com/avatar/ef3eac6c71fdf24b13db12d8ff8d1264?'</code><code class="codebcxsplast">        ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  change to a simulated unauthenticated state</p>
+
+    <p class="body">Now that we’ve setup the route that will load the <span class="italics">homepage</span> and the backend route that will trigger the <span><code class="codeintext">login</code></span> action, let’s take a look at our work in action. Restart Sails via <span><code class="codeintext">sails lift</code></span> and navigate your browser to localhost:1337. Try to login using the sign-in form with an email address of <span><code class="codeintext">sailsinaction@gmail.com</code></span>and a password of<span><code class="codeintext">abc123</code></span>. Your browser should display a message similar to figure 9.3.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/09_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 9.3  A successful challenge to the claim of identity of<span><code class="codeintext1">sailsinaction@gmail.com</code></span>.</p>
+
+    <p class="body">So far we’ve provided a sign-in form where a user can present an identity in the form of an email address or username and proof, in the form of a password, claiming a particular identity. We also have a custom route and <span class="italics">controller/action</span> that can test whether the proof is genuine. Because requests are stateless, we need a way to store the result of this test between requests. But what do we mean when we say that requests are stateless?</p>
+
+    <h3 class="head1" id="heading_id_9">9.2.5   What does “stateless” mean?</h3>
+
+    <p class="body">Imagine that the Sails web server (and every other web server on the planet) has a very lousy memory when it comes to differentiating between requests. For example, a request is made from Nikola Tesla’s browser and Sails routes it to a <span class="italics">controller/action</span> that checks whether a submitted <span><code class="codeintext">password</code></span> matches a value stored in a <span><code class="codeintext">user</code></span> record. The <span class="italics">controller/action</span> responds to the browser that the values match. In the next instant, another request is made from the same user-agent to the server. Sails has no idea that the previous request involved the successful submission of a matching password. Therefore the “state” of that successful submission was not stored anywhere, making the request stateless. Moving forward, it would be impractical to ask the user for their password each time they wanted to access something that required authentication. Fortunately we don’t have to. We can use sessions to temporarily save their authenticated state.</p>
+
+    <h3 class="head1" id="heading_id_10">9.2.6   Understanding the Sails session</h3>
+
+    <p class="body">Sessions are a way to store information like the authenticated state of a user between HTTP requests or Sails socket requests. The session uses several components to make all of this happen. The good news is that sessions are built-into Sails and are created and maintained for us with every request. This means that we can set and retrieve values on a property of the <span><code class="codeintext">req</code></span> dictionary called <span><code class="codeintext">session</code></span> and know that any values set on the <span><code class="codeintext">session</code></span> are associated with each request of a particular user-agent. This concept would benefit greatly from an actual example in action. Open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and add the following controller/actions in listing 9.4.</p>
+
+    <p class="codelistingcaption">Listing 9.4<span class="italics1">Adding setSession and getSession actions to better understand sessions</span></p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  setSession: function(req, res) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    req.session.userId = req.param('sessionVar');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    return res.json(req.session.userId || 'not yet set');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  getSession: function(req, res) {    <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    return res.json(req.session.userId || 'not yet set');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  sets <span><code class="codeintext1">req.session.userId</code></span> to the submitted <span><code class="codeintext1">sessionVar</code></span> parameter</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  returns the value of <span><code class="codeintext1">req.session.userId</code></span></p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Recall that we have Blueprint actions routes enabled so Sails will generate a route for the <span><code class="codeintext1">setSession</code></span> and <span><code class="codeintext1">getSession</code></span> actions automatically for us.</p>
+    </div>
+
+    <p class="body">Restart Sails via sails lift and navigate your browser to <a class="pcalibre8 pcalibre5" href="http://localhost:1337/user/getSession">http://localhost:1337/user/getSession</a> and your browser should return <span><code class="codeintext">“not set yet”</code></span>. This makes sense because we haven’t assigned any values to <span><code class="codeintext">req.session</code></span>. Next, navigate your browser to <a class="pcalibre8 pcalibre5" href="http://localhost:1337/user/setSession?sessionVar=12345">http://localhost:1337/user/setSession?sessionVar=12345</a>. This passes the parameter <span><code class="codeintext">sessionVar</code></span> to the controller action with a value of <span><code class="codeintext">12345</code></span>. Your browser should return <span><code class="codeintext">“12345”.</code></span>Finally, navigate your browser back to <a class="pcalibre8 pcalibre5" href="http://localhost:1337/user/getSession">http://localhost:1337/user/getSession</a> and your browser should return <span><code class="codeintext">“12345”</code></span>. By storing a value on <span><code class="codeintext">req.session.userId</code></span> we’ve given the <span class="italics">request</span> and more importantly the user-agent a state, which can be accessed between requests. Therefore we have a way of storing the state of our password check for each authenticated user-agent.</p>
+
+    <p class="body">Let’s take a little bit closer look at the mechanics of the session without getting overwhelmed in how Sails is handling the session behind the scenes. Figure 9.4 illustrates the process at a high level.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/09_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 9.4 The session consists of <span class="codeannotationcueballs">② </span>  a session cookie, <span class="codeannotationcueballs">③ </span>  the session database and a process for using a <span class="codeannotationcueballs">④ </span>  value stored on the session cookie to securely identify each request with a particular user-agent.</p>
+
+    <p class="body">Each <span class="codeannotationcueballs">① </span>  user-agent <span class="codeannotationcueballs">② </span>  request to Sails contains a value stored in the session cookie that identifies a particular place in <span class="codeannotationcueballs">③ </span>  the session database where values are stored on behalf of that user-agent. Sails also provides us with a way of accessing, adding, or changing <span class="codeannotationcueballs">④ </span>  values stored in the session database via the <span><code class="codeintext">req</code></span> dictionary within an action. So to store the authenticated state of a user-agent is as simple as setting the value of a property on <span><code class="codeintext">req.sessionlike</code></span> in an action.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">But what does the user-agent have to do with it?  Because the user-agent for Brushfire is a browser, the browser window is tied to the user’s claim of identity through a browser cookie. A user, therefore, can’t claim more than one identity from the same user-agent browser because of this relationship with the cookie. Note, a browser window in incognito mode extends the browser’s ability to identify as an additional user because a different cookie is used for the incognito window.</p>
+    </div>
+
+    <p class="body">Now that we have a better understanding of the session, let’s put it to use in Brushfire to store a user’s authenticated state within the <span><code class="codeintext">login</code></span>, <span><code class="codeintext">logout</code></span>, <span><code class="codeintext">removeProfile, restoreProfile</code></span> and <span><code class="codeintext">signup</code></span> actions. Before moving on, however, go back to <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> and remove the <span><code class="codeintext">setSession</code></span> and <span><code class="codeintext">getSession</code></span> actions.</p>
+
+    <h3 class="head1" id="heading_id_11">9.2.7   Saving the user’s logged-in status</h3>
+
+    <p class="body">We’ll start using the session in the login action. Open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> in Sublime and add the <span><code class="codeintext">req.session.userId</code></span> property to the <span><code class="codeintext">login</code></span> action in listing 9.5.</p>
+
+    <p class="codelistingcaption">Listing 9.5  Adding a userId property to the session on a successful password check</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">login: function (req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">             if (createdUser.banned) {</code> <code class="codebcxspmiddle">            return res.forbidden("'Your our account has been banned, most likely for adding dog videos in violation of the Terms of Service. Please contact Chad or his mother.'");</code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">req.session.userId = user.id; <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">       return res.ok();       <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> add the <span><code class="codeintext1">id</code></span> of the found <span><code class="codeintext1">user</code></span> record to a <span><code class="codeintext1">userId</code></span> property</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  respond with a <span><code class="codeintext1">200</code></span> status</p>
+
+    <p class="body">Now, when a user successfully authenticates via the sign-in form, a <span><code class="codeintext">userId</code></span> property is added to the session, which contains the <span><code class="codeintext">id</code></span> of the found user record. We have a way to login and store this authenticated state, let’s create a way to log out.</p>
+
+    <h3 class="head1" id="heading_id_12">9.2.8   Creating the logout endpoint</h3>
+
+    <p class="body">Let’s implement the <span><code class="codeintext">logout</code></span> route and <span><code class="codeintext">action</code></span> and assign the <span><code class="codeintext">null</code></span> value to <span><code class="codeintext">req.session.userId</code></span> to indicate the user-agent is not authenticated.  First we’ll create a custom route that will trigger the <span><code class="codeintext">logout</code></span> action. In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> and add the <span><code class="codeintext">logout</code></span> route in listing 9.6.</p>
+
+    <p class="codelistingcaption">Listing 9.6  Creating the <span><code class="codeintext1">logout</code></span> route.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">'PUT /login': 'UserController.login',</code> <code class="codebcxspmiddle">'GET /logout': 'UserController.logout',</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Next, let’s create the <span><code class="codeintext">logout</code></span> action in the user controller. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> and add the <span><code class="codeintext">logout</code></span> action in listing 9.7.</p>
+
+    <p class="codelistingcaption">Listing 9.7   Adding the <span><code class="codeintext1">logout</code></span> action in the <span><code class="codeintext1">user</code></span> controller.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">logout: function (req, res) {</code> <code class="codebcxspmiddle">if (!req.session.userId) return res.redirect('/');                      <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">User.findOne(req.session.userId, function foundUser(err, createdUser) { <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">  if (!user) {              <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">sails.log.verbose('Session refers to a user who no longer exists.');</code> <code class="codebcxspmiddle">return res.redirect('/');</code> <code class="codebcxspmiddle">}</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">req.session.userId = null;  <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">return res.redirect('/');   <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">});</code> <code class="codebcxspmiddle">},</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> If the user is already logged out redirect to the root route</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Look up the <span class="italics1">user</span> via <span class="italics1">req.session.userId and</span> use <span class="italics1">res.negotiate</span> to handle any errors</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  if a user doesn’t exist redirect back to the root route</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  if a user record is found assign the session to <span class="italics1">null</span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span>  redirect the browser back to the root route</p>
+
+    <p class="body">When a <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/logout</code></span> is made, the user’s authenticated state is set to <span><code class="codeintext">null</code></span> in the session and the browser is redirected to the root route. Therefore, we can test whether a user-agent is authenticated by assessing the value of <span><code class="codeintext">req.session.userId</code></span>. If it has a value, we know a user is authenticated and if it’s <span><code class="codeintext">null</code></span> we know it’s not authenticated. Next, we need to change the authenticated state when a user’s account is removed and restored.</p>
+
+    <h3 class="head1" id="heading_id_13">9.2.9   Updating the session when a user is deleted or restored</h3>
+
+    <p class="body">When we soft-delete a user their authenticated state should be changed. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> and set the user’s authenticated state in the <span><code class="codeintext">removeProfile</code></span> controller action in listing 9.8.</p>
+
+    <p class="codelistingcaption">Listing 9.8  Changing the user’s authenticated state to null when deleted</p><code class="codebcxspfirst">removeProfile: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.update({</code> <code class="codebcxspmiddle">      id: req.param('id')</code> <code class="codebcxspmiddle">    }, {</code> <code class="codebcxspmiddle">      deleted: true</code> <code class="codebcxspmiddle">    }, function(err, removedUser) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">      if (removedUser.length === 0) {</code> <code class="codebcxspmiddle">        return res.notFound();</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      req.session.userId = null;  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.ok();</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  changing the <span><code class="codeintext1">userId</code></span> property to <span><code class="codeintext1">null</code></span></p>
+
+    <p class="body">Similarly, when the user is restored a user’s authenticated state should change. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> and set the user’s authenticated state in the <span><code class="codeintext">restoreProfile</code></span> controller action in listing 9.9.</p>
+
+    <p class="codelistingcaption">Listing 9.9  Changing the user’s authenticated state to their user <span><code class="codeintext1">id</code></span>  when restored</p><code class="codebcxspfirst">restoreProfile: function(req, res) {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">          User.update({</code> <code class="codebcxspmiddle">            id: user.id</code> <code class="codebcxspmiddle">          }, {</code> <code class="codebcxspmiddle">            deleted: false</code> <code class="codebcxspmiddle">          }).exec(function(err, updatedUser) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            req.session.userId = user.id;  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            return res.json(updatedUser);</code> <code class="codebcxspmiddle">          });</code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  setting the <span><code class="codeintext1">userId</code></span> property to the user’s id)</p>
+
+    <p class="body">We have one other place to establish the authenticated state– the <span><code class="codeintext">signup</code></span> controller/action.</p>
+
+    <h3 class="head1" id="heading_id_14">9.2.10   Authenticating a user after signup</h3>
+
+    <p class="body">So far we’ve assigned the appropriate session value for the user-agent’s authenticated state for <span><code class="codeintext">login</code></span>, <span><code class="codeintext">logout</code></span>, <span><code class="codeintext">removeProfile</code></span>, and <span><code class="codeintext">restoreProfile</code></span> actions. Finally, when a user signs up for a user account we want them to be authenticated if their <span><code class="codeintext">user</code></span> record is successfully created. In Sublime, open <span><code class="codeintext">brushfire/api/UserController.js</code></span> and add the <span><code class="codeintext">req.session.userId</code></span> property to the signup action in listing 9.10.</p>
+
+    <p class="codelistingcaption">Listing 9.10  Adding <span><code class="codeintext1">req.session.userId</code></span> to the signup action</p><code class="codebcxspfirst">signup: function(req, res) {</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">          User.create(options).exec(function(err, createdUser) {</code> <code class="codebcxspmiddle">          ...</code> <code class="codebcxspmiddle">              return res.negotiate(err);</code> <code class="codebcxspmiddle">            }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            req.session.userId = createdUser.id;          <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">            return res.json(createdUser);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">          });</code><code class="codebcxsplast">          ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> : after the user is created authenticate the <span><code class="codeintext1">user</code></span> using the session <span><code class="codeintext1">userId</code></span> property</p>
+
+    <p class="body">We’ve now implemented a process for the user to submit proof of their identity and for us to test its validity. We also have a way to store the results of that test between requests. Before moving on let’s take a look at how to configure the session itself.</p>
+
+    <h3 class="head1" id="heading_id_15">9.2.11   Configuring the session store</h3>
+
+    <p class="body">From the previous section we know we can add properties to the We can change a user’s authenticated state simply by changing the value assigned to <span><code class="codeintext">req.session.userId</code></span><span class="italics">.</span> But what about the session itself and how do we control a session’s lifecycle? By default, Sails sessions persist until the session database is restarted or the session cookie expires.</p>
+
+    <p class="body">The Sails session database is currently configured to reside in memory. So while the session is in configured in memory, the session for a request will be reset each time the Sails server starts. We can transition this in memory store to a database like <span class="italics">Redis</span> in <span><code class="codeintext">brushfire/config.session.js</code></span><span class="italics">.</span> Once configured, the session will exist independently of Sails so long as the <span class="italics">Redis</span> database is running. In fact we’ll be implementing a Redis session store in chapter 15.</p>
+
+    <p class="body">By default, Sails doesn’t place an expiration date/time on the session cookie. This can be changed, however, in <span><code class="codeintext">brushfire/config/session.js</code></span><span class="italics">.</span> In this file you can create a <span><code class="codeintext">maxAge</code></span> on the <span><code class="codeintext">cookie</code></span> property to whatever expiration you desire.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note: the session cookie can’t be copied or altered via JavaScript on the browser. The cookie is also protected against tampering. That is not to say that if someone has access to the computer, the cookie can’t be copied directly.</p>
+    </div>
+
+    <p class="body">The final step for authentication is to implement a controller which routes requests between pages and passes the authenticated state via <span><code class="codeintext">locals</code></span> to the <span class="italics">views</span>.</p>
+
+    <h2 class="head" id="heading_id_16">9.3   Personalizing page content for logged-in users</h2>
+
+    <p class="body">In chapter 8 we made the transition for page navigation from using client-side routes and static assets to Sails custom routes and server-rendered views. With the custom routes we also added static <span><code class="codeintext">locals</code></span> that hardcoded a simulated authenticated state of a user in the view. This gave us a chance to understand how custom routes could trigger server-rendered views directly with values via <span><code class="codeintext">locals</code></span>. Now that we have the user’s actual authenticated state we can move the logic out of the custom route and into an action for each page or view of Brushfire. Figure 9.5 illustrates the progression.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/09_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 9.5  We started off using <span class="codeannotationcueballs">① </span>  client-side routing before transitioning to <span class="codeannotationcueballs">② </span>  custom back-end routes serving server-rendered views. Now that we have the user’s authenticated state we can move to a combination of <span class="codeannotationcueballs">③ </span>  custom routes that trigger a custom action for each view.</p>
+
+    <p class="body">We’ll update the route so instead of directly loading the view, the route will trigger an action. For example, the <span><code class="codeintext">homepage</code></span> will have an action named <span><code class="codeintext">showHomePage</code></span>. In this action we have greater flexibility to expand the logic than we do in a custom route. We can now determine if the user is authenticated by checking <span><code class="codeintext">req.session.userId</code></span> and sending <span><code class="codeintext">locals</code></span> that will trigger the display of the appropriate markup in the <span><code class="codeintext">view</code></span>. Figure 9.6 illustrates an example of this process.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/09_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 9.6 When the user makes <span class="codeannotationcueballs">① </span>  a <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">/</code></span> it will be matched with <span class="codeannotationcueballs">② </span>  a custom route that triggers <span class="codeannotationcueballs">③ </span>  an action that determines the user’s authenticated state and sends the appropriate <span><code class="codeintext1">locals</code></span> to <span class="codeannotationcueballs">④ </span>  the layout view that are then added to the front end via <span class="codeannotationcueballs">⑤ </span>  an Angular controller and displayed based upon <span class="codeannotationcueballs">⑥ </span>  a directive in the <span><code class="codeintext1">view</code></span>.</p>
+
+    <p class="body">When a user-agent makes <span class="codeannotationcueballs">① </span>  a <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">localhost:1337</code></span>, it’s matched in a <span class="codeannotationcueballs">② </span>  custom route which triggers <span class="codeannotationcueballs">③ </span>  a <span><code class="codeintext">showHomePage</code></span> action in the <span><code class="codeintext">PageController</code></span><span class="italics">.</span> The action will determine that <span><code class="codeintext">req.session.userId</code></span> as <span><code class="codeintext">null</code></span> and render <span class="codeannotationcueballs">④ </span> the <span><code class="codeintext">homepage</code></span> view with locals set to <span><code class="codeintext">null</code></span>. The front-end (controller) will <span class="codeannotationcueballs">⑤ </span>  read the authenticated state from the <span><code class="codeintext">window</code></span> dictionary and set an internal <span><code class="codeintext">$scope.me</code></span> property. Finally, an Angular directive will then <span class="codeannotationcueballs">⑥ </span>  display the appropriate <span><code class="codeintext">signin</code></span> form based upon the user’s authenticated state.</p>
+
+    <p class="body">We’ll spend the remainder of this chapter adding a custom action for each page in Brushfire that will correspond with our existing custom routes. This action will contain the logic to determine the user’s authenticated state and send locals to the view based upon that state. Let’s start with the root route and the <span><code class="codeintext">homepage</code></span> view.</p>
+
+    <h3 class="head1" id="heading_id_17">9.3.1   Introducing PageController</h3>
+
+    <p class="body">Before we start creating custom actions for each page view we need to create a controller that will contain them. The easiest way to set-up a boilerplate controller is via the command-line. To create the controller, open a terminal window and type</p><code class="codeb">~/brushfire $ sails generate controller page</code>
+
+    <p class="body">Sails will generate an empty <span><code class="codeintext">PageController.js</code></span> file in <span><code class="codeintext">brushfire/api/controllers</code></span>. With the controller generated we can start to transition the <span><code class="codeintext">homepage</code></span> view and route.</p>
+
+    <h3 class="head1" id="heading_id_18">9.3.2   Using a custom action to serve the homepage</h3>
+
+    <p class="body">We’re now going to move the <span><code class="codeintext">locals</code></span> from each route to a custom controller action. First we need to change the route that triggers an action instead of the view. In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> and alter the <span class="italics">root</span> route in listing 9.11.</p>
+
+    <p class="codelistingcaption">Listing 9.11  Altering the root route to trigger the <span><code class="codeintext1">showHomePage</code></span> action.</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">/*************************************************************</code> <code class="codebcxspmiddle">* Server Rendered HTML Pages                                *</code> <code class="codebcxspmiddle">*************************************************************/</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  'GET /': 'PageController.showHomePage',</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Notice, that we are no longer passing static <span><code class="codeintext">locals</code></span> to the <span><code class="codeintext">homepage</code></span> view. Instead a <span><code class="codeintext">GET</code></span> request to the <span class="italics">root</span> (e.g. <span><code class="codeintext">/</code></span>) triggers the <span><code class="codeintext">showHomePage</code></span> action of the page controller. So let’s create the action<span class="italics">.</span> In Sublime, open <span><code class="codeintext">brushfire/api/controllers/PageController.js</code></span> and add the following action in listing 9.12.</p>
+
+    <p class="codelistingcaption">Listing 9.12  Creating a <span><code class="codeintext1">showHomePage</code></span> action</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  showHomePage: function (req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!req.session.userId) { <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.view('homepage', {  </code> <code class="codebcxspmiddle">        me: null</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.findOne(req.session.userId, function (err, user){ <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      if (err) {</code> <code class="codebcxspmiddle">        return res.negotiate(err);</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (!user) { <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        sails.log.verbose('Session refers to a user who no longer exists- did you delete a user, then try to refresh the page with an open tab logged-in as that user?');</code> <code class="codebcxspmiddle">        return res.view('homepage', {</code> <code class="codebcxspmiddle">          me: null</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.view('homepage', { <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">        me: {</code> <code class="codebcxspmiddle">             id: user.id,</code> <code class="codebcxspmiddle">          email: user.email,</code> <code class="codebcxspmiddle">          gravatarURL: user.gravatarURL,</code> <code class="codebcxspmiddle">admin: user.admin <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶   </span>if <span><code class="codeintext1">req.session.userId</code></span> is <span><code class="codeintext1">null</code></span>, return the <span><code class="codeintext1">homepage</code></span> view with <span><code class="codeintext1">locals</code></span> set to <span><code class="codeintext1">null</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>   search for the authenticated user by <span><code class="codeintext1">id</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  if the user isn’t found log a message and return the <span><code class="codeintext1">homepage</code></span> view with <span><code class="codeintext1">locals</code></span> set to <span><code class="codeintext1">null</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹   </span>using <span><code class="codeintext1">res.view</code></span> compile the <span><code class="codeintext1">homepage</code></span> view with <span><code class="codeintext1">locals</code></span></p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span>  added a new property to locals to control the administration link</p>
+
+    <p class="body">Our action responds with a server-rendered <span><code class="codeintext">view</code></span> using <span><code class="codeintext">res.view()</code></span>. Table 9.1 contains the two (optional) arguments to <span><code class="codeintext">res.view()</code></span>.</p>
+
+    <p class="tablecaption pcalibre7">Table 9.1  The path to the view template in <span class="italics1">res.view</span></p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="15%" class="sgc205" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Argument</p>
+          </div>
+        </td>
+
+        <td char="14%" class="sgc206" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Type</p>
+          </div>
+        </td>
+
+        <td char="69%" class="sgc98" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Details</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="15%" class="sgc207" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">pathToView</code></span></p>
+        </td>
+
+        <td char="14%" class="sgc208" valign="top">
+          <p class="tablebody2cxspmiddle"><span class="italics">String</span></p>
+        </td>
+
+        <td char="69%" class="sgc100" valign="top">
+          <p class="tablebody2cxsplast">The path to the desired view file relative to our <span><code class="codeintext">views/</code></span> folder, without the file extension-- <span><code class="codeintext">.ejs</code></span>, and with no trailing slash.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="15%" class="sgc209" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">locals</code></span></p>
+        </td>
+
+        <td char="14%" class="sgc210" valign="top">
+          <p class="tablebody2cxspmiddle"><span class="italics">Dictionary</span><span><code class="codeintext">{}</code></span></p>
+        </td>
+
+        <td char="69%" class="sgc102" valign="top">
+          <p class="tablebody2cxsplast">Data to pass to the view template. </p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Without arguments, Sails will derive the <span><code class="codeintext">pathToView</code></span> as a combination of the <span class="italics">controller name</span> and the <span class="italics">action name</span>. You can also provide an explicit path to the <span><code class="codeintext">view</code></span> template. Figure 9.7 provides examples of how the <span><code class="codeintext">pathToView</code></span> is resolved.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/09_06b.png"/><br class="calibre1"/></p>
+
+    <p class="body">We prefer to explicitly provide the path to the <span><code class="codeintext">view</code></span> as an argument. We also want to pass various <span><code class="codeintext">locals</code></span> to the view template. We can pass locals as a dictionary and the second argument of <span><code class="codeintext">res.view()</code></span>. So if <span><code class="codeintext">req.session.userId</code></span> is <span><code class="codeintext">null</code></span>,<span><code class="codeintext">res.view('homepage')</code></span> will render <span><code class="codeintext">brushfire/views/homepage.ejs</code></span>. If <span><code class="codeintext">req.session.userId</code></span> <span class="italics">has a value</span> indicating that the user is authenticated, we’ll use the user <span><code class="codeintext">id</code></span>as a <span class="italics">criteria object argument</span> in the <span><code class="codeintext">User.findOne()</code></span> model method. If the <span><code class="codeintext">User.findOne()</code></span> method returns an error we’ll let <span><code class="codeintext">res.negotiate(err)</code></span>determine which status code to return. If instead, <span><code class="codeintext">User.findOne()</code></span>doesn’t return a user record, we’ll log a message using <span><code class="codeintext">sails.log.verbose</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span class="italics1">sails.log</span> is similar to logging via <span class="italics1">console.log</span>, however, you can set the “visibility” of the message via <span class="italics1">config.log.js</span>. This is useful when you want to display certain messages during development, however, hide those messages in a production environment. In chapter 15, we’ll discuss setting up different environments.</p>
+    </div>
+
+    <p class="body">Finally, if the <span><code class="codeintext">findOne()</code></span> method returns a <span><code class="codeintext">user</code></span> record, we’ll compile a server-rendered view with <span><code class="codeintext">res.view()</code></span> passing the <span><code class="codeintext">homepage</code></span> view with the <span><code class="codeintext">locals</code></span> including the <span><code class="codeintext">id</code></span><span class="italics">,</span> <span><code class="codeintext">email</code></span> <span class="italics">address, Gravatar url,</span> and <span><code class="codeintext">admin</code></span> property of the <span><code class="codeintext">user</code></span> record.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The <span><code class="codeintext1">admin</code></span> property was added so the administration link will only be displayed to users with the admin property set to <span><code class="codeintext1">true</code></span>.</p>
+    </div>
+
+    <p class="body">Instead of displaying the toastr message and remaining on the <span><code class="codeintext">homepage</code></span>, let’s redirect to the videos page on a successful login. In Sublime, open <span><code class="codeintext">brushfire/assets/js/controllers/navPageController.js</code></span> and make the following changes to the <span><code class="codeintext">navPageController</code></span> in listing 9.13.</p>
+
+    <p class="codelistingcaption">Listing 9.13  <span class="italics1">Redirecting to the</span> <span><code class="codeintext1">videos</code></span> <span class="italics1">page after successfully logging in</span></p><code class="codebcxspfirst">$http.put('/login', {</code> <code class="codebcxspmiddle">    email: $scope.loginForm.email,</code> <code class="codebcxspmiddle">    password: $scope.loginForm.password</code> <code class="codebcxspmiddle">  })</code> <code class="codebcxspmiddle">  .then(function onSuccess() {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    window.location = '/videos';  <span class="codeannotationcueballs1">❶ </span></code><code class="codebcxsplast">  })</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  replaced the call to <span><code class="codeintext1">toastr()</code></span> with a redirect <span><code class="codeintext1">to /videos</code></span></p>
+
+    <p class="body">Let’s give this new controller a spin. Restart Sails using <span><code class="codeintext">sails lift</code></span> and navigate your browser to localhost:1337. Next sign into Brushfire using <span><code class="codeintext">sailsinaction@gmail.com</code></span> as the email address and <span><code class="codeintext">abc123</code></span> as the password. The browser should redirect to the videos page similar to figure 9.7.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/09_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 9.7 The browser redirected to the videos page, however, the navigation partial isn’t displaying the markup for the authenticated state.</p>
+
+    <p class="body">Although the browser redirected to the <span><code class="codeintext">videos</code></span> page, the navigation partial is not displaying the authenticated state. That’s because we haven’t transitioned the custom route and action for the <span><code class="codeintext">videos</code></span> page. Let’s do that next.</p>
+
+    <h2 class="head" id="heading_id_19">9.4   Implementing the back-end application flow</h2>
+
+    <p class="body">Now that we have <span><code class="codeintext">PageController</code></span> as our foundation for managing the front-end user experience, let’s transition the remainder of our pages. Figure 9.8 illustrates each mockup page and its associated route.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/09_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 9.8 The Brushfire mockup pages with custom routes.</p>
+
+    <p class="body">Let’s transition the <span><code class="codeintext">videos</code></span> page route and add a new action to the <span><code class="codeintext">page</code></span> controller.</p>
+
+    <h3 class="head1" id="heading_id_20">9.4.1   Personalizing our list of videos</h3>
+
+    <p class="body">In chapter 8, we addressed what should be displayed on the videos page based upon the authenticated state of the user. Essentially, if the user is authenticated the submit videos form is displayed. If the user is not authenticated the form isn’t displayed and the user cannot add videos.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">In fact, the user can add videos using Postman making a <span><code class="codeintext1">POST</code></span> request to <span><code class="codeintext1">/videos</code></span><span class="italics1">.</span> In chapter 10 we’ll address how to lock down access to controller/actions with policies.</p>
+    </div>
+
+    <p class="body">Now we want our <span><code class="codeintext">page</code></span> controller/action to bootstrap the user’s authenticated state. First let’s modify our existing <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/videos</code></span><span class="italics">.</span> In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> and make the following changes to the route in listing 9.14.</p>
+
+    <p class="codelistingcaption">Listing 9.14  Adding the <span><code class="codeintext1">/videos</code></span> route.</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  'GET /': 'PageController.showHomePage',</code> <code class="codebcxspmiddle">  'GET /videos': 'PageController.showVideosPage',</code> <code class="codebcxspmiddle">...</code><code class="codebcxsplast"> </code>
+
+    <p class="body">Notice, that we are no longer passing static <span><code class="codeintext">locals</code></span> to the <span><code class="codeintext">homepage</code></span> view. Instead a <span><code class="codeintext">GET</code></span> request to the <span><code class="codeintext">/videos</code></span> triggers the <span><code class="codeintext">showVideosPage</code></span> <span class="italics">action</span> of the page controller. So let’s create a <span><code class="codeintext">showVideosPage</code></span> <span class="italics">action.</span> In Sublime, <span><code class="codeintext">brushfire/api/controllers/PageController.js</code></span> and add the following action in listing 9.15.</p>
+
+    <p class="codelistingcaption">Listing 9.15  Creating a <span><code class="codeintext1">showVideosPage</code></span> action</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  showVideosPage: function (req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!req.session.userId) {                                    </code> <code class="codebcxspmiddle">      return res.view('videos', {    </code> <code class="codebcxspmiddle">        me: null</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.findOne(req.session.userId, function (err, user){        </code> <code class="codebcxspmiddle">      if (err) {</code> <code class="codebcxspmiddle">        return res.negotiate(err);</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (!user) {                   </code> <code class="codebcxspmiddle">        sails.log.verbose('Session refers to a user who no longer exists- did you delete a user, then try to refresh the page with an open tab logged-in as that user?');</code> <code class="codebcxspmiddle">        return res.view('videos', {</code> <code class="codebcxspmiddle">          me: null</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.view('videos', {              </code> <code class="codebcxspmiddle">        me: {</code> <code class="codebcxspmiddle">             id: user.id,</code> <code class="codebcxspmiddle">          email: user.email,</code> <code class="codebcxspmiddle">          gravatarURL: user.gravatarURL,</code> <code class="codebcxspmiddle">admin: user.admin</code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <h3 class="head1" id="heading_id_21">9.4.2   Securing our administration page</h3>
+
+    <p class="body">In order for the <span><code class="codeintext">administration</code></span> view to be displayed a user must not only be authenticated but also have the <span><code class="codeintext">admin</code></span> attribute in their user record set to true. We currently don’t have a user record with the <span><code class="codeintext">admin</code></span> property set to true. Let’s change that by making our test user an administrator. In Sublime, open <span><code class="codeintext">brushfire/config/bootstrap.js</code></span> and change the <span><code class="codeintext">admin</code></span> property to true in listing 9.16.</p>
+
+    <p class="codelistingcaption">Listing 9.16  Making the test <span><code class="codeintext1">user</code></span> account an <span><code class="codeintext1">administrator</code></span></p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">          ...</code> <code class="codebcxspmiddle">          options.email = 'sailsinaction@gmail.com';</code> <code class="codebcxspmiddle">            options.encryptedPassword = result;</code> <code class="codebcxspmiddle">            options.username = 'sails-in-action';</code> <code class="codebcxspmiddle">            options.deleted = false;</code> <code class="codebcxspmiddle">            options.admin = true;               <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">            options.banned = false;</code> <code class="codebcxspmiddle">          User.create(options).exec(function(err, createdUser) {</code><code class="codebcxsplast">            ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  changed the value for <span><code class="codeintext1">admin</code></span> property to <span><code class="codeintext1">true</code></span></p>
+
+    <p class="body">Now let’s setup the <span><code class="codeintext">administration</code></span> page. First let’s create the route that will trigger the <span><code class="codeintext">showAdminPage</code></span> action. In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> and make the following changes to the route in listing 9.17.</p>
+
+    <p class="codelistingcaption">Listing 9.17  Altering the route to trigger an <span><code class="codeintext1">administration</code></span> page route.</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  'GET /': 'PageController.showHomePage',</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">'GET /administration': 'PageController.showAdminPage',  <span class="codeannotationcueballs1">❶ </span></code><code class="codebcxsplast">  ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  A <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">/administration</code></span> triggers the <span><code class="codeintext1">showAdminPage</code></span> <span class="italics1">action.</span></p>
+
+    <p class="body">Unlike the other pages in Brushfire, the administration page is only displayed if the <span><code class="codeintext">admin</code></span> attribute is set to <span><code class="codeintext">true</code></span>. In Sublime, <span><code class="codeintext">brushfire/api/controllers/PageController.js</code></span> and add the following action in listing 9.18.</p>
+
+    <p class="codelistingcaption">Listing 9.18  Creating a <span><code class="codeintext1">showAdminPage</code></span> Action</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">  showAdminPage: function (req, res) {   </code> <code class="codebcxspmiddle">    if (!req.session.userId) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.redirect('/');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.findOne(req.session.userId, function (err, user){  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (err) {</code> <code class="codebcxspmiddle">           return res.negotiate(err);</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (!user) {  <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">        sails.log.verbose('Session refers to a user who no longer exists- did you delete a user, then try to refresh the page with an open tab logged-in as that user?');</code> <code class="codebcxspmiddle">        return res.view('homepage');</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (user.admin) {  <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">        return res.view('adminUsers', {</code> <code class="codebcxspmiddle">             me: {</code> <code class="codebcxspmiddle">               id: user.id,</code> <code class="codebcxspmiddle">               email: user.email,</code> <code class="codebcxspmiddle">            username: user.username,</code> <code class="codebcxspmiddle">            gravatarURL: user.gravatarURL,</code> <code class="codebcxspmiddle">            admin: user.admin</code> <code class="codebcxspmiddle">             }</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      } else {  <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">        return res.view('homepage', {</code> <code class="codebcxspmiddle">          me: {</code> <code class="codebcxspmiddle">            id: user.id,</code> <code class="codebcxspmiddle">            email: user.email,</code> <code class="codebcxspmiddle">            username: user.username,</code> <code class="codebcxspmiddle">            gravatarURL: user.gravatarURL,</code> <code class="codebcxspmiddle">            admin: user.admin</code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">    ...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  if <span><code class="codeintext1">req.session.userId</code></span> is <span><code class="codeintext1">null</code></span>, return the homepage view with <span><code class="codeintext1">locals</code></span> set to <span><code class="codeintext1">null</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>   search for the authenticated user by <span><code class="codeintext1">id</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span>  if the user isn’t found log a message and return the homepage view with <span><code class="codeintext1">locals</code></span> set to <span><code class="codeintext1">null</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span>  if the user’s admin property is set to <span><code class="codeintext1">true</code></span>, render the administration page</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span>  If the user’s admin property is not set to <span><code class="codeintext1">true</code></span>, render the homepage view.</p>
+
+    <p class="body">Now that we have the administration page controller completed let’s move on to the profile view.</p>
+
+    <h3 class="head1" id="heading_id_22">9.4.3   Personalizing the user profile page</h3>
+
+    <p class="body">The <span><code class="codeintext">profile</code></span> page does not have an unauthenticated state. Therefore if, the user is not authenticated and attempts to make a <span><code class="codeintext">GET</code></span> <span class="italics">request to</span> <span><code class="codeintext">/profile</code></span>, we want the browser redirected to the root route or homepage. In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> and make the following changes to the route in listing 9.19.</p>
+
+    <p class="codelistingcaption">Listing 9.19  Adding the <span><code class="codeintext1">profile</code></span> custom route</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  'GET /': 'PageController.showHomePage',</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">'GET /profile': 'PageController.showProfilePage',</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Next let’s implement the controller/action. In Sublime, open <span><code class="codeintext">brushfire/api/controllers/PageController.js</code></span> and add the following action in listing 9.20.</p>
+
+    <p class="codelistingcaption">Listing 9.20  Creating a <span><code class="codeintext1">showProfilePage</code></span> Action</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  showProfilePage: function (req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!req.session.userId) {<span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.redirect('/');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.findOne(req.session.userId, function (err, user){</code> <code class="codebcxspmiddle">      if (err) {</code> <code class="codebcxspmiddle">        console.log('error: ', error);</code> <code class="codebcxspmiddle">        return res.negotiate(err);</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (!user) {</code> <code class="codebcxspmiddle">        sails.log.verbose('Session refers to a user who no longer exists- did you delete a user, then try to refresh the page with an open tab logged-in as that user?');</code> <code class="codebcxspmiddle">        return res.view('homepage');</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.view('profile', {</code> <code class="codebcxspmiddle">        me: {</code> <code class="codebcxspmiddle">          id: user.id,</code> <code class="codebcxspmiddle">          email: user.email,</code> <code class="codebcxspmiddle">          gravatarURL: user.gravatarURL,</code> <code class="codebcxspmiddle">admin: user.admin</code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...  </code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  redirect to the <span class="italics1">root</span> route if <span class="italics1">unauthenticated</span> request</p>
+
+    <p class="body">Since we don’t have a requirement to display the profile page in an unauthenticated state, if the request is unauthenticated, we’ll redirect it to the <span class="italics">root</span> route. Now that we’ve addressed the profile let’s implement the <span><code class="codeintext">GET</code></span> requests to <span><code class="codeintext">/edit-profile</code></span><span class="italics">.</span></p>
+
+    <h3 class="head1" id="heading_id_23">9.4.4   Securing the edit profile form</h3>
+
+    <p class="body">The <span><code class="codeintext">edit-profile</code></span> page does not have an unauthenticated state. Therefore if the user is unauthenticated and attempts to make a <span><code class="codeintext">GET</code></span> <span class="italics">request</span> <span><code class="codeintext">to /edit-profile</code></span>, we want the browser redirected to the root route or homepage. In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> and make the following changes to the route in listing 9.21.</p>
+
+    <p class="codelistingcaption">Listing 9.21  Altering the edit-profile route to trigger the showEditProfilePage action</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  'GET /': 'PageController.showHomePage',</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">  'GET /edit-profile': 'PageController.showEditProfilePage',</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Next, let’s implement the show <span class="italics">edit profile page</span> controller/action. In Sublime, <span><code class="codeintext">brushfire/api/controllers/PageController.js</code></span> and add the following action in listing 9.22.</p>
+
+    <p class="codelistingcaption">Listing 9.22  Creating a <span><code class="codeintext1">showEditProfilePage</code></span> Action</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  showEditProfilePage: function (req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!req.session.userId) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.redirect('/');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.findOne(req.session.userId, function (err, user){</code> <code class="codebcxspmiddle">      if (err) {</code> <code class="codebcxspmiddle">        console.log('error: ', error);</code> <code class="codebcxspmiddle">        return res.negotiate(err);</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (!user) {</code> <code class="codebcxspmiddle">        sails.log.verbose('Session refers to a user who no longer exists- did you delete a user, then try to refresh the page with an open tab logged-in as that user?');</code> <code class="codebcxspmiddle">        return res.view('homepage');</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.view('edit-profile', {</code> <code class="codebcxspmiddle">        me: {</code> <code class="codebcxspmiddle">          id: user.id,</code> <code class="codebcxspmiddle">          email: user.email,</code> <code class="codebcxspmiddle">      username: user.username,  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">          gravatarURL: user.gravatarURL,</code> <code class="codebcxspmiddle">admin: user.admin</code> <code class="codebcxspmiddle">        }</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  redirect to the <span><code class="codeintext1">root</code></span> route if <span><code class="codeintext1">unauthenticated</code></span> request</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  added <span><code class="codeintext1">username</code></span> property</p>
+
+    <p class="body">Since we don’t have a requirement to display the profile page in an unauthenticated state, if the request is unauthenticated, we’ll redirect it to the <span><code class="codeintext">root</code></span> route. We did add the <span><code class="codeintext">username</code></span> property since it’s used on the <span><code class="codeintext">edit-profile</code></span> page. Now that we’ve addressed the <span><code class="codeintext">edit-profile</code></span> page let’s implement the <span><code class="codeintext">GET</code></span> requests to <span><code class="codeintext">/restore-profile</code></span><span class="italics">.</span></p>
+
+    <h3 class="head1" id="heading_id_24">9.4.5   Securing other account-related pages</h3>
+
+    <p class="body">The restore profile page does not have an authenticated state. Therefore if the user is authenticated and attempts to make a <span><code class="codeintext">GET</code></span> <span class="italics">request to</span> <span><code class="codeintext">/restore-profile</code></span>, we want the browser redirected to the root route or homepage. In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> and make the following changes to the route in listing 9.23.</p>
+
+    <p class="codelistingcaption">Listing 9.23  Altering the <span><code class="codeintext1">restore-profile</code></span> route to trigger the <span><code class="codeintext1">showRestorePage</code></span> action</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  'GET /': 'PageController.showHomePage',</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">'GET /restore-profile': 'PageController.showRestorePage',</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Next, let’s create the show <span class="italics">restore profile page</span> controller/action. In Sublime, <span><code class="codeintext">brushfire/api/controllers/PageController.js</code></span> and add the following action in listing 9.24.</p>
+
+    <p class="codelistingcaption">Listing 9.24  Creating a <span><code class="codeintext1">showRestorePage</code></span> action</p><code class="codebcxspfirst"> module.exports = {</code> <code class="codebcxspmiddle">showRestorePage: function (req, res) {</code> <code class="codebcxspmiddle">    if (req.session.userId) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.redirect('/');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  return res.view('restore-profile', {  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      me: null</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  If the request is authenticated redirect to the root route.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  return the restore-profile view with <span><code class="codeintext1">me</code></span> set to <span><code class="codeintext1">null</code></span></p>
+
+    <p class="body">The <span><code class="codeintext">restore</code></span> profile page does not have an authenticated state; therefore there is no need to look-up a user record. This makes the action simple to implement. Next, let’s implement in the page controller for the signup page.</p>
+
+    <h3 class="head1" id="heading_id_25">9.4.6   Implementing business rules for the signup page</h3>
+
+    <p class="body">The signup page does not have an authenticated state. Therefore if the user is authenticated and attempts to make a <span><code class="codeintext">GET</code></span> <span class="italics">request to</span> <span><code class="codeintext">/signup</code></span>, we want the browser redirected to the root route or homepage. In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> and make the following changes to the route in listing 9.25.</p>
+
+    <p class="codelistingcaption">Listing 9.25 Altering the <span><code class="codeintext1">signup</code></span> route to trigger the <span><code class="codeintext1">showSignupPage</code></span> action</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">  'GET /': 'PageController.showHomePage',</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">'GET /signup': 'PageController.showSignupPage',</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Notice, that we are no longer passing static <span class="italics">locals</span> to the <span class="italics">homepage</span> view and instead routing the request directly to the <span><code class="codeintext">showSignupPage</code></span> action. In Sublime, <span><code class="codeintext">brushfire/api/controllers/PageController.js</code></span> and add the following action in listing 9.26.</p>
+
+    <p class="codelistingcaption">Listing 9.26  Creating a showSignupPage Action</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle">showSignupPage: function (req, res) {</code> <code class="codebcxspmiddle">    if (req.session.userId) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      return res.redirect('/');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    return res.view('signup', {  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">      me: null</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  If the request is authenticated redirect to the root route.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  return the <span><code class="codeintext1">signup</code></span> view with <span><code class="codeintext1">me</code></span>set to <span><code class="codeintext1">null</code></span></p>
+
+    <p class="body">At this point the front end of Brushfire responds with appropriate UI based upon the user’s authenticated state. In the next chapter we’ll implement access control on the back end locking down endpoints based upon the user’s authenticated state.</p>
+
+    <h2 class="head" id="heading_id_26">9.5   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   Authentication is a process of allowing the user to prove their identity.</p>
+
+    <p class="listbulletcxspmiddle">·   Requests are considered stateless because nothing is saved inherently between requests.</p>
+
+    <p class="listbulletcxspmiddle">·   A Session consists of a data store, middleware, and a session cookie that all combine to allow a user’s authenticated state to be saved between requests.</p>
+
+    <p class="listbulletcxsplast">·   Creating an action for each front-end page view provides complete flexibility in personalizing the front end based upon the user’s identity and authenticated state.</p>
+  </div>
+</body>
+</html>

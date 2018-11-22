@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1" xml:lang="eng">
+  <head>
+    <meta content="de5d5b4b-5c38-4e12-8696-501dfe5e5e17" name="dtb:uid"/>
+    <meta content="2" name="dtb:depth"/>
+    <meta content="calibre (2.67.0)" name="dtb:generator"/>
+    <meta content="0" name="dtb:totalPageCount"/>
+    <meta content="0" name="dtb:maxPageNumber"/>
+  </head>
+  <docTitle>
+    <text>Sails.js in Action MEAP V13</text>
+  </docTitle>
+  <navMap>
+    <navPoint class="chapter" id="navPoint-1" playOrder="1">
+      <navLabel>
+        <text>Copyright 2016 Manning Publications</text>
+      </navLabel>
+      <content src="OEBPS/Text/copyright.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-2" playOrder="2">
+      <navLabel>
+        <text>welcome</text>
+      </navLabel>
+      <content src="OEBPS/Text/WL.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-3" playOrder="3">
+      <navLabel>
+        <text>brief contents</text>
+      </navLabel>
+      <content src="OEBPS/Text/toc.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-4" playOrder="4">
+      <navLabel>
+        <text>1 Getting Started</text>
+      </navLabel>
+      <content src="OEBPS/Text/01.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-5" playOrder="5">
+      <navLabel>
+        <text>2 First Steps</text>
+      </navLabel>
+      <content src="OEBPS/Text/02.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-6" playOrder="6">
+      <navLabel>
+        <text>3 Using Static Assets</text>
+      </navLabel>
+      <content src="OEBPS/Text/03.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-7" playOrder="7">
+      <navLabel>
+        <text>4 Using the Blueprint API</text>
+      </navLabel>
+      <content src="OEBPS/Text/04.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-8" playOrder="8">
+      <navLabel>
+        <text>5 Custom Back-End Code</text>
+      </navLabel>
+      <content src="OEBPS/Text/05.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-9" playOrder="9">
+      <navLabel>
+        <text>6 Using Models</text>
+      </navLabel>
+      <content src="OEBPS/Text/06.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-10" playOrder="10">
+      <navLabel>
+        <text>7 Custom Actions</text>
+      </navLabel>
+      <content src="OEBPS/Text/07.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-11" playOrder="11">
+      <navLabel>
+        <text>8 ­­­ Server-Rendered Views</text>
+      </navLabel>
+      <content src="OEBPS/Text/08.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-12" playOrder="12">
+      <navLabel>
+        <text>9 Authentication and Sessions</text>
+      </navLabel>
+      <content src="OEBPS/Text/09.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-13" playOrder="13">
+      <navLabel>
+        <text>10 Policies and Access Control</text>
+      </navLabel>
+      <content src="OEBPS/Text/10.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-14" playOrder="14">
+      <navLabel>
+        <text>11 Refactoring</text>
+      </navLabel>
+      <content src="OEBPS/Text/11.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-15" playOrder="15">
+      <navLabel>
+        <text>12 Embedded Data and Associations</text>
+      </navLabel>
+      <content src="OEBPS/Text/12.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-16" playOrder="16">
+      <navLabel>
+        <text>13 Ratings, Followers, and Search</text>
+      </navLabel>
+      <content src="OEBPS/Text/13.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-17" playOrder="17">
+      <navLabel>
+        <text>14 Real time with WebSockets</text>
+      </navLabel>
+      <content src="OEBPS/Text/14.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-18" playOrder="18">
+      <navLabel>
+        <text>15 Deployment, Testing, and Security</text>
+      </navLabel>
+      <content src="OEBPS/Text/15.xhtml"/>
+    </navPoint>
+    <navPoint class="chapter" id="navPoint-19" playOrder="19">
+      <navLabel>
+        <text>A A brief history of Sails</text>
+      </navLabel>
+      <content src="OEBPS/Text/A.xhtml"/>
+    </navPoint>
+  </navMap>
+</ncx>

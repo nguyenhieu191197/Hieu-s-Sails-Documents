@@ -1,0 +1,1008 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">6    Using Models</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   Using models, attributes, methods, and connections</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Creating user identity management</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Transitioning from the default sails-disk database to PostgreSQL</p>
+
+    <p class="cosummarybulletcxsplast">·   An introduction to Waterline, ORMs and ODMs</p>
+
+    <p class="body">Chad dropped by today. It seems he received a panicked call from the “investor” last night. She was using Brushfire and to her horror found hundreds of dog videos littering the site. Chad said she insisted in the strongest possible terms, “this will not stand.”We explained to Chad that although we couldn’t prevent dog videos from being added to Brushfire, we could require users to be logged in order to add videos. That way if a user violated the Terms of Service (TOS) his Mom/investor could ban the user’s account with extreme prejudice. In order to accomplish this requirement, we’ll need the user to establish her identity and prove that she is the person that created that identity. We can then personalize the front end, and control access to the back end (based upon that proven identity).With few exceptions, applications we’ve built for clients inevitably involve this sort of requirement and features displayed in figure 6.1.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.1 The four components of an identity, authentication, personalization and access control system.</p>
+
+    <p class="body">We’ll be using this figure as a recurring map for chapters 6 through 10 to show where we are in the process of building out each component. We’ve divided the implementation of user identity, authentication, personalization, and access control into four basic components in table 6.1.</p>
+
+    <p class="tablecaption pcalibre7">Table 6.1  The components of user identity, authentication, and access control</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="15%" class="sgc103" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Component</p>
+          </div>
+        </td>
+
+        <td char="84%" class="sgc104 pcalibre7" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Description</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="15%" class="sgc105" valign="top">
+          <p class="tablebody2cxspfirst">User Identity Management</p>
+        </td>
+
+        <td char="84%" class="sgc106" valign="top">
+          <p class="tablebody2cxsplast">In chapters 6 and 7 we’ll create user identity management that enables a user to claim and manage an identity. This component will also enable a super-user, referred to as administrator, to manage all identities. The sub-components of user identity management will be implemented in two parts. The first part is setting up the model while the second part is using the model to fulfill requirements of the back-end API.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="15%" class="sgc105" valign="top">
+          <p class="tablebody2cxspfirst">Front-end Personalization</p>
+        </td>
+
+        <td char="84%" class="sgc106" valign="top">
+          <p class="tablebody2cxsplast">Once we can determine whether a person is logged in or logged out, we’ll want to use that state to control what’s displayed on the front end also known as personalization.  In chapter 7 we’ll communicate the authenticated state to the front end controlling which assets are displayed.  In chapter 8 we’ll bootstrap the user’s authenticated state on the page using server-rendered views. We’ll then control what’s displayed on the front end using a combination of server-rendered views and client-side JavaScript.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="15%" class="sgc105" valign="top">
+          <p class="tablebody2cxspfirst">Authentication</p>
+        </td>
+
+        <td char="84%" class="sgc106" valign="top">
+          <p class="tablebody2cxsplast">In chapter 9 we’ll create the authentication component. The authentication component provides a way to challenge the authenticity of a user’s claim to a specific identity and determine whether it’s genuine on the back end. We’ll store the results of the challenge (the authenticated state) between requests using sessions on the back end. Finally, using controller/actions we’ll route requests between pages on the back end that takes the authenticated state from the session and bootstraps that state onto server-rendered views that can be used by the front end.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="15%" class="sgc107" valign="top">
+          <p class="tablebody2cxspfirst">Back-end API access Control</p>
+        </td>
+
+        <td char="84%" class="sgc108" valign="top">
+          <p class="tablebody2cxsplast">Once a user is authenticated we’ll turn to what they have access to in terms of the backend API. For example, only a user that is authenticated and is the owner of a profile may restore it.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">If some of the concepts above are unclear, don’t despair. By the time you’ve completed each chapter you’ll have a thorough understanding of not only the concepts but the practical application of using them in real world examples.</p>
+
+    <p class="body">So our first requirement is understanding and implementing user identity management. This involves creating and using a model of a user. We’ll make sure you have a firm understanding of the model itself. We’ll then concentrate on determining the requirements of the <span><code class="codeintext">user</code></span> model and (based upon those requirements)implementing the model for identity management. Having an actual model also gives us an opportunity to examine more closely the databases where model records are stored. We’ll then transition Brushfire from using the default sails-disk database to a PostgreSQL database. Finally, we’ll get to know the main model methods via examples we’ll use throughout the book.</p>
+
+    <h2 class="head" id="heading_id_3">6.1   Understanding Sails models</h2>
+
+    <p class="body">We now need a reliable way to create, store and manage information about a user in Brushfire. But how do we create a new user record and where will it be stored?  What will the user record contain and how can we control what’s in it?  The answers to these questions and more can be found in something we call a <span class="italics">model</span>.</p>
+
+    <p class="body">We first discussed models in chapter 1. If you skipped over that section and are unfamiliar with the concepts of models and databases, now would be a good time to go back and check it out before moving on.Let’s start with the highest-levelabstraction of a model definition. In Sails, a model is defined by a JavaScript dictionary. For review, figure 6.2 provides a high level overview of the properties and methods in a model definition.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.2  Model definitions consist of <span class="codeannotationcueballs">① </span>  attributes, <span class="codeannotationcueballs">② </span>  methods, and <span class="codeannotationcueballs">③ </span> settings.  In addition, every model is connected with a particular  <span class="codeannotationcueballs">④ </span>  adapter.</p>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">① </span>  Model attributes are the properties of a user like the <span><code class="codeintext1">username</code></span>, <span><code class="codeintext1">email</code></span>, and <span><code class="codeintext1">password</code></span>.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">② </span>  Model methods are functions we use to find and manipulate database records.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">③ </span>  Model settings are configuration settings for the model.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">④ </span>  Adapters are NPM packages which you can install in your project in order to add support for a particular database. Behind the scenes the adapter is what allows Sails to provide one unified way of configuring, accessing and managing a model. Sails takes care of translating this unified approach to the specific requirements of each database system.</p>
+
+    <p class="body">Let’s transition from talking about the model to identify the attributes we’ll use in it for user identity management.</p>
+
+    <h2 class="head" id="heading_id_4">6.2   Managing user data</h2>
+
+    <p class="body">How do we keep track of users?  User identity management generally involves the creation, display, update, and removal of information about a specific user’s identity. That identity is then used to distinguish the user within the broader application. In order to make this work we need to create the following sub components in table 6.2.</p>
+
+    <p class="tablecaption pcalibre7">Table 6.2 User Identity Management Components</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="19%" class="sgc109" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Component</p>
+          </div>
+        </td>
+
+        <td char="80%" class="sgc110" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Description</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="19%" class="sgc111" valign="top">
+          <p class="tablebody2cxspfirst">Creating a profile with a signup process.</p>
+        </td>
+
+        <td char="80%" class="sgc112" valign="top">
+          <p class="tablebody2cxsplast">The signup component allows a user to create an identity. Identity is based upon one or more unique pieces of information. In our user identity management we’ll prompt the user for a unique <span><code class="codeintext">email</code></span>address and unique <span><code class="codeintext">username</code></span>. Either of these pieces of information can be used to identify a particular user. The signup process will also prompt the user to create a <span><code class="codeintext">password</code></span>. This password will later be used as proof of a claim to a particular identity.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="19%" class="sgc111" valign="top">
+          <p class="tablebody2cxspfirst">Displaying a user profile.</p>
+        </td>
+
+        <td char="80%" class="sgc112" valign="top">
+          <p class="tablebody2cxsplast">The user profile component displays information about the user via the <span><code class="codeintext">user</code></span> record. The user also has the ability to edit, delete and later restore their profile.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="19%" class="sgc111" valign="top">
+          <p class="tablebody2cxspfirst">Editing a user profile.</p>
+        </td>
+
+        <td char="80%" class="sgc112" valign="top">
+          <p class="tablebody2cxsplast">Editing a user profile allows the user to edit various aspects of their user record.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="19%" class="sgc111" valign="top">
+          <p class="tablebody2cxspfirst">Restoring a user profile.</p>
+        </td>
+
+        <td char="80%" class="sgc112" valign="top">
+          <p class="tablebody2cxsplast">After a user authenticates successfully, this component allows a user to restore their deleted user profile.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="19%" class="pcalibre7 sgc113" valign="top">
+          <p class="tablebody2cxspfirst">Administering a user profile.</p>
+        </td>
+
+        <td char="80%" class="sgc114" valign="top">
+          <p class="tablebody2cxsplast">This component allows a designated admin user to perform administrative duties such as add admin privileges to other users as well as ban users from accessing the system.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Now that we know the general requirements of our frontend we need to transition those requirements into interactive mockups. Since this book is primarily about the back end and not building a front end, we’ve provided the mockups for you in a Github repo.</p>
+
+    <h3 class="head1" id="heading_id_5">6.2.1   Obtaining the example materials for this chapter</h3>
+
+    <p class="body">To prevent this book from becoming a multi-volume set, we’re going to start with a fully baked front end. That is, instead of describing the creation of the front end, we’re going to concentrate on the back end and provide the front-end assets via a Github repo. Navigate your browser to <a class="pcalibre8 pcalibre5" href="https://github.com/sailsinaction/brushfire-ch6-start">https://github.com/sailsinaction/brushfire-ch6-start</a>and you should see something similar to figure 6.3.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.3  Clone the repo using the URL form the main repo page for the start of chapter 6.</p>
+
+    <p class="body">Copy the clone URL from the repo page. From the terminal window type the following command</p><code class="codeb">~/brushfire $ git clone https://github.com/sailsinaction/brushfire-ch6-start</code>
+
+    <p class="body">Change into the <span><code class="codeintext">brushfire-ch6-start</code></span> folder.</p><code class="codeb">~/brushfire $ cd brushfire-ch6-start</code>
+
+    <p class="body">Next, we’ll install the node modules listed in the<span><code class="codeintext">brushfire-ch6-start/package.json</code></span> file. From the terminal window type:</p><code class="codeb">~/brushfire-chp6-start $ npm install</code>
+
+    <p class="body">Finally, in chapter 5 we used the bootstrap in Sails to add YouTube videos via <span><code class="codeintext">machinepack-youtube</code></span>, which requires an Google API key. In Sublime, copy the <span><code class="codeintext">brushfire/config/local.js</code></span> file you created in chapter 5. If you have not completed chapter 5 you’ll need to add a <span><code class="codeintext">brushfire/config/local.js</code></span> file and add an API key we created in chapter 5. Once you add in the API key, you’re all set.</p>
+
+    <h3 class="head1" id="heading_id_6">6.2.2   A front-end first approach to data modeling</h3>
+
+    <p class="body">We’ll again turn to our <span class="italics">front-end-first</span> approach for guidance on gathering model requirements. This will involve reviewing each interactive mockup to identify <span><code class="codeintext">user</code></span> model attributes and any validation or transformation requirements. You’ll find a list of model requirements as a link from the chapter 6 Hub: <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/chapter-6/">http://sailsinaction.github.io/chapter-6/</a>or directly from <a class="pcalibre8 pcalibre5" href="https://docs.google.com/spreadsheets/d/1RBfG0lEmaM2Pk6JHzLjW2smGHJ4TDDMP3KXVL3f2d1c/edit?usp=sharing">https://docs.google.com/spreadsheets/d/1RBfG0lEmaM2Pk6JHzLjW2smGHJ4TDDMP3KXVL3f2d1c/edit?usp=sharing</a>.</p>
+
+    <p class="body"><span class="italics">Validations</span> check the value of a particular model attribute before it’s stored in a record. So we can specify that a value must exist for a <span><code class="codeintext">username</code></span> and if it doesn’t, produce an error when attempting to store it.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">As you’ll see later in this chapter, because requests can be made outside of the browser, any validation that we perform on the front end will also be implemented on the back end to assure compliance.</p>
+    </div>
+
+    <p class="body">A <span class="italics">transformation</span> changes the format of a model attribute to comply with some requirement. For example, when a user signs up, we’ll be using the user’s email to create a Gravatar URL on the back end.</p>
+
+    <p class="body">We want to take a systematic approach to reviewing the front-end mockups. In order to get an overview of what we need to review, let’s take a look at the current organization of the Brushfire’s mockup pages illustrated in Figure 6.4.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.4 Current organization of the interactive mockups. The profile, edit-profile and restore pages have not yet been connected via links.</p>
+
+    <p class="body">This site map and interactive mockups can be found via link from the main chapter 6 Hub page, <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/chapter-6/index.htmlor">http://sailsinaction.github.io/chapter-6/index.htmlor</a>, or directly here: <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/chapter-6/mockups.html">http://sailsinaction.github.io/chapter-6/mockups.html</a>. The first mockup we’ll review is the signup page.</p>
+
+    <h3 class="head1" id="heading_id_7">6.2.3   Building a signup page</h3>
+
+    <p class="body">The signup page will establish a user’s initial identity as shown in figure 6.5.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.5 The signup page contains four <span><code class="codeintext1">User</code></span> model attributes – <span><code class="codeintext1">email</code></span>, <span><code class="codeintext1">username</code></span>, <span><code class="codeintext1">password</code></span>, and <span><code class="codeintext1">confirmation</code></span>.</p>
+
+    <p class="head2">email</p>
+
+    <p class="body">To achieve identity we need a minimum of two pieces of information or <span class="italics">attributes</span> in our model -- a <span class="italics">unique identifier</span> and a <span class="italics">password</span>. For the unique identifier, a user’s <span><code class="codeintext">email</code></span> address is a logical choice as it can serve multiple purposes. In addition to identity, the <span><code class="codeintext">email</code></span> address will be essential for tasks like notification when there’s a forgotten password, which we’ll implement in chapter 11. We’ll want to validate that the <span><code class="codeintext">email</code></span> address has the proper syntax and require it in order to create a <span><code class="codeintext">user</code></span> record.</p>
+
+    <p class="head2">username</p>
+
+    <p class="body">We also have a requirement to display a Brushfire user profile to other users of Brushfire. Displaying an <span><code class="codeintext">email</code></span> address in such a profile would violate a user’s privacy. Therefore, we’ll prompt the user to create a unique <span><code class="codeintext">username</code></span> during the signup process that will display in the profile. The username will be required in order to create a user record and be at least 6 characters. Finally, we want to restrict the username to use Aa-Zz and 0-9only.</p>
+
+    <p class="head2">password</p>
+
+    <p class="body">We’ve set a minimum length of 6 characters for a user’s <span><code class="codeintext">password</code></span>. We won’t be storing passwords as clear text in the <span><code class="codeintext">user</code></span> model. Instead, we’ll encrypt the user’s password and label the resulting value of the encryption process as an attribute named <span><code class="codeintext">encryptedPassword</code></span>.</p>
+
+    <p class="head2">encryptedPasword</p>
+
+    <p class="body">The <span><code class="codeintext">encryptedPassword</code></span> will be a required attribute in order to create a <span><code class="codeintext">user</code></span> record.</p>
+
+    <p class="body"> </p>
+
+    <p class="body">The <span><code class="codeintext">confirmation</code></span> input field will not be stored in the database. Our review of the signup mockup page has produced the following model requirements outlined in Table 6.3.</p>
+
+    <p class="tablecaption pcalibre7">Table 6.3  The signup page’s model requirements</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="12%" class="sgc115" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Input Field</p>
+          </div>
+        </td>
+
+        <td char="21%" class="sgc116" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Attribute name</p>
+          </div>
+        </td>
+
+        <td char="7%" class="sgc117" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Req</p>
+          </div>
+        </td>
+
+        <td char="9%" class="sgc118 pcalibre7" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Type</p>
+          </div>
+        </td>
+
+        <td char="32%" class="sgc119" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Front-end and Back-end Validations</p>
+          </div>
+        </td>
+
+        <td char="17%" class="sgc120" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Transformations</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc121" valign="top"><code class="tablecode">username</code></td>
+
+        <td char="21%" class="sgc122" valign="top"><code class="tablecode">username</code></td>
+
+        <td char="7%" class="sgc123" valign="top">
+          <p class="tablebody2cxspfirst">Yes</p>
+        </td>
+
+        <td char="9%" class="sgc124" valign="top">
+          <p class="tablebody2cxspmiddle">string</p>
+        </td>
+
+        <td char="32%" class="sgc125" valign="top">
+          <p class="tablebody2cxspmiddle">Must be unique.<br class="pcalibre7 calibre2"/>
+          The attribute is required in order to create a record.<br class="pcalibre7 calibre2"/>
+          The username can only contain Aa-Az and 0-9.</p>
+        </td>
+
+        <td char="17%" class="pcalibre7 sgc126" valign="top">
+          <p class="tablebody2cxspmiddle"> </p>
+
+          <p class="tablebody2cxsplast"> </p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc121" valign="top"><code class="tablecode">email</code></td>
+
+        <td char="21%" class="sgc122" valign="top"><code class="tablecode">email</code></td>
+
+        <td char="7%" class="sgc123" valign="top">
+          <p class="tablebody2cxspfirst">Yes</p>
+        </td>
+
+        <td char="9%" class="sgc124" valign="top">
+          <p class="tablebody2cxspmiddle">string</p>
+        </td>
+
+        <td char="32%" class="sgc125" valign="top">
+          <p class="tablebody2cxspmiddle">Must be unique.<br class="pcalibre7 calibre2"/>
+          Must be a valid email address.<br class="pcalibre7 calibre2"/>
+          The attribute is required in order to create a record.</p>
+        </td>
+
+        <td char="17%" class="pcalibre7 sgc126" valign="top">
+          <p class="tablebody2cxsplast">None.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc127" valign="top"><code class="tablecode">password</code></td>
+
+        <td char="21%" class="sgc128" valign="top"><code class="tablecode">encryptedPassword</code></td>
+
+        <td char="7%" class="sgc129" valign="top">
+          <p class="tablebody2cxspfirst">Yes</p>
+        </td>
+
+        <td char="9%" class="sgc130" valign="top">
+          <p class="tablebody2cxspmiddle">string</p>
+        </td>
+
+        <td char="32%" class="sgc131" valign="top">
+          <p class="tablebody2cxspmiddle">Password must be at least 6 characters.<br class="pcalibre7 calibre2"/>
+          The attribute is required in order to create a record.</p>
+        </td>
+
+        <td char="17%" class="sgc132" valign="top">
+          <p class="tablebody2cxsplast">Password should be encrypted.</p>
+        </td>
+      </tr>
+    </table>
+
+    <h3 class="head1" id="heading_id_8">6.2.4   Building a user profile page</h3>
+
+    <p class="body">The profile page contains information about the <span><code class="codeintext">user</code></span> as shown figure 6.6.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.6 The profile page contains an additional <span><code class="codeintext1">user</code></span> model attribute we’ve named <span><code class="codeintext1">gravatarURL</code></span>. This attribute will store the URL linking the Gravatar image.</p>
+
+    <p class="body">The <span class="italics">profile</span> page adds the <span><code class="codeintext">gravatarURL</code></span> attribute to our <span><code class="codeintext">user</code></span> model. The investor wants each user to have a “nice” picture to represent them on the profile page. We’ll use Wordpress’s ubiquitous <span class="italics">Gravatar</span> system for these “nice” profile pictures. <span class="italics">Gravatar</span> images are accessed via a generated <span class="italics">URL</span> based upon the user’s email address. So, we’ll use the <span><code class="codeintext">email</code></span> to create and store a transformed URL in an attribute named <span><code class="codeintext">gravatarURL</code></span>. Table 6.4 contains the profile page’s model requirements.</p>
+
+    <p class="tablecaption pcalibre7">Table 6.4  The profile page’s additional model requirements</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="12%" class="sgc133" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Input Field</p>
+          </div>
+        </td>
+
+        <td char="17%" class="sgc134" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Attribute name</p>
+          </div>
+        </td>
+
+        <td char="9%" class="sgc135 pcalibre7" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Req?</p>
+          </div>
+        </td>
+
+        <td char="8%" class="sgc136" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Type</p>
+          </div>
+        </td>
+
+        <td char="21%" class="sgc137" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Back-end Validations</p>
+          </div>
+        </td>
+
+        <td char="30%" class="sgc138" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Transformations</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc24" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">email</code></span></p>
+        </td>
+
+        <td char="17%" class="sgc28" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">gravatarURL</code></span></p>
+        </td>
+
+        <td char="9%" class="sgc139" valign="top">
+          <p class="tablebody2cxspmiddle">No</p>
+        </td>
+
+        <td char="8%" class="sgc140 pcalibre7" valign="top">
+          <p class="tablebody2cxspmiddle">string</p>
+        </td>
+
+        <td char="21%" class="sgc141" valign="top">
+          <p class="tablebody2cxspmiddle">None.</p>
+        </td>
+
+        <td char="30%" class="sgc142" valign="top">
+          <p class="tablebody2cxsplast">Create Gravatar URL from the email address.</p>
+        </td>
+      </tr>
+    </table>
+
+    <h3 class="head1" id="heading_id_9">6.2.5   Building an admin interface</h3>
+
+    <p class="body">This <span class="italics">administration</span> page allows a designated admin user to perform administrative duties such as add admin privileges to other users as well as ban users from accessing Brushfire as shown in figure 6.7.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.7 The user administration page adds two <span><code class="codeintext1">user</code></span> model attributes <span><code class="codeintext1">admin</code></span> and <span><code class="codeintext1">banned</code></span>.</p>
+
+    <p class="head2">banned</p>
+
+    <p class="body">When a user has been restricted from using the site for a violation of the site’s Terms of Service agreement we need a way to store the state of that user’s access to Brushfire. We’ll use an attribute named <span><code class="codeintext">banned</code></span> to store whether a user has restricted access.</p>
+
+    <p class="head2">admin</p>
+
+    <p class="body">We also want to limit the right to ban a user to only those users with administrator privileges. To accomplish this, we’ll store whether a <span><code class="codeintext">user</code></span> has administrator privileges in an attribute named <span><code class="codeintext">admin</code></span>.</p>
+
+    <p class="body">After reviewing the administration page we have the following model requirements listed in Table 6.5</p>
+
+    <p class="tablecaption pcalibre7">Table 6.5  The administration page’s additional model requirements</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="11%" class="sgc143" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Input Field</p>
+          </div>
+        </td>
+
+        <td char="15%" class="sgc144" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Attribute name</p>
+          </div>
+        </td>
+
+        <td char="8%" class="sgc145" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Req?</p>
+          </div>
+        </td>
+
+        <td char="14%" class="sgc146" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Type</p>
+          </div>
+        </td>
+
+        <td char="28%" class="sgc147" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Back-end Validations</p>
+          </div>
+        </td>
+
+        <td char="20%" class="sgc148" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Transformations</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="11%" class="sgc149 pcalibre7" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">banned</code></span></p>
+        </td>
+
+        <td char="15%" class="sgc150" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">banned</code></span></p>
+        </td>
+
+        <td char="8%" class="sgc151" valign="top">
+          <p class="tablebody2cxspmiddle">No</p>
+        </td>
+
+        <td char="14%" class="sgc152" valign="top">
+          <p class="tablebody2cxspmiddle">boolean</p>
+        </td>
+
+        <td char="28%" class="sgc153" valign="top">
+          <p class="tablebody2cxspmiddle">When record is created the field should be set to false.</p>
+        </td>
+
+        <td char="20%" class="sgc154" valign="top">
+          <p class="tablebody2cxsplast">None.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="11%" class="sgc155" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">admin</code></span></p>
+        </td>
+
+        <td char="15%" class="sgc156" valign="top">
+          <p class="tablebody2cxspmiddle"><span><code class="codeintext">admin</code></span></p>
+        </td>
+
+        <td char="8%" class="pcalibre7 sgc157" valign="top">
+          <p class="tablebody2cxspmiddle">No</p>
+        </td>
+
+        <td char="14%" class="sgc158" valign="top">
+          <p class="tablebody2cxspmiddle">boolean</p>
+        </td>
+
+        <td char="28%" class="sgc159" valign="top">
+          <p class="tablebody2cxspmiddle">When record is created the field should be set to false.</p>
+        </td>
+
+        <td char="20%" class="sgc160" valign="top">
+          <p class="tablebody2cxsplast">None.</p>
+        </td>
+      </tr>
+    </table>
+
+    <h3 class="head1" id="heading_id_10">6.2.6   Recovering data after a soft delete</h3>
+
+    <p class="body">Our example app includes a <span><code class="codeintext">restore-profile</code></span> page, which allows a user to “undelete” their profile. Let’s examine the restore profile page in figure 6.8.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.8 The <span><code class="codeintext1">restore-profile</code></span> page allows a <span><code class="codeintext1">user</code></span> to remove the deleted state of their profile. This will necessitate adding a <span><code class="codeintext1">deleted</code></span> attribute to the <span><code class="codeintext1">user</code></span> model.</p>
+
+    <p class="body">Although the <span><code class="codeintext">restore-profile</code></span> page does not add any additional fields in the UI, we know we’ll need a <span><code class="codeintext">deleted</code></span> attribute to hold the soft-deleted state of a <span><code class="codeintext">user</code></span> record.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We’ll examine what a “soft” delete system entails in chapter 7.</p>
+    </div>
+
+    <p class="body">Finally, we’ll skip the <span><code class="codeintext">edit-profile</code></span> page because it doesn’t add any additional model requirements. Now that we have our requirements let’s set about implementing them in an actual model.</p>
+
+    <h2 class="head" id="heading_id_11">6.3   Creating a new model</h2>
+
+    <p class="body">The first step in implementing the model is to generate a default model configuration file. In chapter 4, we created a video API that generated empty model and controller files. This enabled us to start using blueprint routes and actions to create and update <span><code class="codeintext">video</code></span> records. After the <span><code class="codeintext">user</code></span> API is generated we’ll create a <span><code class="codeintext">user</code></span> record with the supplied signup page that uses the blueprint RESTful create route and action. In chapter 7, we’ll transform our blueprint routes and blueprint actions into explicit routes and custom controller actions.</p>
+
+    <h3 class="head1" id="heading_id_12">6.3.1   Running the generator</h3>
+
+    <p class="body">Since we know we’ll want both a <span><code class="codeintext">user</code></span> model and some way to manage it via controller/actions, let’s generate an API. Head over to the terminal window and from the command line type</p><code class="codebcxspfirst">~/brushfire-chp6-start $ sails generate api user</code> <code class="codebcxsplast">info: Created a new api!</code>
+
+    <p class="body">Sails generates an empty controller and model similar to what was generated by Sails in chapter 4. Let’s use the blueprint create route and action to generate our first <span><code class="codeintext">user</code></span> record.</p>
+
+    <h3 class="head1" id="heading_id_13">6.3.2   Creating our first record</h3>
+
+    <p class="body">Now that we have a user API, let’s use the knowledge we gained in chapter 4to create a user record with blueprints. Figure 6.9 illustrates the request the Angular controller will execute when the user clicks the <span class="italics">Create User Account</span> button.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.9  Clicking this button sends a <span><code class="codeintext1">POST</code></span> request to <span><code class="codeintext1">/user</code></span>,</p>
+
+    <p class="body">Not surprisingly, the purpose of this page is to collect the necessary information to create a record using attributes and methods in the <span><code class="codeintext">user</code></span> model. The form within the page contains four input fields <span><code class="codeintext">email</code></span>, <span><code class="codeintext">username</code></span>, <span><code class="codeintext">password</code></span><span class="italics">,</span> and <span><code class="codeintext">confirmation</code></span>.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.10 The Sails router listens for <span class="codeannotationcueballs">① </span>  an incoming request and <span class="codeannotationcueballs">② </span>  matches it to a RESTful blueprint route and <span class="codeannotationcueballs">③ </span>  executes the <span class="italics1">create</span> blueprint action and <span class="codeannotationcueballs">④ </span>  responds with a <span><code class="codeintext1">200</code></span> status code and the newly created <span><code class="codeintext1">user</code></span> record as JSON.</p>
+
+    <p class="body">The Angular controller will execute an AJAX <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/user and</code></span> include three input fields as parameters when the <span class="italics">Create User Account</span> button is clicked.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note, the <span><code class="codeintext1">confirmation</code></span> input field will not be sent in the <span><code class="codeintext1">POST</code></span> request.</p>
+    </div>
+
+    <p class="body">The <span class="codeannotationcueballs">① </span>  request will match the <span class="codeannotationcueballs">② </span>  blueprint RESTful create route that will in turn trigger the <span class="codeannotationcueballs">③ </span>  blueprint create action that uses the <span><code class="codeintext">User.create()</code></span> model method to <span class="codeannotationcueballs">④ </span>  create a record.  Let’s see this in action. Restart Sails using <span><code class="codeintext">sails lift</code></span> and navigate your browser to localhost:1337/#/signup.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Why did we use the hash (<span><code class="codeintext1">#)</code></span> symbol in the path of our browser request? HTTP will ignore anything after the hash (<span><code class="codeintext1">#</code></span>) symbol. This allows other frameworks like Angular to come up with their own routing strategy. So the <span><code class="codeintext1">/signup</code></span> path of <span><code class="codeintext1">/#/signup</code></span> is actually being processed by Angular’s router and not by the backend Sails router. The Angular router then determines which template file to display. In this case it’s our <span><code class="codeintext1">brushfire/assets/templates/signup.html</code></span> file.</p>
+    </div>
+
+    <p class="body">Next, signup a user with an email address of <span><code class="codeintext">sailsinaction@gmail.com</code></span>, a username of <span><code class="codeintext">sailsinaction,</code></span> and a password of <span><code class="codeintext">abc123</code></span>. After clicking the <span class="italics">Create a User Account</span> button, you should see something similar to figure 6.11 in your browser.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.11 This is the result of the blueprint <span><code class="codeintext1">POST</code></span> request to<span><code class="codeintext1">/user</code></span> and the redirect to <span><code class="codeintext1">localhost:1337/user/1</code></span>. In addition to the <span class="codeannotationcueballs">① </span>  input fields that were added to the record, <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">createdAt</code></span>,  <span><code class="codeintext1">updatedAt</code></span>, and <span><code class="codeintext1">id</code></span> were also added.</p>
+
+    <p class="body">A <span><code class="codeintext">User</code></span> record was created using the three <span class="codeannotationcueballs">① </span>  input fields from the signup form. There were three other attributes added to the record including <span><code class="codeintext">id</code></span>, <span><code class="codeintext">createdAt</code></span>, and <span><code class="codeintext">updatedAt</code></span>. Where did these other attributes come from? The additional attributes are created by default with each new record in the database. We’ll take a closer look at these three additional attributes in the next section.</p>
+
+    <p class="body">You might be wondering how <span><code class="codeintext">email</code></span>, <span><code class="codeintext">username</code></span>, and <span><code class="codeintext">password</code></span> were added to the <span><code class="codeintext">user</code></span> record without being defined first as attributes in the <span><code class="codeintext">user</code></span> model? By default Sails uses <span><code class="codeintext">sails-disk,</code></span> for the database in new project. The <span><code class="codeintext">sails-disk</code></span> database doesn’t require a predefined set of attributes in order to save records using those attributes. This type of database is also referred to as a <span class="italics">schema-less</span> database.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">A database schema is a description of the database’s structure, essentially its attributes.</p>
+    </div>
+
+    <p class="body">Let’s next take a closer look at databases and the records they store on our behalf.</p>
+
+    <h2 class="head" id="heading_id_14">6.4   Demystifying databases</h2>
+
+    <p class="body">In chapter 1, we introduced a database as simply an application that stores an organized collection of data into records. The power of Sails models is that they abstract away many of the details you would normally have to understand when it comes to creating, finding, updating, and destroying records in a database. It’s helpful, however, to follow the “turtles all the way down” to the database level at least once. So let’s go on a short turtle safari.</p>
+
+    <h3 class="head1" id="heading_id_15">6.4.1   Models, connections, and adapters</h3>
+
+    <p class="body">Figure 6.12 illustrates the relationships between a model and its connection to a database through an adapter.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_12.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.12  Sails looks for the database connection it will use to store and manipulate records for a particular model in <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">brushfire/api/models/User.js</code></span>. If it doesn’t find a connection it then looks to <span class="codeannotationcueballs">② </span>  model settings. If no connection exists Sails looks to the internal core default connection  <span class="codeannotationcueballs">③ </span>  <span><code class="codeintext1">localDiskDb</code></span>. The default connection uses the <span class="codeannotationcueballs">④ </span>  sails-disk adapter to access the sails-disk database.</p>
+
+    <p class="body">Each layer in the figure 6.12consists of three columns—the component, the location of the file that configures that component, and an example of a configuration. To determine which database a model will use to store records, Sails first looks in <span class="codeannotationcueballs">① </span>  the model definition  (for example, <span><code class="codeintext">brushfire/api/models/User.js</code></span>) for a <span><code class="codeintext">connection</code></span> property.</p>
+
+    <p class="codelistingcaption">Listing 6.1  An empty model definition</p><code class="codebcxspfirst">module.exports.models = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  attributes: {</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">};</code>
+
+    <p class="body">This <span><code class="codeintext">connection</code></span> property is also referred to as the model’s datastore. We’ll use connection and datastore interchangeably in the book. Our <span><code class="codeintext">User</code></span> model is currently empty and doesn’t contain a <span><code class="codeintext">connection</code></span> property. So next, Sails will search for a <span><code class="codeintext">connection</code></span> property in the top-level model settings, which are typically defined by a configuration file located at <span><code class="codeintext">brushfire/config/models.js</code></span><span class="italics">.</span></p>
+
+    <p class="codelistingcaption">Listing 6.2   The global settings for all models</p><code class="codebcxspfirst">module.exports.models = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  // connection: 'localDiskDb', <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  migrate: 'alter'</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> because there’s no connection, the default <span><code class="codeintext1">localDiskDb</code></span> connection is used.</p>
+
+    <p class="body">When Sails generated our project one of the files it generated was <span><code class="codeintext">brushfire/config/models.js</code></span> with the <span><code class="codeintext">connection</code></span> property commented out.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Many of the default configuration settings in Sails have corresponding commented parameters for convenience. This makes it easier to recognize the availability of a setting that can be overridden within a file.</p>
+    </div>
+
+    <p class="body">Since our <span><code class="codeintext">models.js</code></span> file doesn’t contain a <span><code class="codeintext">connection</code></span> property, Sails will instead rely upon a default core <span><code class="codeintext">connection</code></span> named <span><code class="codeintext">localDiskDb</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We say that this is a <span class="italics1">core</span> <span><code class="codeintext1">connection</code></span> because the property isn’t currently defined outside of Sails core code base.</p>
+    </div>
+
+    <p class="body">But what does the <span><code class="codeintext">connection</code></span> point to? The <span><code class="codeintext">connection</code></span> property is a key name lookup for dictionaries located in <span><code class="codeintext">brushfire/config/connections.js</code></span>. These dictionaries contain the connection instructions Sails uses to access a desired database. The <span><code class="codeintext">connections.js</code></span> file provides a central location for all potential database connections you’ll use for a project. One of the connection dictionaries is <span><code class="codeintext">localDiskDb</code></span>. Open <span><code class="codeintext">brushfire/config/connections.js</code></span> in Sublime and take a look at the default connection dictionaries including the <span><code class="codeintext">localDiskDbconnection</code></span> in listing 6.3.</p>
+
+    <p class="codelistingcaption">Listing 6.3 The default connection settings</p><code class="codebcxspfirst">module.exports.connections = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">localDiskDb: {               <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    adapter: 'sails-disk'</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  localDiskDB is set to use the <span class="italics1">sails-disk</span> adapter.</p>
+
+    <p class="body">Typically the <span class="italics">connection</span> dictionary will contain information including the <span><code class="codeintext">host</code></span>, database access credentials <span><code class="codeintext">username</code></span> and <span><code class="codeintext">password</code></span>, the <span><code class="codeintext">name</code></span> of the database, and the Sails <span><code class="codeintext">adapter</code></span> to use.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The database name we’re referring to above isn’t the actual name of a database system like PostgreSQL, MySQL, or MongoDB. The database name we’re referring to is whatever arbitrary name you provide for your database like brushfire, mydatabase, etc.</p>
+    </div>
+
+    <p class="body">Here the <span><code class="codeintext">localDiskDb</code></span> property is a dictionary that contains the adapter Sails will use to connect to the database. In this case the adapter and database is set to <span><code class="codeintext">sails-disk</code></span>. Recall that Sails uses adapters to abstract away the complexity of using different syntax to access and manage each database.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">An adapter is a bit of code that maps model methods like <span><code class="codeintext1">find()</code></span> and <span><code class="codeintext1">create()</code></span> to a lower-level syntax like SELECT * FROM and INSERT INTO. The Sails core team maintains open-source adapters for a handful of the most popular databases, and a wealth of community adapters is also available at: <a class="pcalibre8 pcalibre4 pcalibre5" href="http://sailsjs.org/documentation/concepts/extending-sails/adapters/available-adapters">http://sailsjs.org/documentation/concepts/extending-sails/adapters/available-adapters</a>.</p>
+    </div>
+
+    <p class="body">So <span><code class="codeintext">sails-disk</code></span> is an adapter that talks directly to the <span><code class="codeintext">sails-disk</code></span> database. It’s unfortunate that the adapter and the database have the same names but I think we can handle it. We’ve come this far, so we might as well look at the last turtle – the database itself. <span><code class="codeintext">Sails-disk</code></span> is a simple database that stores data as JSON. It’s unique in that it stores the data as a text file we can access located in <span><code class="codeintext">brushfire/.tmp/localDiskDb.db</code></span>. Opening this file reveals the first <span><code class="codeintext">user</code></span> record we added as well as the <span><code class="codeintext">video</code></span> records added in the bootstrap.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_13.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.13  The sails-disk database located in <span><code class="codeintext1">brushfire/.tmp/localDiskDb.db</code></span> reveals our <span class="codeannotationcueballs">① </span>  first <span><code class="codeintext1">user</code></span> record and the first <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">video</code></span> record.</p>
+
+    <p class="body">Each record must have some way of uniquely identifying itself, typically through a unique <span><code class="codeintext">id</code></span>. Sails adapters automatically add this <span><code class="codeintext">id</code></span> as a primary key or <span><code class="codeintext">unique</code></span> key of the database. The <span><code class="codeintext">id</code></span> is auto incremented (meaning that Sails will take care of making sure it’s unique). The details of the primary key vary between adapters. For example, PosgreSQL uses an auto-incrementing integer primary key, whereas MongoDB uses a randomized string UUID. The adapter also adds attributes when the record was created—<span><code class="codeintext">createdAt</code></span> and updated—<span><code class="codeintext">updatedAt</code></span> to the model attributes.</p>
+
+    <p class="body">Other databases might be more sophisticated than sails-disk but the principles remain the same. A database can store data on disk or in memory and has an API we can use to talk to it. Sails provides a higher level, easier to understand, consistent layer on top of that API that we call a model.</p>
+
+    <p class="body">You’ve made it relatively unscathed, exploring all of the steps of how models connect to actual databases. Although Sails is our trusted intermediary and shields us from many tasks, it remains our responsibility to convey which databases we want to employ. This includes providing configuration information like <span><code class="codeintext">username</code></span>, <span><code class="codeintext">password</code></span>, <span><code class="codeintext">host</code></span>, and <span><code class="codeintext">databasename</code></span>, as well as the appropriate Sails <span><code class="codeintext">adapter</code></span> to use before the database can communicate with our models and vice versa.</p>
+
+    <h3 class="head1" id="heading_id_16">6.4.2   Configuring a database</h3>
+
+    <p class="body">So far we’ve been using models without configuring any information about model attributes, like the <span><code class="codeintext">email</code></span>, <span><code class="codeintext">username</code></span>, and <span><code class="codeintext">password</code></span> properties of the records we’ve added. In addition, the <span><code class="codeintext">video</code></span> model and <span><code class="codeintext">user</code></span> model have not configured a connection. Therefore, all models are using the default <span><code class="codeintext">sails-disk</code></span> database. Sails-disk is a NoSQL or schema-less database and therefore doesn’t require defined attributes in order to store records. This is extremely useful in keeping us nimble during the design phase of our application. For example, we were able to start creating user records immediately after generating the API with Sails blueprints.</p>
+
+    <p class="body">There are times, however, when we want to use an SQL database. For the <span><code class="codeintext">user</code></span> model we’re going to store records in a PostgreSQL database. PostgreSQL is a popular open source SQL database that runs on a variety of different platforms and can be downloaded at <a class="pcalibre8 pcalibre5" href="http://www.postgresql.org/download/">http://www.postgresql.org/download/</a>. For our OSX environment we use an all-in-one installation solution called <span><code class="codeintext">Postgress.app</code></span> found at: <a class="pcalibre8 pcalibre5" href="http://postgresapp.com/">http://postgresapp.com/</a>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"> For now, we’re going to run the database locally, however, in later chapters when we go to production we’ll be using a hosted version of PostgreSQL.</p>
+    </div>
+
+    <p class="body">After you’ve installed PostgreSQL, launch the Postgress application. For OSX users you should see an elephant, yes I said elephant, in the upper right nav bar. Click on it and open <span><code class="codeintext">psql</code></span> which is the PostgreSQL terminal. Next, create a database named <span><code class="codeintext">brushfire</code></span> by typing</p><code class="codeb">CREATE DATABASE brushfire;</code>
+
+    <p class="body">We learned that Sails uses adapters to abstract away the complexity of using different syntax to access and manage each database. So to start the transition we need to install the PostgreSQL adapter. Head over to the terminal window, not the PostgreSQL terminal, and type</p><code class="codeb">~/brushfire-chp6-start $ npm install sails-postgresql --save</code>
+
+    <p class="body">Installing a module via <span><code class="codeintext">npm install</code></span> installs the module in the <span><code class="codeintext">brushfire-chp6-start/node_modules</code></span> folder. In Sublime open <span><code class="codeintext">brushfire-chp6-start/package.json</code></span> and take a look at the dependencies property in listing 6.4.</p>
+
+    <p class="codelistingcaption">Listing 6.4  The dependencies property of a package.json file.</p><code class="codebcxspfirst">{</code> <code class="codebcxspmiddle">  "name": "brushfire",</code> <code class="codebcxspmiddle">  "private": true,</code> <code class="codebcxspmiddle">  "version": "0.0.0",</code> <code class="codebcxspmiddle">  "description": "a Sails application",</code> <code class="codebcxspmiddle">  "keywords": [],</code> <code class="codebcxspmiddle">  "dependencies": {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">"sails-generate-static": "^0.11.3",</code> <code class="codebcxspmiddle">"sails-postgresql": "^0.11.3"                   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">  ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> added the PostgreSQL adapter as a dependency</p>
+
+    <p class="body">So a module dependency is just a fancy name for a key/value pair in a module’s <span><code class="codeintext">package.json</code></span> file that identifies the module name and a version <span class="italics">npm</span> uses to find and install the module. This becomes essential when we start deploying Brushfire. For example, when we push a Sails application to a hosted service like Heroku, we’re sending the applications files and folders without the <span><code class="codeintext">node_modules</code></span> folder. Heroku then completes the installation of our app like any other Node module using <span><code class="codeintext">npm install</code></span>. If the dependency isn’t in the <span><code class="codeintext">package.json</code></span> file <span class="italics">npm</span> will not install the necessary modules.</p>
+
+    <p class="body">Now that we have the adapter installed let’s let Sails know that we want our <span><code class="codeintext">user</code></span> model to store records using it. In Sublime open the <span><code class="codeintext">user</code></span> model located in <span><code class="codeintext">brushfire-ch6-start/api/models/User.js</code></span>. Add a <span><code class="codeintext">connection</code></span> property in listing 6.5.</p>
+
+    <p class="codelistingcaption">Listing 6.5 Adding a connection property to the user model.</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  connection: 'myPostgresqlServer',   <span class="codeannotationcueballs1">❶</span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  attributes: {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> : adding a PostgreSQL connection to the user model</p>
+
+    <p class="body">So the <span><code class="codeintext">connection</code></span> property contains an arbitrary name we’ve given to the connection that points to some configuration information about our PostgreSQL database in <span><code class="codeintext">/brushfire-chp6-start/config/connections.js</code></span>. In Sublime, open <span><code class="codeintext">/brushfire-chp6-start/config/connections.js</code></span> and add the following configuration information to <span><code class="codeintext">myPostgresqlServer</code></span> shown in listing 6.6.</p>
+
+    <p class="codelistingcaption">Listing 6.6  Adding a connection to the connections.js file.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">myPostgresqlServer: {</code> <code class="codebcxspmiddle">    adapter: 'sails-postgresql',  </code> <code class="codebcxspmiddle">    host: 'localhost',            </code> <code class="codebcxspmiddle">    database: 'brushfire'</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Our <span><code class="codeintext">myPostgresqlServer</code></span> connection contains a dictionary of configuration information including the <span><code class="codeintext">adapter</code></span>, <span><code class="codeintext">host</code></span>, and <span><code class="codeintext">database</code></span> name.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We could have provided a <span><code class="codeintext1">user</code></span> and <span><code class="codeintext1">password</code></span>, but during development we’ve chosen not to do so.</p>
+    </div>
+
+    <p class="body">Since <span class="italics">PostgreSQL</span> is an SQL database, we must provide defined attributes before we can create records using them in our model. That’s not a problem since we’ve established what attributes we need earlier in the chapter.</p>
+
+    <h3 class="head1" id="heading_id_17">6.4.3   Defining attributes</h3>
+
+    <p class="body">Let’s add attribute definitions to the <span><code class="codeintext">user</code></span> model also known as a <span class="italics">database schema</span> based upon the requirements we created earlier in the chapter.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">A database schema is a description of the database’s structure, how data is organized and how it is constructed. In the case of a relational database part of its structure is how it’s divided into tables and columns. Since SQL databases require a schema; defining attributes provides the added benefit of enabling a model to be SQL compatible.</p>
+    </div>
+
+    <p class="body">From Sublime open <span><code class="codeintext">brushfire-chp6-start/api/models/User.js</code></span> and add the following model attributes in listing 6.7.</p>
+
+    <p class="codelistingcaption">Listing 6.7 Defining user attributes in the model.</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">connection: 'myPostgresqlServer',</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  attributes: {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    email: {</code> <code class="codebcxspmiddle">      type: 'string',</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    username: {</code> <code class="codebcxspmiddle">      type: 'string',</code> <code class="codebcxspmiddle">},</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    encryptedPassword: {</code> <code class="codebcxspmiddle">      type: 'string'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    gravatarURL: {</code> <code class="codebcxspmiddle">      type: 'string'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    deleted: {</code> <code class="codebcxspmiddle">      type: 'boolean'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    admin: {</code> <code class="codebcxspmiddle">      type: 'boolean'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    banned: {</code> <code class="codebcxspmiddle">      type: 'boolean'</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">}</code>
+
+    <p class="body">Sails bundles support for automatic validations of your models' attributes. Any time a record is updated, or a new record is created, the data for each attribute will be checked against all of your predefined validation rules. This provides a convenient failsafe to ensure that invalid entries don't make their way into your app's database(s).Every attribute definition must have a built-in data type (or type class) specified. For example, we’ll use the <span><code class="codeintext">string</code></span> data type for the <span><code class="codeintext">email</code></span>, <span><code class="codeintext">username</code></span>, <span><code class="codeintext">encryptedPassword</code></span>, and <span><code class="codeintext">gravatarURL</code></span> attributes. For the <span><code class="codeintext">deleted</code></span>, <span><code class="codeintext">admin</code></span>, and <span><code class="codeintext">banned</code></span> attributes we’ll use the <span><code class="codeintext">boolean</code></span> data type.</p>
+
+    <p class="body">Except for <span><code class="codeintext">unique</code></span> (which is implemented as a database-level constraint), all validations are implemented in JavaScript and run in the same Node.js server process as Sails. Validations can be a huge time-saver, preventing you from writing many hundreds of lines of repetitive code. But keep in mind that model validations are run for every create or update in your application. Before using a validation rule in one of your attribute definitions, make sure you are okay with it being applied every time your application calls <span><code class="codeintext">.create()</code></span> or <span><code class="codeintext">.update()</code></span> to specify a new value for that attribute. For example, let's say that your Sails app allows users to sign up for an account by either (A) entering an email address and password and then confirming that email address or (B) signing up with LinkedIn. Now let's say your <span><code class="codeintext">User</code></span> model has one attribute called <span><code class="codeintext">linkedInEmail</code></span> and another attribute called <span><code class="codeintext">manuallyEnteredEmail</code></span>. Even though one of those email address attributes is required, which one is required depends on how a user signed up. So in that case, your <span><code class="codeintext">User</code></span> model cannot use the <span><code class="codeintext">required: true</code></span> validation-- instead you'll need to validate that one email or the other was provided and is valid by manually checking these values before the relevant <span><code class="codeintext">.create()</code></span> and .<span><code class="codeintext">update()</code></span>methods are executed. In other cases, enforcing the validation on each <span><code class="codeintext">.create()</code></span> and .<span><code class="codeintext">update()</code></span>call is advantageous. For example, For example, we can set an <span><code class="codeintext">email</code></span> validation that enforces use of valid email syntax. In that case, there is never an instance when we want to allow an improperly formatted email address. Therefore, applying that restriction as an attribute validation makes sense. So we’ll use some of the attribute validations to enforce restrictions in the model and enforce others directly in a controller/action in later chapters.</p>
+
+    <h3 class="head1" id="heading_id_18">6.4.4   Attribute validation</h3>
+
+    <p class="body">Our first attribute validation is a requirement for both the <span><code class="codeintext">email</code></span> and <span><code class="codeintext">username</code></span> attributes to be <span><code class="codeintext">unique</code></span>. What that means is that no record can contain an identical <span><code class="codeintext">email</code></span> or <span><code class="codeintext">username</code></span> in the database. If an attempt is made to create or update a record using a model method with an identical attribute, the method will produce an error. The unique validation is different than other validations. Imagine you have 1,000,000 user records in your database. If unique was implemented like other validations, every time a new user signed up for your app, Sails would need to search through one million existing records to ensure that no one else was already using the email address provided by the new user. Not only would that be slow, but by the time we finished searching through all those records, someone else could have signed up!</p>
+
+    <p class="body">Fortunately, this type of uniqueness check is perhaps the most universal feature of any database. To take advantage of that, Sails relies on the database adapter to implement support for the <span><code class="codeintext">unique</code></span> validation-- specifically, by adding a uniqueness constraint to the relevant field/column/attribute in the database itself during auto-migration.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We first encountered auto-migrations in chapter 4 when we set the mode to <span><code class="codeintext1">alter</code></span>. As you’ll see in next section, Sails will automatically generate tables/collections in the underlying database with uniqueness constraints built right in. Once we switch to <span><code class="codeintext1">migrate:'safe'</code></span>, in chapter 15, updating our database constraints will be up to us.</p>
+    </div>
+
+    <p class="body">We’ll also add an <span><code class="codeintext">email</code></span> validation to the <span><code class="codeintext">email</code></span> attribute, which validates incoming values to a valid <span><code class="codeintext">email address</code></span> syntax before it can be stored or updated as part of a record. Open <span><code class="codeintext">brushfire-chp6-start/api/models/User.js</code></span> in Sublime and add the following attribute options in listing 6.8.</p>
+
+    <p class="codelistingcaption">Listing 6.8   Adding attribute validations to the user model.</p><code class="codebcxspfirst">module.exports = {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  attributes: {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    email: {</code> <code class="codebcxspmiddle">      type: 'string',</code> <code class="codebcxspmiddle">      email: 'true',                  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">      unique: 'true'                  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    username: {</code> <code class="codebcxspmiddle">      type: 'string',</code> <code class="codebcxspmiddle">      unique: 'true'                  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    encryptedPassword: {</code> <code class="codebcxspmiddle">      type: 'string'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    gravatarURL: {</code> <code class="codebcxspmiddle">      type: 'string'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    deleted: {</code> <code class="codebcxspmiddle">      type: 'boolean'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    admin: {</code> <code class="codebcxspmiddle">      type: 'boolean'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    banned: {</code> <code class="codebcxspmiddle">      type: 'boolean'</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  setting the <span><code class="codeintext1">email</code></span> option to true</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  requiring each attribute value to be unique</p>
+
+    <p class="body">Let’s see this in action. Restart Sails using <span><code class="codeintext">sails lift</code></span> and navigate back to the signup page. Once again signup with an email address of <span><code class="codeintext">sailsinaction@gmail.com</code></span>, a username of <span><code class="codeintext">sailsinaction</code></span> and a password of <span><code class="codeintext">abc123</code></span>. After clicking the <span class="italics">Create User Account</span> you’re browser should look similar to figure 6.14.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_14.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.14 When we attempted to create a user, a record with an identical email address exists in the database and therefore produces a validation error.</p>
+
+    <p class="body">Our new <span><code class="codeintext">unique</code></span> validation for the <span><code class="codeintext">email</code></span> attribute produced an error when we tried to add a <span><code class="codeintext">user</code></span> with an email address equal to an existing <span><code class="codeintext">user</code></span> record. We could create another user with a different email address, however, while we’re developing we really need a way for our database to reset to an empty state each time we restart the Sails server. We can do that by changing the model auto-migrations setting.</p>
+
+    <h3 class="head1" id="heading_id_19">6.4.5   Handling existing data with Sails auto-migrations</h3>
+
+    <p class="body">In chapter 4, we had our first encounter with Sails auto-migrations. Each time we start Brushfire, Sails needs to know whether to attempt to rebuild the database and if records exist, what to do with them. If we set auto-migrations to <span><code class="codeintext">safe</code></span>, Sails doesn’t do anything other than create a connection to the database and run queries. It’s the default environment for production and should be used whenever you are working with production data or any records you don’t want to risk losing.</p>
+
+    <p class="body">If we set auto-migrations to <span><code class="codeintext">drop</code></span>, instead of trying to migrate the data, this mode drops the database and creates brand new tables or collections, essentially giving you a fresh start. If you have a bootstrap file that resets your data each time the Sails server starts and you don’t care about existing records, then the <span><code class="codeintext">drop</code></span> auto-migration is a good way to go when your models are constantly changing in the early stages of development.</p>
+
+    <p class="body">If we set migrations to <span><code class="codeintext">alter, </code></span>Sails attempts to store all the records in memory before it drops the database. When the table or collection has been re-created Sails attempts to re-insert the stored records into the new data structure. The <span><code class="codeintext">alter</code></span> mode is useful if you have a very small data set and are making trivial changes to model attributes. We’ll ultimately be using <span><code class="codeintext">safe</code></span> mode because it will ensure data integrity when we go into production, however during the design phase of the app we’ll be using the <span><code class="codeintext">drop</code></span> mode.</p>
+
+    <p class="body">So far, we’ve set the global <span><code class="codeintext">migrate</code></span> property for all models to <span><code class="codeintext">alter</code></span> in <span><code class="codeintext">brushfire-chp6-start/config/models.js</code></span>. For the next chapter, it will be important that we start with new data for our <span><code class="codeintext">user</code></span> model each time the Sails server starts. Using the <span><code class="codeintext">alter</code></span> mode keeps our <span><code class="codeintext">user</code></span> records between server restarts. Therefore, we’ll change the <span><code class="codeintext">migrate</code></span> property to <span><code class="codeintext">drop</code></span>. However, instead of setting this property globally in <span><code class="codeintext">brushfire-chp6-start/config/models.js</code></span>, we’ll add the property specifically to the <span><code class="codeintext">user</code></span> model. In Sublime, open <span><code class="codeintext">brushfire-chp6-start/api/models/User.js</code></span> and change the <span><code class="codeintext">migrate</code></span> property to <span><code class="codeintext">drop</code></span> similar to listing 6.9.</p>
+
+    <p class="codelistingcaption">Listing 6.9Addingthe migrate property to <span><code class="codeintext1">drop</code></span> for a specific model.</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">  migrate: 'drop', <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  attributes: {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    email: {</code> <code class="codebcxspmiddle">      type: 'string',</code> <code class="codebcxspmiddle">      email: 'true',</code> <code class="codebcxspmiddle">      unique: 'true'</code> <code class="codebcxspmiddle">    },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> the database will drop existing tables on each server restart</p>
+
+    <p class="body">Restart the Sails server using <span><code class="codeintext">sails lift</code></span> and signup a user with an email address of <span><code class="codeintext">sailsinaction@gmail.com</code></span>, a username of <span><code class="codeintext">sailsinaction,</code></span> and a password of <span><code class="codeintext">abc123</code></span>. After clicking the <span class="italics">Create User Account</span> button your browser will display the new <span><code class="codeintext">user</code></span> record. There’s no violation of the <span><code class="codeintext">unique</code></span> validation because the database was reset and no <span><code class="codeintext">user</code></span> records exist when the Sails server is restarted. The <span><code class="codeintext">user</code></span> record created, however, contains properties that we don’t want returned to the front end. We’ll fix that in the next section.</p>
+
+    <h3 class="head1" id="heading_id_20">6.4.6   Filtering data returned by blueprints</h3>
+
+    <p class="body">As you can see from figure 6.15, the blueprint <span class="italics">create</span> action returned all of stored parameters to the requesting front end including the <span><code class="codeintext">encryptedPassword</code></span>.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_15.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.15 Using the blueprint actions all parameters are returned to the front end.</p>
+
+    <p class="body">You also may have noticed that the password was not returned. Earlier the password was returned by the blueprint create action because we were using <span><code class="codeintext">sails-disk</code></span>, which didn’t require that an attribute be defined before it could be used. Now that we’re using PosgreSQL, any parameter not defined as an attribute will not be stored in the <span><code class="codeintext">user</code></span> record. We can limit the attributes defined in the model and returned by a blueprint action by overriding the <span><code class="codeintext">.toJSON()</code></span>method in the model. Open <span><code class="codeintext">brushfire-chp6-start/api/models/User.js</code></span> in Sublime and add the following <span><code class="codeintext">toJSON</code></span> method in listing 6.10.</p>
+
+    <p class="codelistingcaption">Listing 6.10  Preventing certain attributes from being returned to the client.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">banned: {</code> <code class="codebcxspmiddle">      type: 'boolean'</code> <code class="codebcxspmiddle">    },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">toJSON: function() {                  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">var modelAttributes = this.toObject();</code> <code class="codebcxspmiddle"> delete modelAttributes.password;</code> <code class="codebcxspmiddle"> delete modelAttributes.confirmation;</code> <code class="codebcxspmiddle"> delete modelAttributes.encryptedPassword;</code> <code class="codebcxspmiddle"> return modelAttributes;</code> <code class="codebcxspmiddle">}</code> <code class="codebcxspmiddle">}</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  removing attributes from being returned in blueprint: actions</p>
+
+    <p class="body">After overriding the <span><code class="codeintext">toJSON()</code></span> method, the blueprint create action will no longer return the <span><code class="codeintext">password</code></span>, <span><code class="codeintext">confirmation</code></span>, or <span><code class="codeintext">encryptedPassword</code></span> parameters to the front end.</p>
+
+    <h2 class="head" id="heading_id_21">6.5   Understanding model methods</h2>
+
+    <p class="body">In chapter four we used the <span><code class="codeintext">create()</code></span> and <span><code class="codeintext">find()</code></span>methods indirectly to list and create <span><code class="codeintext">video</code></span> records via the blueprint create action and blueprint find action. In chapter five, we used the <span><code class="codeintext">Video.create()</code></span> and <span><code class="codeintext">Video.count()</code></span> methods directly. Let’s now look at the model methods we’ll use most in Brushfire and listed in table 6.6.</p>
+
+    <p class="tablecaption pcalibre7">Table 6.6Model methods</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="17%" class="sgc18" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Method</p>
+          </div>
+        </td>
+
+        <td char="82%" class="sgc19" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Description</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc20" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintable">.create()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc21" valign="top">
+          <p class="tablebody2cxsplast">Creates a new record in the database.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc20" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintable">.find()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc21" valign="top">
+          <p class="tablebody2cxsplast">Finds and returns all records that match a certain criteria.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc20" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintable">.findOne()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc21" valign="top">
+          <p class="tablebody2cxsplast">Attempt to find a particular record in your database that matches the given criteria.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc20" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintable">.update()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc21" valign="top">
+          <p class="tablebody2cxsplast">Updates existing records in the database that match the specified criteria.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc20" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintable">.destroy()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc21" valign="top">
+          <p class="tablebody2cxsplast">Destroys records in your database that match the given criteria.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc22" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintable">.count()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc23 pcalibre7" valign="top">
+          <p class="tablebody2cxsplast">Returns the number of records in your database that meet the given search criteria.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">Not surprisingly all but one of these are part of the ubiquitous Create, Read, Update, and Delete (CRUD) operations we first learned about in chapter 1. Typically we’ll use model methods in a custom controller action. However, in this section we’ll be using them in the Sails console. The Sails console is a way to start the Sails server in a project and then interact with it in the Node Read-Eval-Print-Loop (REPL).</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">A REPL is an interactive tool that allows you to interact with a programming environment. In this case Node and Sails.</p>
+    </div>
+
+    <p class="body">This means you can access and use all of your models to try out various queries during development without having to add them in a controller action and restart the Sails server each time. If your Sails server is currently running, close it by typing <span><code class="codeintext">ctrl-c</code></span> (twice). To start the Sails console, open a terminal window and from the root of your project type</p><code class="codebcxspfirst">~/brushfire-chp6-start $ sails console</code> <code class="codebcxspmiddle">info: Starting app in interactive mode...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">info: Welcome to the Sails console.</code> <code class="codebcxspmiddle">info: ( to exit, type &lt;CTRL&gt;+&lt;C&gt; )</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">sails&gt;</code>
+
+    <p class="body">Let’s use the Sails console to explore some model methods.</p>
+
+    <h3 class="head1" id="heading_id_22">6.5.1   Anatomy of a Sails model method</h3>
+
+    <p class="body">First, we’ll take a look at the essential syntax of a Sails model method as illustrated in figure 6.16.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_16.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.16 The generic syntax of a model method includes <span class="codeannotationcueballs">① </span>  the model name, <span class="codeannotationcueballs">② </span>  model method, <span class="codeannotationcueballs">③ </span>  criteria, <span class="codeannotationcueballs">④ </span>  values, <span class="codeannotationcueballs">⑤ </span>  query method, the callback method with <span class="codeannotationcueballs">⑥ </span>  error and <span class="codeannotationcueballs">⑦ </span>  result arguments and <span class="codeannotationcueballs">⑧ </span>  callback body.</p>
+
+    <p class="body">Methods like <span><code class="codeintext">.find</code></span>, <span><code class="codeintext">.create</code></span>, <span><code class="codeintext">.update</code></span>, and <span><code class="codeintext">.destroy</code></span>, are the initial methods to start a database query that finds and/or manipulates  a record in a database. We’re using the <span><code class="codeintext">.update()</code></span> method as an overall example because it uses both <span class="italics">criteria</span> and <span class="italics">values</span> as arguments. To use the method we start with <span class="codeannotationcueballs">① </span>  the name of the model dictionary--<span><code class="codeintext">user</code></span>. Next we add <span class="codeannotationcueballs">② </span>  the model method name—<span><code class="codeintext">update</code></span>. Most model methods use <span class="codeannotationcueballs">③ </span>  a <span class="italics">criteria</span>, which contains values the query uses to find existing records. The second argument is <span class="codeannotationcueballs">④ </span>  the <span class="italics">values</span> that will be updated. We'll also look at query methods that can be chained on these initial methods to help configure the query with the <span><code class="codeintext">.exec()</code></span> method being the last in this chain. So .exec() passes all of the instructions for the query to the adapter, which executes the query and returns results. When the query is completed, Sails will respond using a familiar pattern of returning any errors as the first argument, and a <span class="italics">result</span> as the second argument of the callback.</p>
+
+    <h3 class="head1" id="heading_id_23">6.5.2   The .create() model method</h3>
+
+    <p class="body">The create model method doesn’t require a <span class="italics">criteria</span> as illustrated in figure 6.17.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/06_17.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 6.17 The create model method uses a similar syntax to the find, update, and destroy methods, however, without criteria.</p>
+
+    <p class="body">Let’s create a few records we can use to explore our model methods. Make sure the Sails console is running and type or copy each query in listing 6.11.</p>
+
+    <p class="codelistingcaption">Listing 6.11  Returning all user records using the find method with no arguments.</p><code class="codebcxspfirst">// First Query</code> <code class="codebcxspmiddle">User.create({email: 'sailsinaction@gmail.com',username:'sailsinaction',deleted: false,banned: false,admin: false}).exec(function(err, foundRecords){if (err) console.log(err);console.log(foundRecords);});</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">// Second Query</code> <code class="codebcxspmiddle">User.create({email: 'nikolateslaidol@gmail.com',username:'nikolateslaidol', deleted: false,banned: false,admin: false}).exec(function(err, foundRecords){ if (err) console.log(err); console.log(foundRecords);});</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">// Third Query</code><code class="codebcxsplast">User.create({email: 'franksinatra@myWay.com',username:'franksinatra', deleted: true,banned: false,admin: false}).exec(function(err, foundRecords){ if (err) console.log(err); console.log(foundRecords);});</code>
+
+    <h3 class="head1" id="heading_id_24">6.5.3   The .find() model method</h3>
+
+    <p class="body">The find method returns all records that meet the criteria passed as the first argument of the method. The criteria can be a dictionary, a string or a number of the <span><code class="codeintext">id</code></span> you are trying to find. If no criteria argument is given, all records will be returned. Let’s give this a try. Make sure the Sails console is running and then type or copy and paste the query in Listing 6.12.</p>
+
+    <p class="codelistingcaption">Listing 6.12  Returning all user records using the find method with no arguments.</p><code class="codebcxspfirst">User.find().exec(function(err, foundRecords){</code> <code class="codebcxspmiddle">  if (err) console.log(err);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  console.log('The user records: ', foundRecords);</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">});</code>
+
+    <p class="body">The terminal window should return results similar to listing 6.13.</p>
+
+    <p class="codelistingcaption">Listing 6.13  Results from the find query.</p><code class="codebcxspfirst">[ { email: 'sailsinaction@gmail.com',</code> <code class="codebcxspmiddle">    username: 'sailsinaction',</code> <code class="codebcxspmiddle">    encryptedPassword: null,</code> <code class="codebcxspmiddle">    gravatarURL: null,</code> <code class="codebcxspmiddle">    deleted: false,</code> <code class="codebcxspmiddle">    admin: false,</code> <code class="codebcxspmiddle">    banned: false,</code> <code class="codebcxspmiddle">    id: 1,</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:29.000Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-10T04:25:29.000Z' },</code> <code class="codebcxspmiddle">  { email: 'nikolateslaidol@gmail.com',</code> <code class="codebcxspmiddle">    username: 'nikolateslaidol',</code> <code class="codebcxspmiddle">    encryptedPassword: null,</code> <code class="codebcxspmiddle">    gravatarURL: null,</code> <code class="codebcxspmiddle">    deleted: false,</code> <code class="codebcxspmiddle">    admin: false,</code> <code class="codebcxspmiddle">    banned: false,</code> <code class="codebcxspmiddle">    id: 2,</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:39.000Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-10T04:25:39.000Z' },</code> <code class="codebcxspmiddle">  { email: 'franksinatra@myWay.com',</code> <code class="codebcxspmiddle">    username: ' franksinatra',</code> <code class="codebcxspmiddle">    encryptedPassword: null,</code> <code class="codebcxspmiddle">    gravatarURL: null,</code> <code class="codebcxspmiddle">    deleted: true,</code> <code class="codebcxspmiddle">    admin: false,</code> <code class="codebcxspmiddle">    banned: false,</code> <code class="codebcxspmiddle">    id: 3,</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:45.000Z',</code><code class="codebcxsplast">    updatedAt: '2016-03-10T04:25:45.000Z' } ]</code>
+
+    <p class="body">The <span><code class="codeintext">find</code></span> method returns an array of dictionary <span><code class="codeintext">user</code></span> records.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note: Even if there’s a single record returned that dictionary will be within an array.</p>
+    </div>
+
+    <p class="body">Next, let’s find a particular <span><code class="codeintext">user</code></span> record by passing in a criteria dictionary as the first argument. Copy and paste the query in listing 6.14 into the sails console.</p>
+
+    <p class="codelistingcaption">Listing 6.14Using an IN query .</p><code class="codeb">User.find({username: ['sailsinaction', 'nikolateslaidol']}).exec(function(err, foundRecords){if (err) console.log(err); console.log(foundRecords); });</code>
+
+    <p class="body">The console should return results similar to listing 6.15.</p>
+
+    <p class="codelistingcaption">Listing 6.15  Results from the IN query.</p><code class="codebcxspfirst">[ { email: 'sailsinaction@gmail.com',</code> <code class="codebcxspmiddle">    username: 'sailsinaction',</code> <code class="codebcxspmiddle">    encryptedPassword: null,</code> <code class="codebcxspmiddle">    gravatarURL: null,</code> <code class="codebcxspmiddle">    deleted: false,</code> <code class="codebcxspmiddle">    admin: false,</code> <code class="codebcxspmiddle">    banned: false,</code> <code class="codebcxspmiddle">    id: 1,</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:29.000Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-10T04:25:29.000Z' },</code> <code class="codebcxspmiddle">  { email: 'nikolateslaidol@gmail.com',</code> <code class="codebcxspmiddle">    username: 'nikolateslaidol',</code> <code class="codebcxspmiddle">    encryptedPassword: null,</code> <code class="codebcxspmiddle">    gravatarURL: null,</code> <code class="codebcxspmiddle">    deleted: false,</code> <code class="codebcxspmiddle">    admin: false,</code> <code class="codebcxspmiddle">    banned: false,</code> <code class="codebcxspmiddle">    id: 2,</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:39.000Z',</code><code class="codebcxsplast">    updatedAt: '2016-03-10T04:25:39.000Z' }]</code>
+
+    <p class="body">This query is also referred to as an <span class="italics">IN query</span> where each value in the array is treated as <span><code class="codeintext">or</code></span> so <span><code class="codeintext">sailsinaction</code></span> or <span><code class="codeintext">nikolateslaidol</code></span>. Since we have 15 <span><code class="codeintext">video</code></span> records available to query we’ll use the <span><code class="codeintext">Video</code></span> model for this next example.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note that the videos you return in your project may be different than those in the example. The contents of YouTube are constantly changing and therefore the search results from the <span><code class="codeintext1">.searchVideos</code></span> machine in <span><code class="codeintext1">bootstrap.js</code></span> may vary from the book.</p>
+    </div>
+
+    <p class="body">Let’s say we want to query on a value that is a fragment of what’s contained within a record attribute. That is, we want to find records that contain the value <span><code class="codeintext">The</code></span> in the <span><code class="codeintext">title</code></span> attribute of the video model. With the sails console running, type or (copy and paste) the query in listing 6.16 into the Sails console.</p>
+
+    <p class="codelistingcaption">Listing 6.16  Using <span><code class="codeintext1">contains</code></span> in a query .</p><code class="codeb">Video.find({title: {'contains': 'The'}}).exec(function(err, found) {if (err) console.log(err);console.log(found);});</code>
+
+    <p class="body">The console should return results similar to listing 6.17.</p>
+
+    <p class="codelistingcaption">Listing 6.17 Results from the <span><code class="codeintext1">contains</code></span> query.</p><code class="codebcxspfirst">[ { title: 'The Original Grumpy Cat!',</code> <code class="codebcxspmiddle">    src: 'https://www.youtube.com/embed/INscMGmhmX4',</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:24.846Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-10T04:25:24.846Z',</code> <code class="codebcxspmiddle">    id: 271 },</code> <code class="codebcxspmiddle">  { title: 'GRUMPY CAT! | The Subscriber City Challenge | Ep.21',</code> <code class="codebcxspmiddle">    src: 'https://www.youtube.com/embed/EW_gDH5IqTA',</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:24.849Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-10T04:25:24.849Z',</code> <code class="codebcxspmiddle">    id: 275 },</code> <code class="codebcxspmiddle">  { title: 'Oscar the Grouch vs. Grumpy Cat | Mashable',</code> <code class="codebcxspmiddle">    src: 'https://www.youtube.com/embed/QDUyazvnLkc',</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:24.851Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-10T04:25:24.851Z',</code> <code class="codebcxspmiddle">    id: 279 },</code> <code class="codebcxspmiddle">  { title: 'Grumpy Cat In The Sky!?!',</code> <code class="codebcxspmiddle">    src: 'https://www.youtube.com/embed/iinQDhsdE9s',</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:24.852Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-10T04:25:24.852Z',</code> <code class="codebcxspmiddle">    id: 280 },</code> <code class="codebcxspmiddle">  { title: 'Minecraft Modded Mini-Game : FEED THE GRUMPY CAT!',</code> <code class="codebcxspmiddle">    src: 'https://www.youtube.com/embed/gxfWnVS3U2M',</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:24.854Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-10T04:25:24.854Z',</code> <code class="codebcxspmiddle">    id: 283 },</code> <code class="codebcxspmiddle">  { title: 'Minecraft Mini-Game : PLEASE THE GRUMPY CAT!',</code> <code class="codebcxspmiddle">    src: 'https://www.youtube.com/embed/AezV3epQLpE',</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:24.854Z',</code> <code class="codebcxspmiddle">    updatedAt: '2016-03-10T04:25:24.854Z',</code><code class="codebcxsplast">    id: 284 } ]</code>
+
+    <p class="body">You can find a complete guide to criteria language options at <a class="pcalibre8 pcalibre5" href="http://sailsjs.org/documentation/concepts/models-and-orm/query-language">http://sailsjs.org/documentation/concepts/models-and-orm/query-language</a>. Finally, let’s say you want to find a single record returned as a dictionary instead of a dictionary within an array. For that we can use the <span><code class="codeintext">findOne</code></span> model method.  With the Sails console running, type or copy and paste the query in listing 6.18 into the Sails console.</p>
+
+    <p class="codelistingcaption">Listing 6.18  Finding a single record  with <span><code class="codeintext1">findOne</code></span>.</p><code class="codeb">User.find({email: 'sailsinaction@gmail.com'}).exec(function(err, found) {if (err) console.log(err);console.log(found);});</code>
+
+    <p class="body">The console should return results similar to listing 6.19.</p>
+
+    <p class="codelistingcaption">Listing 6.19  Results from the <span><code class="codeintext1">findOne</code></span> query.</p><code class="codebcxspfirst">{ email: 'sailsinaction@gmail.com',</code> <code class="codebcxspmiddle">  username: 'sailsinaction',</code> <code class="codebcxspmiddle">  encryptedPassword: null,</code> <code class="codebcxspmiddle">  gravatarURL: null,</code> <code class="codebcxspmiddle">  deleted: false,</code> <code class="codebcxspmiddle">  admin: false,</code> <code class="codebcxspmiddle">  banned: false,</code> <code class="codebcxspmiddle">  id: 1,</code> <code class="codebcxspmiddle">  createdAt: '2016-03-10T04:25:29.000Z',</code><code class="codebcxsplast">  updatedAt: '2016-03-10T04:25:29.000Z' }</code>
+
+    <p class="body">As expected the <span><code class="codeinbolditalic">findOne</code></span> method responds with a single record dictionary.</p>
+
+    <h3 class="head1" id="heading_id_25">6.5.4   The .update() model method</h3>
+
+    <p class="body">We already explored the syntax of the update model method at the beginning of this section. Now let’s see it in action. For example, we’ll make the <span><code class="codeintext">user</code></span> record with the <span><code class="codeintext">username</code></span> <span><code class="codeintext">sailsinaction</code></span> an administrator by updating the admin property to <span><code class="codeintext">true</code></span>. With the Sails console running type or copy and paste the following query in listing 6.20 into the Sails console.</p>
+
+    <p class="codelistingcaption">Listing 6.20  Updating a <span><code class="codeintext1">user</code></span> record with the update model method.</p><code class="codebcxspfirst">User.update({username: 'sailsinaction'}, {admin: true}).exec(function(err, updatedRecord){if (err) console.log(err);console.log(updatedRecord);</code> <code class="codebcxsplast">});</code>
+
+    <p class="body">The console should return results similar to listing 6.21.</p>
+
+    <p class="codelistingcaption">Listing 6.21 Results from the <span><code class="codeintext1">update</code></span> query.</p><code class="codebcxspfirst">[ { email: 'sailsinaction@gmail.com',</code> <code class="codebcxspmiddle">    username: 'sailsinaction',</code> <code class="codebcxspmiddle">    encryptedPassword: null,</code> <code class="codebcxspmiddle">    gravatarURL: null,</code> <code class="codebcxspmiddle">    deleted: false,</code> <code class="codebcxspmiddle">    admin: true,</code> <code class="codebcxspmiddle">    banned: false,</code> <code class="codebcxspmiddle">    id: 1,</code> <code class="codebcxspmiddle">    createdAt: '2016-03-10T04:25:29.000Z',</code><code class="codebcxsplast">    updatedAt: '2016-03-10T05:30:24.000Z' } ]</code>
+
+    <p class="body">The update model method returns an array with the dictionary of the record we updated as expected.</p>
+
+    <h3 class="head1" id="heading_id_26">6.5.5   The .destroy() model method</h3>
+
+    <p class="body">As its name implies, the destroy model method can delete one or more existing records in the model based upon the criteria provided as the first argument. The criteria can be a dictionary or an array of dictionaries. The criteria can also be a string or number of the <span><code class="codeintext">id</code></span> you are trying to destroy. Let’s say we want to delete any records that have their <span><code class="codeintext">deleted</code></span> property set to <span><code class="codeintext">true</code></span>. Assure that the Sails console is running and then type or copy and paste the following query in listing 6.22 into the Sails console.</p>
+
+    <p class="codelistingcaption">Listing 6.22  Deleting a <span><code class="codeintext1">user</code></span> record with the <span><code class="codeintext1">destroy</code></span> model method.</p><code class="codebcxspfirst">User.destroy({deleted: true}).exec(function(err, deletedRecord){</code> <code class="codebcxsplast">if (err) console.log(err);console.log(deletedRecord);});</code>
+
+    <p class="body">Your terminal window should look similar to figure 6.23.</p>
+
+    <p class="codelistingcaption">Listing 6.23  Results from the <span><code class="codeintext1">destroy</code></span> query.</p><code class="codebcxspfirst">[ { email: 'franksinatra@myWay.com',</code> <code class="codebcxspmiddle">    username: 'franksinatra',</code> <code class="codebcxspmiddle">    encryptedPassword: null,</code> <code class="codebcxspmiddle">    gravatarURL: null,</code> <code class="codebcxspmiddle">    deleted: true,</code> <code class="codebcxspmiddle">    admin: false,</code> <code class="codebcxspmiddle">    banned: false,</code> <code class="codebcxspmiddle">    id: 1,</code> <code class="codebcxspmiddle">    createdAt: Wed Mar 09 2016 23:51:04 GMT-0600 (CST),</code><code class="codebcxsplast">    updatedAt: Wed Mar 09 2016 23:51:04 GMT-0600 (CST) } ]</code>
+
+    <p class="body">The destroy model method returns an array with the dictionary of the record that was destroyed as expected.</p>
+
+    <h3 class="head1" id="heading_id_27">6.5.6   The  .count() model method</h3>
+
+    <p class="body">The count model method returns the number of records in a particular model.  Assure that the Sails console is running and then type or copy and paste the following query in listing 6.24 into the Sails console.</p>
+
+    <p class="codelistingcaption">Listing 6.24  Counting the records in a model with the  .<span><code class="codeintext1">count()</code></span> method.</p><code class="codebcxspfirst">Video.count().exec(function(err, count){if (err) console.log(err);console.log(count);});</code> <code class="codebcxsplast"> </code>
+
+    <p class="body">Your terminal window should display the number <span><code class="codeintext">15</code></span>, which is the number of records in the <span><code class="codeintext">video</code></span> model.</p>
+
+    <h2 class="head" id="heading_id_28">6.6   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   Sails models contain attributes, methods, settings, and an adapter named around a common resource.</p>
+
+    <p class="listbulletcxspmiddle">·   Model requirements consist of attributes, validations and transformations.</p>
+
+    <p class="listbulletcxspmiddle">·   Model requirements are identified using the front-end-first approach by reviewing interactive mockups.</p>
+
+    <p class="listbulletcxsplast">·   Models connect to a database using a connection that points to an adapter, which translates a common query interface into the specific syntax of the underlying database.</p>
+  </div>
+</body>
+</html>

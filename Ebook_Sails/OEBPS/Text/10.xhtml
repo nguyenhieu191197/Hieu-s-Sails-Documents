@@ -1,0 +1,459 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">10    Policies and Access Control</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   Documenting controller, actions, and routes</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Understanding Policies for access control</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Creating policies to manage access to controller/actions</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Applying policies to controller/actions Access Control List</p>
+
+    <p class="cosummarybulletcxsplast">·   Adding a policy versus access control in the controller/action</p>
+
+    <p class="body">It’s hard to believe that the journey we’ve taken over the last few chapters started over the love of cats and disdain for dogs.  Our job is not to judge and instead fulfill the requirements of our client. In chapters 6 and 7 we created the model and controller/actions necessary for a user to create and manage their own identity. In chapter 8 we introduced <span class="italics">server-rendered views</span> and back-end routes as a way to communicate a hardcoded authenticated state of the user to the front end using the hybrid approach to page navigation. This approach allows personalization of  front-end content by passing the user’s simulated authenticated state via <span><code class="codeintext">locals</code></span>.  Locals are used by the front-end to determine which markup assets are displayed. In chapter 9 we implemented <span class="italics">authentication</span>, which allowed users to prove their claim to a specific identity. We also introduced Sails sessions that allow us to save the users actual authenticated state between requests and then send that state securely to the front end. All of this functionality enables our client to restrict a user’s account if they violate the Brushfire terms of service (TOS). If a user violates the TOS, our client can ban the user by setting the user’s <span><code class="codeintext">banned</code></span> attribute to <span><code class="codeintext">true</code></span>. The restrictions are currently limited to the front end. That same user could access Brushfire outside of the browser using Postman for example, to make a <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/videos</code></span>, which would trigger a back-end controller action that adds content regardless of their authenticated state. In order to prevent access, we will use the users stored authenticated state within a Sails policy to determine whether access should be granted. Policies allow or deny access to your controllers down to a fine level of granularity. We’ll spend the remainder of this chapter implementing policies to secure the back end of Brushfire.</p>
+
+    <p class="body">In order to secure the back end, we first need to determine the different rights and restrictions a user can have with regard to access in Brushfire. Then we need to identify the controllers and actions whose access will be affected. Finally, we will implement the actual policies that contain the logic necessary to manage access to the controller actions according to our defined requirements.</p>
+
+    <h2 class="head" id="heading_id_3">10.1   A farewell to blueprints</h2>
+
+    <p class="body">A user-agent can have access to Brushfire controller actions under four conditions. The first condition is whether the user-agent is authenticated or not. So a user that is authenticated will have different access rights to a controller and its actions than a user who is not authenticated. The remaining conditions require that the user-agent first be authenticated and then have one of three other properties set to <span><code class="codeintext">true</code></span>-- <span><code class="codeintext">admin</code></span>, <span><code class="codeintext">banned</code></span>, and/or <span><code class="codeintext">deleted</code></span>. Table 10.1 describes each condition in greater detail.</p>
+
+    <p class="tablecaption pcalibre7">Table 10.1 user-agent conditions</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="21%" class="sgc211" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">condition</p>
+          </div>
+        </td>
+
+        <td char="78%" class="sgc212" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Description</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc213" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">unauthenticated</code></span></p>
+        </td>
+
+        <td char="78%" class="sgc214 pcalibre7" valign="top">
+          <p class="tablebody2cxsplast">A user-agent is unauthenticated if <span><code class="codeintext">req.session.userId</code></span> is equal to <span><code class="codeintext">null</code></span>.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc213" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">authenticated</code></span></p>
+        </td>
+
+        <td char="78%" class="sgc214 pcalibre7" valign="top">
+          <p class="tablebody2cxsplast">A user-agent is authenticated if <span><code class="codeintext">req.session.userId</code></span> has a value. The value is the <span><code class="codeintext">id</code></span> property of a <span><code class="codeintext">user</code></span> record.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc213" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">administrator</code></span></p>
+        </td>
+
+        <td char="78%" class="sgc214 pcalibre7" valign="top">
+          <p class="tablebody2cxsplast">A user-agent is considered an <span><code class="codeintext">administrator</code></span> if the user record’s <span><code class="codeintext">admin</code></span> property is equal to <span><code class="codeintext">true</code></span>.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc213" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">deleted</code></span></p>
+        </td>
+
+        <td char="78%" class="sgc214 pcalibre7" valign="top">
+          <p class="tablebody2cxsplast">A user-agent is considered <span class="italics">deleted</span> if the user record’s <span><code class="codeintext">deleted</code></span> property is equal to <span><code class="codeintext">true</code></span><span class="italics">.</span></p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc215" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">banned</code></span></p>
+        </td>
+
+        <td char="78%" class="sgc216" valign="top">
+          <p class="tablebody2cxsplast">A user-agent is considered <span class="italics">banned</span> if the user record’s <span><code class="codeintext">banned</code></span> property is equal to <span><code class="codeintext">true</code></span><span class="italics">.</span></p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">We’ll keep each of the four conditions in mind as we review the API’s access control requirements to controller/actions.</p>
+
+    <h3 class="head1" id="heading_id_4">10.1.1   Obtaining the example materials for this chapter</h3>
+
+    <p class="body">You have two options to set up your Brushfire assets for this chapter. If you’ve completed chapter 9, you are all set and can simply use your existing project here. If you haven’t completed chapter 9, you can clone the end of chapter 9 Github repo at: <a class="pcalibre8 pcalibre5" href="https://github.com/sailsinaction/brushfire-ch9-end.git">https://github.com/sailsinaction/brushfire-ch9-end.git</a> and start from there.  Remember to use <span><code class="codeintext">npm install</code></span> in the terminal window from the root of the project after you clone the repo.</p>
+
+    <p class="body"><span class="bold">If you choose the cloning option</span>, don’t forget to add the <span><code class="codeintext">brushfire/config/local.js</code></span> file with your Google API key from chapter 5 (section 5.4.6) and start your local PostgreSQL <span><code class="codeintext">brushfire</code></span> database from chapter 6 (section 6.4.2).</p>
+
+    <h3 class="head1" id="heading_id_5">10.1.2   Designing custom back-end endpoints</h3>
+
+    <p class="body">The decision of when to transition from blueprint routes to explicit custom routes is a matter of personal programming style. Inevitably, using explicit routes in production is considered a best practice in Sails. We are now beyond the early stages of Brushfire. By consolidating our routes in one location, we can centralize the organization of our endpoints.</p>
+
+    <p class="body">Figure 10.1  shows all of the current Brushfire controller actions and a corresponding explicit route for each action.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.1 Brushfire controller action list with corresponding custom routes.</p>
+
+    <h3 class="head1" id="heading_id_6">10.1.3   More explicit routes</h3>
+
+    <p class="body">Let’s now implement the explicit routes that we defined in figure 10.1for the video and user controllers. Recall that both <span><code class="codeintext">brushfire/api/controllers/VideoController.js</code></span> and <span><code class="codeintext">brushfire/api/controllers/UserController.js</code></span> files are empty. So the actions we will be triggering with explicit routes will trigger blueprint actions. In Sublime open <span><code class="codeintext">brushfire/config/routes.js</code></span> and add the following routes in listing 10.1.</p>
+
+    <p class="codelistingcaption">Listing 10.1  Adding explicit routes for the Blueprint: actions in the <span><code class="codeintext1">Video</code></span> controller</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">'GET /logout': 'UserController.logout',</code> <code class="codebcxspmiddle">'GET /video': 'VideoController.find',     <span class="codeannotationcueballs1">❶ </span>  </code> <code class="codebcxspmiddle">'POST /video': 'VideoController.create',  <span class="codeannotationcueballs1">❷ </span></code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Will trigger the blueprint find action</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span>  Will trigger the blueprint create action</p>
+
+    <p class="body">Next, let’s add explicit routes that were previously created automatically with <span class="italics">blueprint actions routes</span>. From the same <span><code class="codeintext">brushfire/config/routes.js</code></span> file, add the following routes in listing 10.2.</p>
+
+    <p class="codelistingcaption">Listing 10.2  Adding explicit routes for the actions in the <span><code class="codeintext1">User</code></span> controller</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">'POST /video': 'VideoController.create',</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">'POST /user/signup': 'UserController.signup',</code> <code class="codebcxspmiddle">'PUT /user/removeProfile': 'UserController.removeProfile',</code> <code class="codebcxspmiddle">'PUT /user/restoreProfile': 'UserController.restoreProfile',</code> <code class="codebcxspmiddle">'PUT /user/restoreGravatarURL': 'UserController.restoreGravatarURL',</code> <code class="codebcxspmiddle">'PUT /user/updateProfile/:id': 'UserController.updateProfile',</code> <code class="codebcxspmiddle">'PUT /user/changePassword': 'UserController.changePassword',</code> <code class="codebcxspmiddle">'GET /user/adminUsers': 'UserController.adminUsers',</code> <code class="codebcxspmiddle">'PUT /user/updateAdmin/:id': 'UserController.updateAdmin',</code> <code class="codebcxspmiddle">'PUT /user/updateBanned/:id': 'UserController.updateBanned',</code> <code class="codebcxspmiddle">'PUT /user/updateDeleted/:id': 'UserController.updateDeleted',</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Now that we’ve successfully transitioned from <span class="italics">blueprint routes</span> to explicit custom routes, let’s examine how to disable blueprint routes.</p>
+
+    <h3 class="head1" id="heading_id_7">10.1.4   Disabling blueprint routes</h3>
+
+    <p class="body">Up to this point, blueprint routes have accelerated our development by allowing rapid design of our initial application without thinking about explicit routes. Now that we have transitioned blueprint routes to explicit custom routes in <span><code class="codeintext">brushfire/config/routes.js</code></span> we can examine how to disable blueprint routes. In Sublime, open <span><code class="codeintext">brushfire/config/blueprints.js</code></span> and set the properties for <span><code class="codeintext">actions</code></span><span class="italics">,</span> <span><code class="codeintext">rest</code></span><span class="italics">, and</span> <span><code class="codeintext">shortcuts</code></span> blueprints in listing 10.3 to <span><code class="codeintext">false</code></span>.</p>
+
+    <p class="codelistingcaption">Listing 10.3 Disabling blueprint routes</p><code class="codebcxspfirst">module.exports.blueprints = {</code> <code class="codebcxspmiddle">  actions: false,   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  rest: false,      <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">  shortcuts: false, <span class="codeannotationcueballs1">❸ </span></code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> <span><code class="codeintext1">Actions</code></span> routes will no longer automatically be created.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> <span><code class="codeintext1">RESTful</code></span> routes will no longer be generated.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span> <span><code class="codeintext1">Shortcuts</code></span> routes will not be generated.</p>
+
+    <p class="body">Table 10.2 provides the details of the impact of disabling each blueprint route type.</p>
+
+    <p class="tablecaption pcalibre7">Table 10.2  The impact of disabling blueprint routes</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="21%" class="sgc217" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Blueprint route type</p>
+          </div>
+        </td>
+
+        <td char="78%" class="sgc218" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Description</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc219" valign="top">
+          <p class="tablebody2cxspfirst">actions routes</p>
+        </td>
+
+        <td char="78%" class="sgc220" valign="top">
+          <p class="tablebody2cxsplast">Each controller/action will now require an explicit route in order to be triggered via a request.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc219" valign="top">
+          <p class="tablebody2cxspfirst">RESTful routes</p>
+        </td>
+
+        <td char="78%" class="sgc220" valign="top">
+          <p class="tablebody2cxsplast">Disabling RESTful routes eliminates the automatic routes associated with CRUD operations.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="21%" class="sgc221" valign="top">
+          <p class="tablebody2cxspfirst">shortcut routes</p>
+        </td>
+
+        <td char="78%" class="sgc222" valign="top">
+          <p class="tablebody2cxsplast">Disabling shortcut routes removes our ability to access the model via the browser.</p>
+        </td>
+      </tr>
+    </table>
+
+    <h2 class="head" id="heading_id_8">10.2   Policies</h2>
+
+    <p class="body">Up to this point we’ve provided access control to various front-end elements via our Page controller. For example the <span><code class="codeintext">showVideosPage</code></span> action passes the authenticated state via <span><code class="codeintext">locals</code></span> to the <span><code class="codeintext">videos</code></span> view. Angular then uses the <span><code class="codeintext">locals</code></span> to determine whether to display the <span class="italics">submit videos form</span> on the page. Clicking on the <span class="italics">submitnew video</span> button triggers an Angular AJAX <span class="italics">POST</span> request to <span><code class="codeintext">/video</code></span>. So from the front-end’s perspective, access to the AJAX request is “restricted” by whether the markup is displayed upon the page. This does not prevent a user from using a program like Postman to circumvent the user interface and instead make a <span><code class="codeintext">POST</code></span> request directly to <span><code class="codeintext">/video</code></span>. So we need a way to restrict access to requests outside of the user interface. We have two choices. We can add code to manage access to a controller/action in the action itself. In our case we’re using blueprint actions and therefore don’t have direct access to add to the action. Instead we can use a policy to manage access to action for us.</p>
+
+    <h3 class="head1" id="heading_id_9">10.2.1   What is a policy?</h3>
+
+    <p class="body">Policies provide the ability to inject a reusable set of code before a request executes a controller/action. Policies main benefits are that they can be written once and applied to any controller/action. Policies can be used like <span class="italics">middleware</span>, meaning you can do almost anything you can imagine with them.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span class="italics1">Middleware</span> is simply code that can get in the <span class="italics1">middle</span> of the request/response cycle. For example, the Sails router is middleware. So policies act like middleware and are executed before controller/actions making them ideal for managing access to endpoints.</p>
+    </div>
+
+    <p class="body">That said, our experience using Sails to build all sorts of different applications has taught us that policies are best used for one very specific purpose which is preventing access to actions for certain users (or types of users).Policies are best used like preconditions. You can use policies to take care of edge cases that are only possible by a user trying to cheat the UI.If you could somehow trust the client, then you wouldn't need policies. Anyone can access our application’s URL from different user-agents such as a browser, from Postman, from the command-line,  or even from a Smart refrigerator.  Policies provide an easy way to protect against these kinds of edge cases without cluttering up the business logic in our actions.</p>
+
+    <p class="body">Policies are first defined in the <span><code class="codeintext">brushfire/api/policies/</code></span> folder. Then, associate that policy with an access control list in <span><code class="codeintext">brushfire/config/policies.js</code></span>. This file is used to map policies to your controllers and actions. When a request is made, Sails first checks whether a policy exists before passing the request to the controller/action. Let’s first create a policy and then implement it in our access control list.</p>
+
+    <h3 class="head1" id="heading_id_10">10.2.2   Creating a policy</h3>
+
+    <p class="body">In figure 10.2 the <span class="italics">blueprint find action</span> is used to fulfill a request for all of the videos in the <span><code class="codeintext">video</code></span> model when the page initially loads.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.2  The Videos page uses the <span class="italics1">Blueprint: find action</span> to fulfill a request for all videos in the video model when the page loads.</p>
+
+    <p class="body">There’s no requirement that the user-agent be authenticated in order to load the videos. That is, there’s never a condition where the user-agent is restricted from accessing this particular <span class="italics">Blueprint: action</span>. When the user-agent is authenticated, however, additional UI markup is displayed as shown in figure 10.3.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.3  When the user-agent is authenticated, the Videos page adds the <span class="codeannotationcueballs">① </span> <span class="italics1">Submit Video Form</span>, which when clicked triggers the <span class="italics1">blueprint create action</span>.</p>
+
+    <p class="body">The UI markup for the <span class="italics">blueprint create action</span>, however, is not displayed unless the user-agent is authenticated. Therefore, since the action is not accessible to the UI under those conditions, we will want to protect this edge case with a policy. Let’s create policy named <span><code class="codeintext">isLoggedIn</code></span> that checks whether a user-agent is authenticated and restricts access if it’s not authenticated. In Sublime, create a new file named <span><code class="codeintext">isLoggedIn.js</code></span> in the <span><code class="codeintext">brushfire/api/policies</code></span> folder and add the code in listing 10.4.</p>
+
+    <p class="codelistingcaption">Listing 10.4 Creating the <span><code class="codeintext1">isLoggedIn</code></span> policy</p><code class="codebcxspfirst">module.exports = function isLoggedIn(req, res, next) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (req.session.userId) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    return next();</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (req.wantsJSON) {       <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    return res.forbidden('You are not permitted to perform this action.');</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  return res.redirect('/');  <span class="codeannotationcueballs1">❸ </span></code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> If the <span><code class="codeintext1">userId</code></span> property has a value (i.e. authenticated), return control to the next middleware component.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> If the user-agent wants Json, respond with a status code and JSON message.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span>  If not, respond with a redirect to the root route.</p>
+
+    <p class="body">So our policy first checks whether the user-agent is authenticated via a value in <span><code class="codeintext">req.session.userId</code></span>. If a value is found, the request continues to the controller/action. If, however, the property is <span><code class="codeintext">null</code></span>, not authenticated, Sails will either respond with JSON or redirect the page depending upon the requirements of the user-agent. But what is <span><code class="codeintext">req.wantsJSON</code></span>? The <span><code class="codeintext">req</code></span><span class="italics">.</span><span><code class="codeintext">wantsJSON</code></span> method provides a clean, reusable indication of whether the server should respond with JSON, or send back something else like an HTML page or a <span><code class="codeintext">302</code></span> redirect. Now let’s connect the policy to the blueprint create action.</p>
+
+    <h3 class="head1" id="heading_id_11">10.2.3   Configuring policies</h3>
+
+    <p class="body">Sails has a built in <span class="italics">ACL</span> (access control list) located in <span><code class="codeintext">brushfire/config/policies.js</code></span>. This file is used to map policies to your controllers and actions. The file is declarative, meaning it describes what the permissions for your app should look like, not how they should work. This makes it easier for new developers to jump in and understand what's going on, plus it makes your app more flexible as your requirements change over time. We have an <span><code class="codeintext">isLoggedIn</code></span> policy but since it’s not mapped to any controller or controller/action it won’t get executed. Let’s apply our new policy to the <span class="italics">blueprint create action</span> of the <span><code class="codeintext">Video</code></span> controller. That way any time a request wants to execute the <span class="italics">action</span>, our policy will be executed first. In Sublime, open <span><code class="codeintext">brushfire/config/policies.js</code></span> and add the following in listing 10.5.</p>
+
+    <p class="codelistingcaption">Listing 10.5 Applying the isLoggedIn policy to the create action of the Video controller</p><code class="codebcxspfirst">module.exports.policies = {</code> <code class="codebcxspmiddle">  // '*': true,</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  VideoController: {                 </code> <code class="codebcxspmiddle">    create: ['isLoggedIn'] <span class="codeannotationcueballs1">❶ </span></code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  the blueprint: create action is now “mapped” to the <span><code class="codeintext1">isLoggedIn</code></span> policy</p>
+
+    <p class="body">The <span><code class="codeintext">isLoggedIn</code></span> policy will be applied to an incoming request to the blueprint create action of the <span><code class="codeintext">Video</code></span> controller. Let’s check it out. Start Sails using <span><code class="codeintext">sails lift</code></span> and make a <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/video</code></span> in Postman similar to figure 10.4.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.4  Making a <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">POST</code></span> request to <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">/video</code></span> with an unauthenticated user-agent returns <span class="codeannotationcueballs">③ </span>  a <span><code class="codeintext1">403</code></span> forbidden status code and message.</p>
+
+    <p class="body">If the user-agent is authenticated, the <span class="italics">blueprint create action</span> is executed and the record is created. Since the user-agent was not authenticated, the policy responded with a <span><code class="codeintext">403</code></span> forbidden status code. We can also use this policy for other actions in Brushfire. Before moving on to the other pages, requests, and controller/actions, let’s take a look at some best practices surrounding policies.</p>
+
+    <h3 class="head1" id="heading_id_12">10.2.4   Best practices</h3>
+
+    <p class="body">Working on countless Sails apps has taught us a number of rules of the road that, if followed, help prevent your application from becoming tangled and confusing.</p>
+
+    <p class="listbullet pcalibre7">·   <span class="bold">Don't look at parameters</span></p>
+
+    <p class="listbody">Truly reusable policies should only look at <span><code class="codeintext">req.session</code></span> and the database- NOT at parameters! Relying on parameters makes your policy context-specific and only usable in very specialized circumstances. In that case, why not just put the code in the relevant action(s)?</p>
+
+    <p class="listbullet pcalibre7">·   <span class="bold">Nullipotency</span></p>
+
+    <p class="listbody">Policies should be <span class="italics">nullipotent</span>-- that is, they should not <span class="italics">set</span>, <span class="italics">write</span>, or frankly "do" anything to state.</p>
+
+    <div class="sgc4 pcalibre7">
+      <p class="sidebard">In the past, we suggested the strategy of using custom properties of <span><code class="codeintext1">req </code></span>(specifically <span><code class="codeintext1">req.options</code></span>) to allow your policies to take on more responsibilities. In practice, we have learned that this ends up causing more pain than it alleviates.</p>
+    </div>
+
+    <p class="listbullet pcalibre7">·   <span class="bold">Policies shouldn't be a core part of your business logic</span></p>
+
+    <p class="listbody">Policies are <span class="bold">not</span> a good tool for structuring logic in your app. Using them this way makes them just as versatile as raw Express/Connect middleware-- and unfortunately it also makes them just as dangerous and developer-specific. If you use policies to help with queries, or create a complex chain of policies to manage permission systems in your application, you are likely to create a code base that is  difficult for you or any other developer to understand. </p>
+
+    <p class="listbody">We’ve created our first policy and applied it to a controller/action. Let’s take what we’ve learned about policies and guided by our UI, review each controller/action for access control requirements. We have at least three choices for access control:</p>
+
+    <p class="listbulletcxspfirst">·   manage access within the controller/action,</p>
+
+    <p class="listbulletcxspmiddle">·   implement a policy to manage access, or</p>
+
+    <p class="listbulletcxsplast">·   leave the controller/action “as is”.</p>
+
+    <p class="body">When is a policy more appropriate than placing the code in a controller/action to manage access?  The best practice is to use a policy to protect those controller/actions that are <span class="boldunderline">not</span> accessible in the UI. To clarify, that does not mean the controller/action is never accessible in the UI. Instead, we look for instances when the controller/action is “restricted” in the UI by not being displayed but open to unwanted access outside the UI with programs like Postman.</p>
+
+    <h3 class="head1" id="heading_id_13">10.2.5   Preventing an inconsistent user experience</h3>
+
+    <p class="body">Our initial entry point to Brushfire, is a user-agent’s unauthenticated access to the homepage, which is managed by the <span><code class="codeintext">showHomePage</code></span> action of the Page controller in figure 10.5.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.5  The homepage when accessed via an authenticated user-agent has two actions that need protection the <span class="codeannotationcueballs">① </span>  showSignupPage action and <span class="codeannotationcueballs">② </span>  login action.</p>
+
+    <p class="body">Does the homepage trigger any requests when loading?  The answer is that the homepage does not trigger any requests when loading. There are two requests that trigger controller/actions which are not available to the UI when the user-agent is authenticated-- <span><code class="codeintext">showSignupPage</code></span> and <span><code class="codeintext">login</code></span>. We don’t want to allow a user-agent to login or signup a new user when they are already logged-in. Although these endpoints are not displayed in the front-end, they are vulnerable to direct access via programs like Postman. Therefore, we’ll create and apply one or more policies in order to manage access to them. In Sublime, create a new file named <span><code class="codeintext">isLoggedOut.js</code></span> in the <span><code class="codeintext">brushfire/api/policies </code></span>folder and add the code in listing 10.6.</p>
+
+    <p class="codelistingcaption">Listing 10.6 Creating the <span><code class="codeintext1">isLoggedOut</code></span> policy</p><code class="codebcxspfirst">module.exports = function isLoggedOut(req, res, next) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (!req.session.userId) {  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    return next();</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (req.wantsJSON) {        <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">    return res.forbidden('You are not permitted to perform this action.');</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  return res.redirect('/');   <span class="codeannotationcueballs1">❸ </span></code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span>  If the <span><code class="codeintext1">userId</code></span> property is <span class="italics1">null</span> (i.e. not authenticated) return control to the next middleware component.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span>  If the user-agent wants Json, respond with a status code and JSON message.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❸ </span>  If not, respond with a redirect to the root route.</p>
+
+    <p class="body">Our new policy checks whether the user-agent is authenticated via <span><code class="codeintext">req.session.userId</code></span>. If the <span><code class="codeintext">userId</code></span> property is <span><code class="codeintext">null</code></span>, the request continues to the controller/action. If however, the <span><code class="codeintext">userId</code></span> property has a value, Sails will either respond with JSON or redirect the page depending upon the requirements of the user-agent. Next, we will apply <span><code class="codeintext">isLoggedOut</code></span> to the <span><code class="codeintext">showSignupPage</code></span> and <span><code class="codeintext">login</code></span> controller/actions. In Sublime, open <span><code class="codeintext">brushfire/config/policies.js</code></span> and add the following in listing 10.7.</p>
+
+    <p class="codelistingcaption">Listing 10.7 Applying the isLoggedOut policy to actions in the User and Page controller</p><code class="codebcxspfirst">module.exports.policies = {</code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  VideoController: {                 </code> <code class="codebcxspmiddle">    create: ['isLoggedIn']           </code> <code class="codebcxspmiddle">},</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  UserController: {</code> <code class="codebcxspmiddle">    login: ['isLoggedOut']     <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  PageController: {</code> <code class="codebcxspmiddle">    showSignupPage: ['isLoggedOut']  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  the login and showSignupPage actions are now “mapped” to the isLoggedOut policy</p>
+
+    <p class="body">The <span><code class="codeintext">isLoggedOut</code></span> policy will be applied to an incoming request to the <span><code class="codeintext">login</code></span> and <span><code class="codeintext">showSignupPage</code></span> actions. If the user-agent is not authenticated, control is passed to the action to be executed. If the user-agent is authenticated a <span><code class="codeintext">403</code></span> status is returned if JSON is required or redirected if HTML is required. We can also use this policy for other actions in Brushfire. The homepage also has an authenticated state as depicted in figure 10.6.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.6  The homepage when accessed via an unauthenticated user-agent with endpoints that trigger five different controller/actions.</p>
+
+    <p class="body">There are three endpoints that trigger controller/actions that are not available to the UI when the user-agent is not authenticated. We will manage access to them via the <span><code class="codeintext">isLoggedIn</code></span> policy. Since we’ve already created the policy, we simply have to apply it to the three controller actions. In Sublime, open <span><code class="codeintext">brushfire/config/policies.js</code></span> and add the following in listing 10.8.</p>
+
+    <p class="codelistingcaption">Listing 10.8 Applying the isLoggedIn policy to action in the User and Page controller</p><code class="codebcxspfirst">module.exports.policies = {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  UserController: {</code> <code class="codebcxspmiddle">    login: ['isLoggedOut'],</code> <code class="codebcxspmiddle">    logout: ['isLoggedIn']           <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  PageController: {</code> <code class="codebcxspmiddle">    showSignupPage: ['isLoggedOut'],</code> <code class="codebcxspmiddle">    showAdminPage: ['isLoggedIn'],   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    showProfilePage:['isLoggedIn']   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">}</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> The <span><code class="codeintext1">logout</code></span>, <span><code class="codeintext1">showAdminPage</code></span>, and <span><code class="codeintext1">showProfilePage</code></span> actions are now “mapped” to the <span><code class="codeintext1">isLoggedIn</code></span> policy.</p>
+
+    <p class="body">The <span><code class="codeintext">showAdminPage</code></span> action needs restricted access to only those user-agents that have the <span><code class="codeintext">admin</code></span> flag set to <span><code class="codeintext">true</code></span><span class="italics">.</span> Should the code be in the controller/action or a policy?  The <span><code class="codeintext">showAdminPage</code></span> is not available to the UI when a user is not an <span><code class="codeintext">admin</code></span>. We will implement a new <span><code class="codeintext">isAdmin</code></span> policy and apply it to the <span><code class="codeintext">showAdminPage</code></span>. In Sublime, create a new file named <span><code class="codeintext">isAdmin.js</code></span> in the <span><code class="codeintext">brushfire/api/policies</code></span> folder and add the code in listing 10.9.</p>
+
+    <p class="codelistingcaption">Listing 10.9 Creating the <span><code class="codeintext1">isAdmin</code></span> policy</p><code class="codebcxspfirst">module.exports = function isAdmin(req, res, next) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  if (!req.session.userId) { <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    if (req.wantsJSON) {</code> <code class="codebcxspmiddle">      return res.forbidden('You are not permitted to perform this action.');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">    return res.redirect('/');</code> <code class="codebcxspmiddle">  }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  User.findOne(req.session.userId).exec(function(err, foundUser){  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (!foundUser) { <span class="codeannotationcueballs1">❸ </span></code> <code class="codebcxspmiddle">      if (req.wantsJSON) {</code> <code class="codebcxspmiddle">        return res.forbidden('You are not permitted to perform this action.');</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">      return res.redirect('/');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    if (foundUser.admin) { <span class="codeannotationcueballs1">❹ </span></code> <code class="codebcxspmiddle">      return next();</code> <code class="codebcxspmiddle">    } else {       <span class="codeannotationcueballs1">❺ </span></code> <code class="codebcxspmiddle">      if (req.wantsJSON) {</code> <code class="codebcxspmiddle">        return res.forbidden('You are not permitted to perform this action.');</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">      return res.redirect('/');</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">};</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Assure that user-agent is authenticated</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❷ </span> Look up user based upon user record id.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❸ </span> Handle if not user is found.</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">❹ </span> If user’s admin property is true, go to the controller/action.</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❺ </span> If not, return forbidden.</p>
+
+    <p class="body">Next, let’s apply the <span><code class="codeintext">isAdmin</code></span> policy to the <span><code class="codeintext">showAdminPage</code></span> controller/action. In Sublime, open <span><code class="codeintext">brushfire/config/policies.js</code></span> and add the following in listing 10.10.</p>
+
+    <p class="codelistingcaption">Listing 10.10 Applying the isAdmin policy to the showAdminPage action in the Page controller</p><code class="codebcxspfirst">module.exports.policies = {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  PageController: {</code> <code class="codebcxspmiddle">    showSignupPage: ['isLoggedOut'],</code> <code class="codebcxspmiddle">    showAdminPage: ['isLoggedIn', 'isAdmin'],   <span class="codeannotationcueballs1">❶ </span></code><code class="codebcxsplast">    ...</code>
+
+    <p class="codeannotationcxspfirst"> </p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❶ </span> Added the <span><code class="codeintext1">isAdmin</code></span> policy as an element of the ACL array</p>
+
+    <h3 class="head1" id="heading_id_14">10.2.6   Restricting access to account management endpoints</h3>
+
+    <p class="body">Let’s take a look at the profile page and specifically when a user-agent is authenticated in figure 10.7.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.7  The profile page when accessed via an authenticated user-agent adds two unprotected actions.</p>
+
+    <p class="body">We’ve already addressed the <span><code class="codeintext">showAdminPage</code></span>, <span><code class="codeintext">showProfilePage</code></span> and <span><code class="codeintext">logout</code></span> endpoints in earlier sections. There are two endpoints we have not addressed. These endpoints trigger controller/actions that are unavailable to the UI when the user-agent is not authenticated-- <span class="codeannotationcueballs">① </span>  <span><code class="codeintext">showEditProfilePage</code></span> and <span class="codeannotationcueballs">② </span>  <span><code class="codeintext">removeProfile</code></span> actions. Access to these controller/actions should be restricted unless the user-agent is authenticated. We will add the <span><code class="codeintext">isLoggedIn</code></span> policy to each action’s ACL. In Sublime, open <span><code class="codeintext">brushfire/config/policies.js</code></span> and add the following in listing 10.11.</p>
+
+    <p class="codelistingcaption">Listing 10.11 Applying the isLoggedIn policy to the <span><code class="codeintext1">showEditProfilePage</code></span> and <span><code class="codeintext1">removeProfile</code></span> actions</p><code class="codebcxspfirst">module.exports.policies = {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">     UserController: {</code> <code class="codebcxspmiddle">       ...</code> <code class="codebcxspmiddle">       removeProfile: ['isLoggedIn']  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">     },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  PageController: {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">    showEditProfilePage: ['isLoggedIn']   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">    ...</code>
+
+    <p class="codeannotation pcalibre7"> <span class="codeannotationcueballs2">❶ </span> Added the <span><code class="codeintext1">isLoggedIn</code></span> policy to the <span><code class="codeintext1">removeProfile</code></span> and <span><code class="codeintext1">showEditProfilePage</code></span> actions.</p>
+
+    <p class="body">We also want to assure that the user-agent who is removing the profile is the same user-agent who is currently authenticated. We could do this within a policy, but an easier way is to refactor the <span><code class="codeintext">removeProfile</code></span> action to use the <span><code class="codeintext">req.session.userId</code></span> instead of relying upon the front end to send an <span><code class="codeintext">id</code></span>. In Sublime, open <span><code class="codeintext">brushfire/apis/UserController.js</code></span> and make the following changes in listing 10.12.</p>
+
+    <p class="codelistingcaption">Listing 10.12 Refactoring the removeProfile action to use req.session.userId</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">  removeProfile: function(req, res) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    // if (!req.param('id')){</code> <code class="codebcxspmiddle">    //  return res.badRequest('id is a required parameter.');</code> <code class="codebcxspmiddle">    // }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.update({</code> <code class="codebcxspmiddle">      id: req.session.userId  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    }, {</code> <code class="codebcxspmiddle">      deleted: true</code> <code class="codebcxspmiddle">    }, function(err, removedUser) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle">      if (removedUser.length === 0) {</code> <code class="codebcxspmiddle">        return res.notFound();</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      req.session.userId = null;</code> <code class="codebcxspmiddle">        return res.ok();</code> <code class="codebcxspmiddle">      });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Now relying upon the <span><code class="codeintext1">userId</code></span> property of the session instead of a parameter</p>
+
+    <p class="body">Notice that we removed the check for <span><code class="codeintext">if (!req.param('id'){</code></span>. Since we’re no longer relying upon an <span><code class="codeintext">id</code></span> parameter from the front end, we need to change the AJAX <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/user/removeProfile</code></span>. In Sublime, open <span><code class="codeintext">brushfire/assets/js/controllers/profilePageController.js</code></span> and add the following path in listing 10.13.</p>
+
+    <p class="codelistingcaption">Listing 10.13 Changing the request path to eliminate the <span><code class="codeintext1">id</code></span> parameter</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">$scope.removeProfile = function() {</code> <code class="codebcxspmiddle">$http.put('/user/removeProfile', {<span class="codeannotationcueballs1">❶ </span></code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>   removed the <span><code class="codeintext1">id</code></span> parameter from the request path </p>
+
+    <h3 class="head1" id="heading_id_15">10.2.7   Preventing users from messing with each others’ data</h3>
+
+    <p class="body">Next, let’s examine the edit profile page in figure 10.8.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.8  The edit profile page when accessed via an authenticated user-agent adds three unprotected actions.</p>
+
+    <p class="body">The edit profile page will only be displayed if the user-agent is authenticated based upon the <span><code class="codeintext">isLoggedIn</code></span> policy applied to the <span><code class="codeintext">showEditProfilePage</code></span> action. We have already addressed five of the eight controller actions that can be triggered within the page. The three actions that haven’t been addressed include <span><code class="codeintext">updateProfile</code></span>, <span><code class="codeintext">restoreGravatarURL</code></span> and <span><code class="codeintext">changePassword</code></span>. Each of these controller/actions has conditions when they will not be accessible to the UI. Therefore, we’ll again use the <span><code class="codeintext">isLogginIn</code></span> policy to restrict access to the actions if a user-agent is not logged in. In Sublime, open <span><code class="codeintext">brushfire/config/policies.js</code></span> and add the following in listing 10.14.</p>
+
+    <p class="body"> </p>
+
+    <p class="codelistingcaption">Listing 10.14 Applying the isLoggedIn policy to actions in the User controller</p><code class="codebcxspfirst">module.exports.policies = {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    UserController: {</code> <code class="codebcxspmiddle">       ...</code> <code class="codebcxspmiddle">    removeProfile: ['isLoggedIn']</code> <code class="codebcxspmiddle">    updateProfile: ['isLoggedIn'], <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    restoreGravatarURL: ['isLoggedIn'], <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">changePassword: ['isLoggedIn']     <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">     },</code><code class="codebcxsplast">    ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Added the <span><code class="codeintext1">isLoggedIn</code></span> policy to the <span><code class="codeintext1">updateProfile</code></span>, <span><code class="codeintext1">restoreGravatarURL</code></span>, and <span><code class="codeintext1">changePassword</code></span> actions.</p>
+
+    <p class="body">We also want to assure that the user-agent who is updating the profile or changing the password is the same user-agent who is currently authenticated. We could do this within a policy.  An easier way is to refactor the <span><code class="codeintext">updateProfile</code></span> and <span><code class="codeintext">changePassword</code></span> actions to use the <span><code class="codeintext">req.session.userId</code></span> instead of relying upon the front end to send an <span><code class="codeintext">id</code></span>. In Sublime, open <span><code class="codeintext">brushfire/apis/UserController.js</code></span> and make the following changes in listing 10.15.</p>
+
+    <p class="codelistingcaption">Listing 10.15 Refactoring the updateProfile and changePassword actions to use req.session.userId</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">module.exports = {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">  updateProfile: function(req, res) {</code> <code class="codebcxspmiddle">    User.update({</code> <code class="codebcxspmiddle">      id: req.session.userId  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">    }, {</code> <code class="codebcxspmiddle">      gravatarURL: req.param('gravatarURL')</code> <code class="codebcxspmiddle">    }, function(err, updatedUser) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      if (err) return res.negotiate(err);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      return res.json(updatedUser);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code> <code class="codebcxspmiddle">changePassword: function(req, res) {</code> <code class="codebcxspmiddle">    Passwords.encryptPassword({</code> <code class="codebcxspmiddle">      password: req.param('password'),</code> <code class="codebcxspmiddle">    }).exec({</code> <code class="codebcxspmiddle">      error: function(err) {</code> <code class="codebcxspmiddle">        return res.serverError(err);</code> <code class="codebcxspmiddle">      },</code> <code class="codebcxspmiddle">      success: function(result) {</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        User.update({</code> <code class="codebcxspmiddle">          // id: req.param('id')</code> <code class="codebcxspmiddle">          id: req.session.userId  <span class="codeannotationcueballs1">❷ </span></code> <code class="codebcxspmiddle">        }, {</code> <code class="codebcxspmiddle">          encryptedPassword: result</code> <code class="codebcxspmiddle">        }).exec(function(err, updatedUser) {</code> <code class="codebcxspmiddle">          if (err) {</code> <code class="codebcxspmiddle">            return res.negotiate(err);</code> <code class="codebcxspmiddle">          }</code> <code class="codebcxspmiddle">          return res.json(updatedUser);</code> <code class="codebcxspmiddle">        });</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">    });</code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> Now relying upon the <span><code class="codeintext1">userId</code></span> property of the session instead of an <span><code class="codeintext1">id</code></span> parameter</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">❷ </span> Now relying upon the <span><code class="codeintext1">userId</code></span> property of the session instead of an <span><code class="codeintext1">id</code></span> parameter</p>
+
+    <p class="body">We’re no longer relying upon an <span class="italics">id</span> parameter from the front end for the <span><code class="codeintext">updateProfile</code></span> action, we need to change the AJAX <span><code class="codeintext">PUT</code></span> request to <span><code class="codeintext">/user/updateProfile</code></span>. In Sublime, open <span><code class="codeintext">brushfire/assets/js/controllers/editProfilePageController.js</code></span> and add the following path in listing 10.16.</p>
+
+    <p class="codelistingcaption">Listing 10.16 Changing the request path to eliminate the <span class="italics1">id</span> parameter in updateProfile action</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">$scope.updateProfile = function() {</code> <code class="codebcxspmiddle">$http.put('/user/updateProfile', {  <span class="codeannotationcueballs1">❶ </span></code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Removed the <span class="italics1">id</span> parameter from the request path</p>
+
+    <p class="body">We are no longer passing an <span><code class="codeintext">id</code></span> parameter for the <span><code class="codeintext">changePassword</code></span> action. In Sublime, open <span><code class="codeintext">brushfire/assets/js/controllers/editProfilePageController.js</code></span> and remove the <span><code class="codeintext">id</code></span> parameter in listing 10.17.</p>
+
+    <p class="codelistingcaption">Listing 10.17 Removing the <span><code class="codeintext1">id</code></span> parameter in the request to the <span><code class="codeintext1">changePassword</code></span> action</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">$scope.changePassword = function() {</code> <code class="codebcxspmiddle">  $http.put('user/changePassword', {</code> <code class="codebcxspmiddle">        // id: $scope.me.id, <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">        password: $scope.editProfile.properties.password</code> <code class="codebcxspmiddle">      })</code> <code class="codebcxspmiddle">      .then(function onSuccess(sailsResponse) {</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> Removed the <span><code class="codeintext1">id</code></span> parameter</p>
+
+    <h3 class="head1" id="heading_id_16">10.2.8   Preventing confusion for signed-in users</h3>
+
+    <p class="body">The signup page in figure 10.9will only be displayed if the user-agent is logged out (e.g. not authenticated) based upon the applied i<span class="italics">s</span> <span class="italics">LoggedOut</span> policy to the <span class="italics">showSignupPage</span>.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.9  The signup page when accessed via an unauthenticated user adds two unprotected actions-- <span class="codeannotationcueballs">① </span>  <span><code class="codeintext1">showRestorePage</code></span> and <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">signup</code></span>.</p>
+
+    <p class="body">The signup page includes two controller/actions we haven’t addressed -- <span><code class="codeintext">showRestorePage</code></span> and <span><code class="codeintext">signup</code></span>. Both of these actions are unavailable when the user-agent is not authenticated. Therefore, we will add the <span><code class="codeintext">isLoggedOut</code></span> policy to each action’s ACL. In Sublime, open <span><code class="codeintext">brushfire/config/policies.js</code></span> and add the following in listing 10.18.</p>
+
+    <p class="codelistingcaption">Listing 10.18 Applying the isLoggedOut policy to the showRestorePage and signup actions</p><code class="codebcxspfirst">module.exports.policies = {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">     UserController: {</code> <code class="codebcxspmiddle">       ...</code> <code class="codebcxspmiddle">signup: ['isLoggedOut'] <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">     },</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  PageController: {</code> <code class="codebcxspmiddle">    ...</code> <code class="codebcxspmiddle">    showRestorePage: ['isLoggedOut'] <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  },</code><code class="codebcxsplast">    ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  added the <span><code class="codeintext1">isLoggedOut</code></span> policy to the <span><code class="codeintext1">showRestorePage</code></span> and <span><code class="codeintext1">signup</code></span> controller/actions.</p>
+
+    <p class="body"> </p>
+
+    <p class="body">The restore profile page is displayed when a user-agent is not authenticated similar to figure 10.10.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.10  The restore profile page when accessed via an unauthenticated user-agent adds one unprotected action.</p>
+
+    <p class="body">The restore page contains one endpoint that triggers a controller/action we’ve yet to address -- <span class="codeannotationcueballs">① </span> <span><code class="codeintext">restoreProfile</code></span>. Because the restore profile page is not displayed unless the user-agent is logged out, we will implement access control within the existing <span><code class="codeintext">isLoggedOut</code></span> policy. In Sublime, open <span><code class="codeintext">brushfire/config/policies.js</code></span> and add the following in listing 10.19.</p>
+
+    <p class="codelistingcaption">Listing 10.19 Applying the <span><code class="codeintext1">isLoggedOut</code></span> policy to the <span><code class="codeintext1">restoreProfile</code></span> action</p><code class="codebcxspfirst">module.exports.policies = {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">     UserController: {</code> <code class="codebcxspmiddle">       ...</code> <code class="codebcxspmiddle">restoreProfile: ['isLoggedOut']  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">     },</code><code class="codebcxsplast">    ...</code>
+
+    <p class="figureacaption"><span class="codeannotationcueballs">❶ </span>  added the <span><code class="codeintext1">isLoggedOut</code></span> policy to the <span><code class="codeintext1">restoreProfile</code></span> controller/action.</p>
+
+    <h3 class="head1" id="heading_id_17">10.2.9   Restricting access to administrative actions</h3>
+
+    <p class="body">The administration page is depicted in figure 10.11.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/10_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 10.11  The administration page when accessed via an authenticated user-agent and whose <span class="italics1">admin</span> property is set to <span class="italics1">true</span> adds four unprotected actions.</p>
+
+    <p class="body">The administration page is only displayed when the user-agent is both authenticated and the <span><code class="codeintext">admin</code></span> property is set to <span><code class="codeintext">true.</code></span> The administration page has four controller/actions we haven’t addressed –<span><code class="codeintext">adminUsers</code></span>, <span><code class="codeintext">updateAdmin</code></span>, <span><code class="codeintext">updateBanned</code></span>, and <span><code class="codeintext">updateDeleted</code></span>. Since these actions are not available via the UI when a user-agent is logged out, we’ll add two policies to their ACLs – <span><code class="codeintext">isLoggedIn</code></span> and <span><code class="codeintext">isAdmin</code></span>. In Sublime, open <span><code class="codeintext">brushfire/config/policies.js</code></span> and add the following in listing 10.20.</p>
+
+    <p class="codelistingcaption">Listing 10.20 Applying the isLoggedIn and isAdmin policies to actions in  the User controller</p><code class="codebcxspfirst">module.exports.policies = {</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">     UserController: {</code> <code class="codebcxspmiddle">       ...</code> <code class="codebcxspmiddle">       adminUsers: ['isLoggedIn', 'isAdmin'],   <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">       updateAdmin: ['isLoggedIn', 'isAdmin'],  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">       updateBanned: ['isLoggedIn', 'isAdmin'], <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">       updateDeleted: ['isLoggedIn', 'isAdmin'] <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">     },</code><code class="codebcxsplast">    ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span>  added the <span><code class="codeintext1">isLoggedIn</code></span> and <span><code class="codeintext1">isAdmin</code></span> policies to the ACL.</p>
+
+    <h2 class="head" id="heading_id_18">10.3   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   Policies provide a highly granular way to control access to controllers and their actions.</p>
+
+    <p class="listbulletcxspmiddle">·   Best practices for policies include not basing policies on parameters but instead relying upon session properties and the results from database queries.</p>
+
+    <p class="listbulletcxspmiddle">·   Back end actions can be controlled from within the action itself or through policies.</p>
+
+    <p class="listbulletcxsplast">·   Policies have the advantage of being reusable across multiple actions.</p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,977 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">1    Getting Started</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   “Modern” web development</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Understanding the architecture of the Sails framework</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Where Sails fits into modern web development</p>
+
+    <p class="cosummarybulletcxspmiddle">·   Installing the necessary components of the technical stack</p>
+
+    <p class="cosummarybulletcxsplast">·   Setting up the tools of your development environment</p>
+
+    <p class="body">Too often, back-end programming is put on a pedestal, where only highly trained and disciplined “experts” are worthy. That’s baloney. Back-end programming isn’t rocket science—but that doesn’t mean it’s easy. It means that for those new to it, you just need a healthy curiosity and a powerful framework like Sails to get started. If you already have experience with back-end programming in a language other than JavaScript, the transition can also be frustrating. Shifting from synchronous to asynchronous patterns can take some time to master. Whether new or experienced, Sails will make this transition much easier. Our goal is to provide an entertaining, practical, gap-free path to understanding Sails as well as modern back-end web development. For a brief history of Sails, see appendix A.</p>
+
+    <h2 class="head" id="heading_id_3">1.1   What is Sails?</h2>
+
+    <p class="body">Sails is a JavaScript back-end framework that makes it easy to build custom, enterprise-grade Node.js apps. It is designed to emulate the familiar MVC pattern of frameworks like Ruby on Rails, but with support for the requirements of modern apps: data-driven APIs with a scalable, service-oriented architecture. It's especially good for building chat, real time dashboards, or multiplayer games; but you can use it for any web application project - top to bottom.</p>
+
+    <p class="body">The book is targeted at two types of developers. First, is a developer who has front-end experience and is looking to become a full-stack programmer using JavaScript, a language they already know. Second, is a developer that has back-end experience in a language other than JavaScript and is looking to expand their knowledge to Node.js. In either case, familiarity with HTML, CSS, and JavaScript is expected, as well as experience with making AJAX requests. Most important is a healthy curiosity of how to build a web application.</p>
+
+    <h2 class="head" id="heading_id_4">1.2   What can you build with Sails?</h2>
+
+    <p class="body">Whether you’re a front-end developer seeking to expand your back-end knowledge, or a server-side developer unfamiliar with using Node and JavaScript on the back-end, the common denominator we all share is a desire to create web applications. Sails is designed to be compatible with whatever strategy you have for building your front-end, whether it be  Angular, Backbone, iOS/ObjC, Android/Java, or even a “headless” app that just offers up a raw API to be used by another web service or your developer community. Sails is great for building everyday back-end apps that handle HTTP requests and WebSockets.  It isn’t a good approach for building the client-side of your application-- that part is completely up to you. If you end up changing your approach (e.g. switching from Backbone to Angular) or building a new front-end entirely (e.g. building a Windows Phone native app), your Sails app will still work.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Be warned you’re about to experience a buzzword bonanza. If you see a term you don’t recognize, don’t worry—we’ll return to these concepts in detail later in the book.</p>
+    </div>
+
+    <p class="body">So what type of applications can you build? Sails excels at building:</p>
+
+    <p class="listbulletcxspfirst">·   <span class="bold">Hybrid Web Applications</span> - applications that combine a JSON API with server-rendered views, that is, in addition to an API, this type of application can serve dynamic (i.e. personalized) HTML pages, making it suitable for use cases which demand SEO (search engine optimization). These applications often use a client-side JavaScript framework (e.g. Angular, Ember, React, etc.), but they don’t necessarily have to. Examples of hybrid web applications you might be familiar with are Twitter, GitHub, and Basecamp.</p>
+
+    <p class="listbulletcxsplast">·   <span class="bold">Pure APIs</span> – applications that fulfill requests from one or more independent front-end user interfaces. We say “independent” because the front-end doesn’t have to be delivered by the same server that is providing the JSON API, or even by a server at all. This umbrella category includes SPAs (single-page apps), native mobile applications (e.g. iOS and Android), native desktop applications (e.g. OSX, Windows, Linux), and the venerated IoT (Internet of Things). Many mobile-first products (think Uber, Instagram, Snapchat) start off as pure APIs.</p>
+
+    <p class="body">If you aren’t sure which category your application falls into, don’t worry: the concepts overlap. A pure API is to a hybrid web application as a square is to a rectangle. We’ll spend the first half of this book building a pure API, and the remaining chapters extending and maintaining it as it transitions into a hybrid web application.</p>
+
+    <h2 class="head" id="heading_id_5">1.3   So why Sails?</h2>
+
+    <p class="listbullet pcalibre7">·   <span class="bold">100% JavaScript</span> - Like other MVC frameworks, Sails is built with an emphasis on developer happiness and a convention-over-configuration philosophy. But Node.js takes this principle to the next level. Building on top of Sails means your app is written entirely in JavaScript, the language you and your team are already using in the browser. Since you spend less time context-shifting, you're able to write code in a more consistent style, which makes development more productive and fun.</p>
+
+    <div class="sgc4 pcalibre7">
+      <p class="sidebard">The authors of this book can both attest to how nice it is to work with <span class="italics1">one language</span> instead of constantly switching back and forth between JavaScript and whatever back-end language your company or customers are using. The best part?  It means you get <span class="italics1">really good</span> at it.</p>
+    </div>
+
+    <p class="listbulletcxspfirst">·   <span class="bold">Rock solid foundation</span> - Sails is built on Node.js, a popular, lightweight server-side technology that allows developers to write blazing fast, scalable network applications in JavaScript. It also uses Express for handling HTTP requests, and Socket.IO for managing WebSockets. So if your app ever needs to get really low-level, you can access the raw Express or Socket.IO objects. And there’s another nice side effect: if you have already have an Express app, your existing routes will work perfectly well in a Sails app, so migrating is a breeze.</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Front-end Agnostic</span> - While the promise of "one language and/or framework to rule them all" is certainly enticing, it isn't always realistic. Different organizations, technologies, and personalities all have their preferred way of doing things. It’s because of this that Mike made Sails compatible with any front-end strategy; whether it's Angular, Backbone, iOS/ObjC, Android/Java, Windows Phone, or something else that hasn't been invented yet. Plus it's easy to serve up the same API to be consumed by another web service or community of developers.</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Auto generated REST APIs</span> - Sails comes with “blueprints” that help jumpstart your app's back-end without writing any code. Just run <span><code class="codeintext">sails generate api dentist</code></span> and you'll get an API that lets you search, paginate, sort, filter, create, destroy, update, and associate dentists. Since these blueprint actions are built on the same underlying technology as Sails, they also work with WebSockets and any supported database out of the box.</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Use any popular database</span> - Sails bundles a powerful ORM, Waterline, which provides a simple data access layer that just works, no matter what database you're using. In addition to a plethora of community projects, officially supported adapters exist for MySQL, MongoDB, PostgreSQL, Redis, and local disk storage.</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Powerful associations</span> - Sails offers a new take on the familiar relational model, aimed at making data modeling more practical. You can do all the same things you might be used to in an ORM (one-to-many, many-to-many), but you can also assign multiple named associations per-model. For instance, a cake might have two collections of people: “havers” and “eaters”. Better still, you can assign different models to different databases, and your associations/joins will still work—even across NoSQL and relational boundaries. Sails has no problem implicitly/automatically joining a MySQL table with a Mongo collection and vice versa.</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Standardization</span> – When you build a Sails app, you are taking advantage of all sorts of open standards behind the scenes.  Almost everything has a specification; from database and file upload adapters, to hooks that make up the framework itself. Using the machine specification, you can even make any function in your app pluggable; making it easy to switch between different providers for services like email delivery and social authentication. Building on top of well-defined interfaces means that whenever you need to do something custom, your work is self-documenting, quick to implement, and simple to debug.</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Node-machine services</span> - The Machine specification is an open standard for JavaScript functions. Each machine has a single, clear purpose—whether it be sending an email, translating a text file, or fetching a web page. Machines are self-documenting, quick to implement, and simple to debug.</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Realtime with WebSockets</span> - Sails translates incoming socket messages for you, making them compatible with every route in your Sails app.</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Reusable security Policies</span> - Sails provides basic security and role-based access control by default.</p>
+
+    <p class="listbulletcxspmiddle">·   <span class="bold">Sails generators</span> – Sails provides a consistent way of creating projects using reasonable defaults. Sails also contains generators for automating many tasks like creating models and controllers. Generators are built on an extensible architecture, supported by a community of developers.</p>
+
+    <p class="listbulletcxsplast">·   <span class="bold">Flexible Asset Pipeline</span> - Sails ships with opinionated build scripts and a default directory structure for client-side assets.  Out of the box, the asset pipeline provides support for LESS, CoffeeScript, precompiled client-side HTML templates, and production minification.  This makes setting up new projects easy and consistent, but it does pose a problem when it comes time to tweak or completely redefine that tooling to fit your personal preferences or your organization’s best practices.  Fortunately, all of the default automation in Sails is implemented as plugins for the Grunt task runner, which means your entire front-end asset workflow is completely customizable. It also means you can choose from the thousands of widely used, open-source Grunt plugins already out there.</p>
+
+    <p class="body">If you don’t understand some of the bullet points above, don’t worry. Our goal isn’t to teach you a bunch of jargon and acronyms. But by the end of the book, you will have a firm conceptual grasp on each one of these topics—and more importantly, you’ll be able to apply that understanding when building the back-end for any of the different types of apps listed above.</p>
+
+    <h2 class="head" id="heading_id_6">1.4   Fundamental concepts of a web application</h2>
+
+    <p class="body">Web application development is riddled with core concepts and terminology that may or may not be familiar to you. It’s critical that we have a common frame of reference for them before we begin this extended journey together. This section is a jump-start to your understanding of an important core concept in back-end development: The HTTP request/response protocol. If this seems like a review, feel free to skip to section 1.5 Understanding Databases.</p>
+
+    <h3 class="head1" id="heading_id_7">1.4.1   Requests and responses</h3>
+
+    <p class="body">The heart of a web application is handling the conversations made through requests sent by the front-end and responses sent by the back-end. We'll ease in to this discussion using a tool we're all familiar with: the browser. To start with, let's take a look at the completed version of Brushfire, the application we'll be building together throughout the rest of this book. Navigate your browser to <a class="pcalibre8 pcalibre5" href="https://brushfire.io">https://brushfire.io</a>.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.1  The contents of a response from an initial request by your browser to <a class="pcalibre8 pcalibre4 pcalibre5" href="https://brushfire.io">https://brushfire.io</a>.</p>
+
+    <p class="body">The browser just made a <span class="italics">request</span> on your behalf and the Sails server <span class="italics">responded</span> with the contents of the home page you now see displayed.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.2 The front-end makes a request and the back-end makes a response.</p>
+
+    <p class="body">When you are talking with a waiter, you might use a <span class="italics">protocol</span> such as English or Spanish to make a request (“Could I have a glass of water?”) and receive a response (“Certainly!”).  The same kind of conversation exists between a front-end and your Sails application: but since computers don’t have the kinds of mouths, ears, or brains fit for processing human language, the client and server communicate by sending specially formatted strings back and forth.  This conversation is called the <span class="italics">HTTP protocol</span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">“Wait, no one said anything about learning protocols!” The HTTP protocol is just an agreed upon set of rules not unlike a rudimentary language. And it is this language that enables different devices that know how to speak HTTP to talk to each other. For the adventurous that want a low-level explanation, check out the RFC (“Request For Comments”) pages for the HTTP protocol found here <a class="pcalibre8 pcalibre4 pcalibre5" href="http://tools.ietf.org/html/rfc7230#page-5">http://tools.ietf.org/html/rfc7230 - page-5</a>, which are surprisingly readable.</p>
+    </div>
+
+    <p class="body">Requests and responses sent back and forth using the HTTP protocol are the underlying communication bridge between our front-end client and back-end Sails server.</p>
+
+    <p class="body">Let’s take a closer look at the actual request and the response. Click on the <span class="italics">signup</span> button in the upper navigation bar of the home page, and you should see the signup page as illustrated in figure 1.3.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.3 Clicking on the <span class="italics1">signup</span> button generates a request to the Sails back-end that responds with the signup page.</p>
+
+    <p class="body">Once again the browser made an HTTP request on your behalf and the Sails server responded, in this case with a string of HTML markup representing the signup page. Figure 1.4 displays an overview of the steps that culminated in the rendered signup page.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.4  The components necessary for the back-end to satisfy the request and deliver the signup page back to the front-end.</p>
+
+    <p class="body">At a high level figure 1.4 shows an often-repeated pattern of Sails components we’ll use to build the back-end. We’ll focus on the details of each of these components in chapters 3-15. For now let’s concentrate on the request. A portion of the “raw” request string that was sent from your browser to Sails looks like this:</p><code class="codeb">GET /signup HTTP/1.1</code>
+
+    <p class="body">This is technically called the <span class="italics">request line</span> or <span class="italics">start line</span>, but what matters is that it consists of the <span class="italics">method</span> (<span><code class="codeintext">GET</code></span>), and the <span class="italics">path</span>—(<span><code class="codeintext">/signup</code></span>).</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">For our purposes the protocol version (HTTP/1.1) can be ignored-- we’re just interested in the method and the path. The request contains two other things we care about: <span class="italics1">request headers</span> and a <span class="italics1">request body</span>. We’ll discuss them a little later in the book when they come up.</p>
+    </div>
+
+    <p class="body">Next, let’s move over to the response.  The Sails server received the <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/signup</code></span> and determined that the intent of the request was to receive a response containing the signup page.  The first piece of the “raw” response string sent from the Sails server to your browser looks like this:</p><code class="codeb">HTTP/1.1 200 OK     </code>
+
+    <p class="body">This portion of the response message is called the <span class="italics">response line</span> or <span class="italics">start line</span> and consists of the <span class="italics">protocol version--</span> <span><code class="codeinitalic">HTTP/1.1</code></span><span><code class="codeintext">,</code></span> the <span class="italics">server status code--</span> <span><code class="codeinitalic">200</code></span>, and something called the <span class="italics">textual reason phrase--</span> <span><code class="codeinitalic">OK</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Naming stuff is probably the hardest thing to do in programming. So hard that we get names like <span class="italics1">textual reason phrase</span>.</p>
+    </div>
+
+    <p class="body">The important part is the server <span class="italics">status code</span>(<span><code class="codeintext">200)</code></span>, a special number that indicates the status or outcome of the request, like how the code exited. In addition to the status code, the response also contains the HTML of the startup page in a part of the response called the <span class="italics">response body</span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The complete response message also contained <span class="italics1">response headers,</span> which are not part of our example, so we’ll postpone discussing them.</p>
+    </div>
+
+    <p class="body">Now for some good news! Since requests originate in a limited number of ways, we’ll rarely if ever have to work with a raw request or a raw response.  Instead, outgoing requests will be generated by one of the approaches in table 1.1.</p>
+
+    <p class="tablecaption pcalibre7">Table 1.1  Sources of HTTP requests</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="24%" class="sgc5" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Approach</p>
+          </div>
+        </td>
+
+        <td char="75%" class="sgc7" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Example</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="24%" class="sgc8" valign="top">
+          <p class="tablebody2cxspfirst">A Browser URL bar</p>
+        </td>
+
+        <td char="75%" class="sgc9" valign="top">
+          <p class="tablebody2cxsplast"><a class="pcalibre8 pcalibre5" href="http://www.myApp.com/signup">http://www.myApp.com/signup</a></p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="24%" class="sgc8" valign="top">
+          <p class="tablebody">An anchor tag</p>
+        </td>
+
+        <td char="75%" class="sgc9" valign="top"><code class="tablecode"><span><code class="codeintext">&lt;a href=” http://www.myApp.com/signup”&gt;&lt;/a&gt;</code></span></code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="24%" class="sgc8" valign="top">
+          <p class="tablebody">The browser’s location property on the <span><code class="codeintext">window</code></span> dictionary</p>
+        </td>
+
+        <td char="75%" class="sgc9" valign="top"><code class="tablecode"><span><code class="codeintext">window.location = “http://www.myApp.com/signup”</code></span></code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="24%" class="sgc8" valign="top">
+          <p class="tablebody">The browser <span><code class="codeintext">window</code></span> dictionary open method.</p>
+        </td>
+
+        <td char="75%" class="sgc9" valign="top"><code class="tablecode"><span><code class="codeintext">window.open(“http://www.myApp.com/signup”)</code></span></code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="24%" class="sgc8" valign="top">
+          <p class="tablebody">an AJAX request</p>
+        </td>
+
+        <td char="75%" class="sgc9" valign="top"><code class="tablecode">$.ajax({</code> <code class="tablecode">  url: '/signup', </code> <code class="tablecode">  type: 'GET',   </code> <code class="tablecode">  success: function(result){</code> <code class="tablecode">    console.log('result: ', result);</code> <code class="tablecode">  },</code> <code class="tablecode">  error: function(xhr, status, err){</code> <code class="tablecode">    console.log(err);</code> <code class="tablecode">  }</code><code class="tablecode">});</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="24%" class="sgc10" valign="top">
+          <p class="tablebody">Via an HTTP library(Android Example)</p>
+        </td>
+
+        <td char="75%" class="sgc11" valign="top"><code class="tablecode">// Instantiate the RequestQueue.</code> <code class="tablecode">RequestQueue queue = Volley.newRequestQueue(this);</code> <code class="tablecode">String url ="http://www.google.com";</code> <code class="tablecode">// Request a string response from the provided URL.</code> <code class="tablecode">StringRequest stringRequest = new StringRequest(Request.Method.GET, url,</code> <code class="tablecode">            new Response.Listener&lt;String&gt;() {</code> <code class="tablecode">    @Override</code> <code class="tablecode">    public void onResponse(String response) {</code> <code class="tablecode">        // Display the first 500 characters of the response string.</code> <code class="tablecode">        mTextView.setText("Response is: "+ response.substring(0,500));</code> <code class="tablecode">    }</code> <code class="tablecode">}, new Response.ErrorListener() {</code> <code class="tablecode">    @Override</code> <code class="tablecode">    public void onErrorResponse(VolleyError error) {</code> <code class="tablecode">        mTextView.setText("That didn't work!");</code> <code class="tablecode">    }</code> <code class="tablecode">});</code> <code class="tablecode">// Add the request to the RequestQueue.</code><code class="tablecode">queue.add(stringRequest);</code></td>
+      </tr>
+    </table>
+
+    <p class="body">Incoming “raw” requests to the back-end are parsed and transformed by Sails into dictionaries with properties we can easily access in our back-end code.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">JavaScript has <span class="italics1">dictionaries</span>? Because the word <span class="italics1">object</span> is used ubiquitously in JavaScript to describe almost everything we use the term <span class="italics1">dictionary</span> to refer to an <span class="italics1">object</span> that’s declared using <span><code class="codeintext1">{}</code></span>curly braces<span class="italics1">.</span> For example: <span><code class="codeintext1">{ foo: 'bar' }</code></span> is a dictionary.</p>
+    </div>
+
+    <p class="body">For outgoing responses we’ll rely upon Sails’ built-in methods for responding to a request with JSON or a dynamic HTML web page.  This allows you to focus on how your application is supposed to work, instead of the detailed minutiae of the HTTP protocol.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">For 99% of use cases, this level of abstraction is more than flexible enough.  But if you ever need lower-level access, don’t worry. Sails and Node.js allow you to work directly with the underlying HTTP request and response streams on a case-by-case basis.</p>
+    </div>
+
+    <p class="body">Now that we know a bit more about the request and response, let’s explore how they’re used to successfully fulfill the requirements of our application.</p>
+
+    <h3 class="head1" id="heading_id_8">1.4.2   HTTP methods</h3>
+
+    <p class="body">In section 1.4.1, we introduced the HTTP protocol as a way for the front-end and back-end to send data back and forth.  But requests are useful for more than just transporting data: they also convey intent. The Sails server must interpret that intent and respond with something that fulfills the requirements of the initial request. So let’s examine how this communication is accomplished using the signup page as a real world example. In your browser, fill out the Brushfire signup form you navigated to earlier, and click the <span class="italics">create account</span> button. Clicking this button triggers an AJAX request from the browser.  An overview of this request/response look can be found in figure 1.5.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.5 The components necessary for the back-end to satisfy the request by creating a user and responding with the result.</p>
+
+    <p class="body">Once again, don’t get overwhelmed by the details, we’ll be reinforcing each component many times with examples. If we looked at the “raw” request string it would look like this:</p><code class="codeb">POST /user/signup HTTP/1.1</code>
+
+    <p class="body">Since the request included the <span class="italics">method</span>—<span><code class="codeintext">POST</code></span> and the <span class="italics">path</span>-- <span><code class="codeintext">/user/signup</code></span>, in this example, we would say that the browser “sent a POST request to /user/signup”. HTTP methods (also known as <span class="italics">verbs</span>) like <span><code class="codeintext">POST</code></span>, <span><code class="codeintext">GET</code></span>, <span><code class="codeintext">PUT</code></span>, and <span><code class="codeintext">DELETE</code></span> are simply labels that help indicate the intent of a request.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The request on the signup page is intended to create a new user.  Shortly, you’ll see that the front-end and back-end have made an agreement that when the front-end makes a <span><code class="codeintext1">POST</code></span> request to <span><code class="codeintext1">/user/signup</code></span>, the back-end Sails server will create the user. So the request is the front-end’s portion of that agreement.</p>
+    </div>
+
+    <p class="body">The term <span class="italics">HTTP method</span> can be confusing because it gives the impression that each method has some inherent, specific purpose.  The reality is that the method label, <span><code class="codeintext">POST,</code></span> doesn’t inherently do anything.  It can express our intent, but it’s up to the back-end to determine how to interpret that intent and respond.</p>
+
+    <p class="body">For example, we could create a Sails app that interprets a <span><code class="codeintext">GET</code></span> request to the path <span><code class="codeintext">/signup</code></span> as a request to create a new user.  Technically, this would work just fine—but it would be a bad idea, since it would violate a common <span class="italics">convention</span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We use the term <span class="italics1">convention</span> to mean an informal agreement between programmers for how something is “supposed” to work.  It is usually a bad idea to break conventions.  Not only do they make it easier for developers to collaborate and get up to speed on a code base, they also make it easier for you to remember how your app works as it matures.</p>
+    </div>
+
+    <p class="body">The <span><code class="codeintext">GET</code></span> method, by convention, is used to indicate that an action is <span class="italics">cacheable</span> or “safe”; because nothing should change as a result of making a <span><code class="codeintext">GET</code></span> request. If our back-end interpreted a <span><code class="codeintext">GET</code></span> request to the path <span><code class="codeintext">/signup</code></span> as a request to create a new user, adding the user would violate this convention. The conventional side effects of each HTTP method are listed in table 1.1.</p>
+
+    <p class="tablecaption pcalibre7">Table 1.2  HTTP Method Conventions</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="12%" class="sgc12" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Method</p>
+          </div>
+        </td>
+
+        <td char="87%" class="sgc13" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Side Effects</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc14 pcalibre7" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">GET</code></span></p>
+        </td>
+
+        <td char="87%" class="sgc15" valign="top">
+          <p class="tablebody2cxsplast">Should be <span class="italics">cacheable</span>; that is, sending a <span><code class="codeintext">GET</code></span> request should respond without causing any side effects. Often used for fetching data.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc14 pcalibre7" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">POST</code></span></p>
+        </td>
+
+        <td char="87%" class="sgc15" valign="top">
+          <p class="tablebody2cxsplast">No guarantees. Any given <span><code class="codeintext">POST</code></span> request could cause side effects such as sending an email, or creating a pet store in the database.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc14 pcalibre7" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">PUT</code></span></p>
+        </td>
+
+        <td char="87%" class="sgc15" valign="top">
+          <p class="tablebody2cxsplast">Should be <span class="italics">idempotent</span>; that is, sending the same <span><code class="codeintext">PUT</code></span> request over and over  has the same side effects as sending it only once.  Often associated with updating a resource.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc16" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">DELETE</code></span></p>
+        </td>
+
+        <td char="87%" class="sgc17" valign="top">
+          <p class="tablebody2cxsplast">Should be idempotent (see above). Often associated with deleting a resource.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">But we want to stress again that these are what the methods “should” do according to convention. It will be up to us to implement them in this way on the back-end.</p>
+
+    <p class="body">The other part of the request is the URL <span class="italics">path</span>, which looks like a file system path on your computer’s local hard disk.  While a path can be anything, more often the path is simply a reference to a <span class="italics">resource</span> and <span class="italics">action</span>. For example, the path <span><code class="codeintext">/user/signup</code></span> consists of a <span class="italics">user</span> resource and a <span class="italics">signup</span> action.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">You can think of a <span class="italics1">resource</span> as a label that groups related tasks together and an <span class="italics1">action</span> as one of those tasks.</p>
+    </div>
+
+    <p class="body">By combining the <span><code class="codeintext">POST</code></span> method with the path <span><code class="codeintext">/user/signup</code></span> we are conveying the requests intent—to signup or create a new user.</p>
+
+    <p class="body">Next, let’s move to the response. The Sails server received the <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/user/signup</code></span>, interpreted it’s intent, and as we’ll see later, created the user account before responding to the browser like this</p><code class="codeb">HTTP/1.1 200 OK     </code>
+
+    <p class="body">Here, the only part of the response line we’re interested in is the <span class="italics">status code</span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The conventional meaning of a status code is even more ingrained than the conventional meaning behind HTTP method labels.  We’ll be using status codes in our responses as a shorthand way to convey the “status” of a request. In this case the Sails server responded with a status <span><code class="codeintext1">200</code></span> signaling that the creation of the user account was successful. For an exhaustive list of conventional status codes see: <a class="pcalibre8 pcalibre4 pcalibre5" href="https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html">https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html</a>.</p>
+    </div>
+
+    <p class="body">In our example above, we’ve learned how the request can convey intent to create a user.  But what interprets that intent on the back-end? The short answer is that Sails matches the incoming request with a route using its built-in router. Let’s explore routes and the router in the next section.</p>
+
+    <h3 class="head1" id="heading_id_9">1.4.3   Routing</h3>
+
+    <p class="body">It’s easier to examine how Sails interprets the intent of an incoming request using figure 1.6.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.6 Understanding how the Sails router matches the incoming request with routes to trigger an action.</p>
+
+    <p class="body">Recall that in our earlier example we made an AJAX <span><code class="codeintext">POST</code></span> request to <span><code class="codeintext">/user/signup</code></span>. Sails “heard” the request via a built-in module called the <span class="italics">router</span> <span class="codeannotationcueballs">① </span> .  The router recognized the particular request because the request matched <span class="codeannotationcueballs">② </span>  the configured route address of an <span class="italics">explicit route</span>, and then that triggered an action <span class="codeannotationcueballs">③ </span> .</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.7 The router matched the request as part of an explicit route.</p>
+
+    <p class="body">In Sails, explicit routes are configured in a JavaScript file, where they are written as a dictionary with a key for each unique route.  The key—<span><code class="codeintext">'POST /user/signup'</code></span> is called the <span class="italics">route address</span>, and it consists of the HTTP method and path. Then on the right-hand side, every explicit route has a <span class="italics">route target</span>, special syntax which tells Sails what to do when it receives matching requests.  In most cases, this route target consists of a controller--<span><code class="codeintext">UserController</code></span> and an action-- <span><code class="codeintext">signup</code></span>. When a request is made the router looks for a matching route address, and if it finds one, executes the corresponding controller action.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The action is itself a JavaScript function and the controller is a name we give the dictionary that aggregates <span class="italics1">actions</span> under a common resource. So in our signup example, we named the controller <span><code class="codeintext1">UserController</code></span> because the <span class="italics1">actions</span> will all concern a <span><code class="codeintext1">user</code></span>.</p>
+    </div>
+
+    <p class="body">It’s easy to get lost in all the new terminology so let’s compare a route to something we already understand-- a jQuery click event in figure 1.8.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.8  A <span class="codeannotationcueballs">① </span>  route operates like a <span class="codeannotationcueballs">② </span>  click event handler. The <span class="codeannotationcueballs">③ </span>  route address serves a similar purpose to the combination of the <span class="codeannotationcueballs">④ </span>  DOM selector and DOM event. And the route <span class="codeannotationcueballs">⑤ </span>  target is similar to <span class="codeannotationcueballs">⑥ </span>  an event handler function <span class="codeannotationcueballs">⑥ </span> .</p>
+
+    <p class="body">So when the Sails router analyzes an incoming request— <span><code class="codeintext">POST /user/signup HTTP/1.1</code></span>and it matches a route’s method and path-- <span><code class="codeintext">'POST /user/signup'</code></span> it executes the controller/action similar to the way the browser analyzes an incoming DOM event, matches it against a particular selector, and executes an event handler function.</p>
+
+    <p class="body">Now that we can convey intent from the front-end via a request and interpret that intent on the back-end using a route and a router, let’s explore how we fulfill the requirements of the request on the back-end using controller actions.</p>
+
+    <h3 class="head1" id="heading_id_10">1.4.4   Performing actions</h3>
+
+    <p class="body">To better understand controller actions (or simply “actions”), let’s focus on an example: a signup form.  When the user submits the form, a <span><code class="codeintext">POST</code></span> request is sent to <span><code class="codeintext">/user/signup</code></span>. When it arrives at the Sails back-end, the request is automatically compared with our app’s configured routes.  The first matching route will be triggered, which then calls a controller action. It is the job of this controller action to fulfill the requirements of this request. Recall that actions are just JavaScript functions, and that “controllers” are just dictionaries of related actions.</p>
+
+    <p class="body">The requirements for our example endpoint (<span><code class="codeintext">'POST /user/signup'</code></span>) are to create a new user, store that user in our database, and respond with the status code of <span><code class="codeintext">200</code></span> to indicate success.  If anything goes wrong, we’ll want to respond with a different status code depending upon what issue or error occurred. These requirements seem pretty simple but they bring up some fundamental questions about Sails:</p>
+
+    <p class="listbulletcxspfirst">·   How do we send the data harvested from our form input elements to the back-end?  For example, <span><code class="codeintext">email</code></span>, <span><code class="codeintext">username</code></span>, and <span><code class="codeintext">password</code></span>?</p>
+
+    <p class="listbulletcxspmiddle">·   How do we tell Sails where to put the new user’s data?  And how do we tell it which database to use?</p>
+
+    <p class="listbulletcxspmiddle">·   Speaking of that, what code do we write to store the properties of a user in the database?  And where should we write it?</p>
+
+    <p class="listbulletcxsplast">·   How do we tell Sails we’re done? In other words, that we would like to send a response back to the requesting user-agent (our form).  And how do we tell Sails what status code and/or data to use?</p>
+
+    <p class="body">A significant portion of the book is devoted to answering these questions in detail, so we mustn’t get ahead of ourselves. But the least we can do is take a first step towards understanding the answers to these questions right away.</p>
+
+    <p class="body">First, a bit about actions: Since you already know actions are JavaScript functions, it probably won’t come as a shock that they also receive arguments. The first of these arguments (<span><code class="codeintext">req</code></span>) represents the incoming request, and the second (<span><code class="codeintext">res</code></span>) represents the eventual outgoing response. Both <span><code class="codeintext">req</code></span> and <span><code class="codeintext">res</code></span> are special objects called “streams” that come from the depths of Node.js core. Fortunately for us, we rarely (if ever) have to think about them that way, because by the time we get hold of <span><code class="codeintext">req</code></span> and <span><code class="codeintext">res</code></span> in our Sails actions, they’ve been loaded up with a ton of useful properties and convenient functions that make our lives much simpler.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">One of the great things about Node.js is that, even when you hide away complexity with helper methods, all the advanced and powerful features are still there, working their magic behind the scenes. Since <span><code class="codeintext1">req</code></span> and <span><code class="codeintext1">res</code></span> are still technically Node.js “streams”, you have as much flexibility as you would with Node.js out of the box.  Imagine some ridiculously specific use case; perhaps you need to handle strange requests from a legacy point-of-sale system (read: broken down cash register) in a small fish bait shop. And maybe that PoS system doesn’t expect a normal response—instead it expects your server to slowly drip-drop each letter of the alphabet, one every second over the course of two long, excruciating minutes.  No problem! You will write your code to handle the incoming requests from that cash register in the same place you would write any of your other request-handling code in Sails: an action.</p>
+    </div>
+
+    <p class="body">From our action, we can access the data that the user originally typed into the form on our signup page by calling <span><code class="codeintext">req.param()</code></span>, one of the functions provided on the <span><code class="codeintext">req</code></span> dictionary. For example, when we call <span><code class="codeintext">req.param('username')</code></span>, it will return the value  from the <span><code class="codeintext">username</code></span> input element in our form. This begs the question though, how is the front-end sending these values (called <span class="italics">parameters</span>) to our action in the first place? If we were sending this request from a native iPhone app or our terminal, the way parameters are bundled would completely depend on the HTTP client library used to create the request.  But in this example, since we’re using a web page as our front-end, we can narrow things down a bit. There are three common ways that parameters are included in a request from a web browser to the back-end:</p>
+
+    <p class="listbulletcxspfirst">·   When using a regular or “traditional” form submission, the contents of form input elements are included automatically as parameters in the request when the form is submitted. Depending on the <span><code class="codeintext">method</code></span> you put in your HTML, these parameters are bundled in either the request’s <span><code class="codeintext">body</code></span> or in its URL query string (sometimes simply called the query string; see below).</p>
+
+    <p class="listbulletcxspmiddle">·   When using an AJAX request, the parameters can be included in either the URL query string or in the <span><code class="codeintext">body</code></span> of a request. </p>
+
+    <p class="listbulletcxsplast">·   When navigating to a URL by pressing <span><code class="codeintext">&lt;ENTER&gt;</code></span> in your browser’s address bar, including parameters is as simple as typing out a URL query string by hand.</p>
+
+    <p class="body">Remember the “request line” from an HTTP request we looked at earlier?</p><code class="codeb">POST /user/signup HTTP/1.1</code>
+
+    <p class="body">Well, the <span class="italics">body</span> is just another line like that in the HTTP request.  It’s used to transport stuff like the <span><code class="codeintext">email</code></span> and <span><code class="codeintext">password</code></span> parameters from our form. Don’t over think the term “body”.  Even though it might seem foreign at first compared with something more familiar like a URL, it’s just another way to stick data in a request.</p>
+
+    <p class="body">The <span class="italics">URL query string</span> is similar in that it is another way to transport stuff inside of a request—but luckily, it’s even simpler to explain.  In fact, you’ve probably seen query strings countless times already: in your browser’s address bar.  This is because, as you can see from figure 1.9, the query string is actually just a part of the URL:</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.9  An example of the URL query string  that starts with <span class="codeannotationcueballs">① </span>  a question mark, contains a key/value pair separated by an <span class="codeannotationcueballs">② </span>  equals sign and separated by an <span class="codeannotationcueballs">③ </span>  ampersand.</p>
+
+    <p class="body">The URL query string begins with a <span class="codeannotationcueballs">① </span>  question mark (<span><code class="codeintext">?</code></span>) followed by pairs of parameter name/value pairs, where the name of each parameter is separated from its value by <span class="codeannotationcueballs">② </span>  an equal sign (<span><code class="codeintext">=</code></span>). The name/value pairs are separated from each other by <span class="codeannotationcueballs">③ </span>  ampersands (<span><code class="codeintext">&amp;</code></span>).</p>
+
+    <p class="body">So when do you use the body and when do you use a query string? The short answer is most of the time, the front-end framework or utility you are using makes the choice for you. For example, in jQuery if you use the <span><code class="codeintext">$.get()</code></span> syntax to send an AJAX request, the parameters will be transformed into a query string and tacked on at the end of the URL:</p><code class="codebcxspfirst">$.get('/dogs', {</code> <code class="codebcxspmiddle">  page: 4</code><code class="codebcxsplast">}, function(data){ ... });</code>
+
+    <p class="body">On the other hand, if you use send a POST request using <span><code class="codeintext">$.post()</code></span> syntax, jQuery will bundle the parameters in the request’s body:</p><code class="codebcxspfirst">$.post('/user/signup', {</code> <code class="codebcxspmiddle">email: 'sailsinaction@gmail.com',</code> <code class="codebcxspmiddle">password: 'abc123'</code><code class="codebcxsplast">}, function(data){ ... });</code>
+
+    <p class="body">So what’s the difference?  If the URL query string and the body are just two different ways to include parameters in a request, why use one over the other?  Well the truth is, 99% of the time it really doesn’t have any practical impact on your code.  A recurring philosophy in Sails is encapsulation; in other words, it really shouldn’t matter <span class="italics">how</span> you send parameters in your requests to the back-end; what matters is <span class="italics">what</span> you send. That said, there are certain security considerations which dictate when you can and cannot safely use the URL query string, so we will return briefly to this subject to cover best practices when we explore shortcut routes and the blueprint API in chapter 4.</p>
+
+    <p class="body">We realize that it is a bit of a paradox for us to show you parts of the raw HTTP request, but then go on to say that you will rarely, if ever, interact with them in their raw state. You may be wondering, “Why do I care? You’re not my algebra teacher! I don’t need to know this!” Fair enough.  On the front-end, we could have simply shown the syntax of how to send an AJAX request with jQuery, which demonstrates the verb and the path. We could have turned to the back-end and showed the same verb and path in a route address. We could even have pointed you to a video with zooming cloud imagery and “whooshing” noises, to help you visualize the journey of a request “in-flight”.</p>
+
+    <p class="body">But that would be doing you a disservice.  It has been the experience of both authors of this book that it was not until we <span class="italics">completely</span> demystified the raw HTTP request and response that we were able to intuitively understand how servers really work: by slurping up strings and spitting new strings back out.  But enough didactics.</p>
+
+    <p class="body">An important thing to remember: we send requests to communicate intent and transport stuff; intent like “Enroll this new user, please.” and stuff like <span><code class="codeintext">{ email: chad@hotmail.com }</code></span>.  When you send a request from a browser or any other user-agent, you’re simply generating a string called an HTTP request and blasting it out to the Internet.  Your request is just like any other string, except that it’s specially formatted according to a well-defined standard called HTTP.  That means it contains a method (aka verb), a URL, and maybe some headers and a body.</p>
+
+    <p class="body">When your Sails server receives a request, it is parsed and routed to one of your controller actions automatically, at which point Sails runs your code. That back-end code tells the server what to do next; whether that’s sending an email, saving data, doing math, operating robot arms to play dueling banjos, or a combination of all of the above.  Eventually, this back-end code should always send a response; otherwise, the front-end would sit there waiting forever.</p>
+
+    <p class="body">When the code in your controller action indicates that it is time to respond, Sails generates a string called an HTTP response and blasts it back out to the Internet.  This response is– you guessed it– also formatted according to the HTTP standard.  It contains a status code, and maybe some headers and a body of its own. The status code is used for specifying the outcome of the request; for example, to indicate that a new user was successfully created, or that the provided email address was already in use, or even that some other unexpected error occurred. The response body is used for transporting any relevant data back to the front-end; stuff like JSON data or an HTML web page.</p>
+
+    <p class="body">Finally, back on the front-end, the user-agent (browser) receives and parses the response.  Then it acts accordingly. For example, if you are using AJAX, jQuery triggers the callback function you provided.  And that’s it--back where we started!</p>
+
+    <p class="body">Now that we’ve demystified the request and response a bit and set up the related terminology we’ll be using throughout the book, we’re ready to explore what’s going on in the back-end code itself.  We’ll start with the most fundamental responsibility of any back-end application: working with data.</p>
+
+    <h2 class="head" id="heading_id_11">1.5   Understanding databases</h2>
+
+    <p class="body">Although some experience with a database is helpful, we don’t require it for you to get through the book. In this section we’ll give you a brief introduction to databases in the context of what you’ll need to know about them while creating a Sails application. Specifically we’ll be talking about Sails models and the methods used to access various databases. We’ll also take a deep dive into the subject in chapter 6. If you’re already familiar with these concepts feel free to skip to section 1.6.</p>
+
+    <p class="body">A database can seem mysterious at first. But it's just another application: an application that stores an organized collection of data into records. In most cases, but not always, the database stores records in non-volatile memory like your computer’s hard drive. Or more rarely, the records are stored using volatile memory like the RAM in your computer. A database even has its own API, similar to the one we’ll design in the coming chapters.  But unlike the web API we’ll build in this book, which uses the HTTP protocol to communicate between the client and server, the underlying protocol we use to communicate between a Sails app and a database is abstracted away for us by a built-in component of Sails called <span class="italics">Waterline</span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">What is the difference between Sails and Waterline? Sails is composed of many Node.js modules that work together to help you build web applications. Waterline is one of those modules.</p>
+    </div>
+
+    <p class="body">Waterline gives our Sails apps an abstraction layer on top of underlying databases like MongoDB or PostgreSQL, providing methods that allow us to easily query and manipulate data without writing PostgreSQL-specific integration code. Sails organizes these methods in a dictionary called a <span class="italics">model.</span></p>
+
+    <h3 class="head1" id="heading_id_12">1.5.1   What’s in a Sails model?</h3>
+
+    <p class="body">A Sails model model is a JavaScript dictionary representing a <span class="italics">resource</span> such as a MySQL table or  MongoDB collection.  Every model contains attribute definitions, model methods, and other settings. When you start a Sails app, the framework automatically builds up model dictionaries  from a variety of configuration files in your project, adding a whole suite of powerful methods. Your code can then use these methods to find and manipulate database records (aka “rows”). Let’s look at the PostgreSQL database as an example and use the signup page front-end as a reference. We might define a model called <span><code class="codeintext">User</code></span> to store <span><code class="codeintext">username</code></span>, <span><code class="codeintext">email</code></span>, and <span><code class="codeintext">password</code></span> attributes as displayed in figure 1.10.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.10 The components of a model include attributes, methods, and settings.</p>
+
+    <p class="body">The <span class="codeannotationcueballs">① </span>  <span class="italics">attributes</span> describe the properties of each user record that the database will be tasked with managing—in this case, <span><code class="codeintext">username</code></span>, <span><code class="codeintext">email</code></span>, and <span><code class="codeintext">password</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Attribute definitions are optional when working with some databases like MongoDB, while other databases like PostgreSQL require pre-defined attributes.</p>
+    </div>
+
+    <p class="body"><span class="codeannotationcueballs">② </span>  <span class="italics">Model</span> <span class="italics">methods</span> are the built-in set of functions provided by Sails that we use to find and manipulate records. <span class="codeannotationcueballs">③ </span>  <span class="italics">Model settings</span> include configurable properties like <span><code class="codeintext">connection</code></span>, <span><code class="codeintext">tableName</code></span>, <span><code class="codeintext">migrate</code></span>, and <span><code class="codeintext">schema</code></span>. Of particular importance is the <span><code class="codeintext">connection</code></span> setting, which describes which database the model methods will be run on.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">In Sails v1.0 and above, the “connection” setting for a model is referred to as its “datastore”. To make sure you’re comfortable with both terms, we’ll use them interchangeably throughout the book.</p>
+    </div>
+
+    <p class="body">For example, if you use the <span><code class="codeintext">User.find()</code></span> method to find a particular record, this option tells Sails which database to search. The <span><code class="codeintext">connection</code></span> points to a dictionary that contains configuration information like the host, port and credentials necessary to access the database.  If any of that sounds unfamiliar, don’t worry—we’ll come back to it a few times throughout the book. Another model setting, <span><code class="codeintext">migrate</code></span>, designates how Sails should handle existing records in the database, and whether or not to use auto-migration. As a final example, the <span><code class="codeintext">schema</code></span> setting allows you to enforce the use of a schema, even if the underlying database would allow you to proceed without one.  This is particularly useful for schema-less databases like MongoDB.</p>
+
+    <p class="body">The <span class="codeannotationcueballs">④ </span>  <span class="italics">adapter</span> is a Node.js module that allows your model to communicate with virtually any type of database, whether that’s a traditional relational database like PostgreSQL or a non-relational database like MongoDB. As long as you install the adapter for a particular database, your app can talk to it using built-in model methods provided by Sails. Behind the scenes, the adapter takes care of translating code that uses model methods into the specific queries required by the underlying database system.  The adapter to use for a particular model is determined by its <span><code class="codeintext">connection</code></span> setting.</p>
+
+    <h3 class="head1" id="heading_id_13">1.5.2   Sails model methods</h3>
+
+    <p class="body">Earlier we briefly mentioned blueprint actions: <span><code class="codeintext">find</code></span>, <span><code class="codeintext">create</code></span>, <span><code class="codeintext">update</code></span>, and <span><code class="codeintext">destroy</code></span>. These built-in actions are provided by Sails, but internally, they use functions we call <span class="bold">model methods</span> to fetch and manipulate records in a database. These are the same methods we’ll call in our own custom controller actions later in the book. Table 1.3 displays the most commonly used model methods provided by Sails.</p>
+
+    <p class="tablecaption pcalibre7">Table 1.3  Common model methods</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="17%" class="sgc18" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Method</p>
+          </div>
+        </td>
+
+        <td char="82%" class="sgc19" valign="top">
+          <div class="sgc6">
+            <p class="tablehead">Description</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc20" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">.create()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc21" valign="top">
+          <p class="tablebody2cxsplast">Creates a new record in the database.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc20" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">.find()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc21" valign="top">
+          <p class="tablebody2cxsplast">Finds and returns all records that match a certain criteria.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc20" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">.findOne()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc21" valign="top">
+          <p class="tablebody2cxsplast">Attempt to find a particular record in your database that matches the given criteria.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc20" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">.update()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc21" valign="top">
+          <p class="tablebody2cxsplast">Updates existing records in the database that match the specified criteria.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc20" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">.destroy()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc21" valign="top">
+          <p class="tablebody2cxsplast">Destroys records in your database that match the given criteria.</p>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="17%" class="sgc22" valign="top">
+          <p class="tablebody2cxspfirst"><span><code class="codeintext">.count()</code></span></p>
+        </td>
+
+        <td char="82%" class="sgc23 pcalibre7" valign="top">
+          <p class="tablebody2cxsplast">Returns the number of records in your database that meet the given search criteria.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p class="body">We’ll start messing with databases in chapter 4 and 5, and get immersed in them in chapter 6.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">In Sails, like most web frameworks, you can write code that works with the database that can be run from anywhere from tests to custom scripts.  But for most apps, the overwhelming majority of the data manipulation code you write will be triggered as the result of incoming web requests.</p>
+    </div>
+
+    <h2 class="head" id="heading_id_14">1.6   Putting it all together in a back-end API</h2>
+
+    <p class="body">Now that we've covered the fundamental pieces of any Sails application, let's take what we've learned so far and see how it all fits together.  We saw how the front-end talks to your Sails app by sending HTTP requests, and how your Sails app replies with HTTP responses.  We looked at how every time your Sails app receives a request; it uses your configured routes to determine which controller action to run.  And in the last section, we introduced model methods, which are just one example of the many Sails and Node.js library methods you can call from the back-end code in your controller actions.  But in theory, you could create almost any imaginable server-side web application with routes and controller actions alone. Routes and controller actions are the fundamental pieces of any Sails application. In practice, controller actions usually leverage many additional library methods provided by Sails and Node.js.  But in theory, combined with the built-in router in Sails and the HTTP server in Node.js core, you could create almost any imaginable server-side web application with routes and controller actions alone.</p>
+
+    <p class="body">Controller actions can be very simple or very complex.  For example, in the same app, you might write one controller action (<span><code class="codeintext">PageController.showHomePage</code></span>) which simply responds with an HTML web page, and another (<span><code class="codeintext">CartController.checkout</code></span>) that uses model methods to fetch data, calls out to a service with custom business logic, contacts a 3<span class="superscript">rd</span> party service to process a BitCoin transaction, and responds with a <span><code class="codeintext">200</code></span> status code to indicate success.  Thinking about the different parts of your application this way can get very complicated, very quickly—particularly as time passes and more hands touch the code.</p>
+
+    <p class="body">Luckily, there is another, simpler way to reason about the back-end that is widely accepted by developers all over the world.  Regardless of <span class="italics">what</span> a particular controller action (or “endpoint”) does, it is usually pretty easy to discuss <span class="italics">how it responds</span> and <span class="italics">why it ran</span> in the first place. Instead of focusing on the code inside the controller action, we can simply consider the request we need to send from the front-end to kick it off and the response we expect to receive in return.  In the example of the complicated controller action we mentioned above (<span><code class="codeintext">CartController.checkout</code></span>), instead of thinking about the mechanics of working with the database and calling a 3<span class="superscript">rd</span> party service, we can simply remember that, to call the endpoint, we need to send a POST request to <span><code class="codeintext">/checkout</code></span>, and that we can expect a <span><code class="codeintext">200</code></span> status code in response (provided everything went according to plan).</p>
+
+    <p class="body">Any abstraction that allows developers to think about <span class="italics">what to call</span> and <span class="italics">what to expect</span> in return (instead of having to be aware of the internals of how something works) is called an <span class="bold">application programming interface</span>, or <span class="bold">API</span>. More specifically, when talking about HTTP requests and responses, we call this a <span class="bold">back-end API</span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">At times you might also hear this called a “web API”, “cloud API”, or even simply “the API”.  No matter the variation in terminology, rest assured that this just refers to the interface exposed by the routes and actions in your Sails app.</p>
+    </div>
+
+    <p class="body">Figure 1.11 provides a birds-eye view of how each of the pieces we discussed earlier in this chapter work together in harmony to expose a back-end API from your Sails app to the world.  When Sails receives an incoming request <span class="codeannotationcueballs">① </span> , it matches it against one of your app’s routes <span class="codeannotationcueballs">② </span> .  Then it runs the appropriate controller action <span class="codeannotationcueballs">③ </span> , whose job it is to send some sort of response <span class="codeannotationcueballs">⑥ </span> .</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.11  An endpoint from a back-end API in action, processing a request from a signup form.</p>
+
+    <p class="body">We’ll see this pattern repeated throughout the book</p>
+
+    <h3 class="head1" id="heading_id_15">1.6.1   Other types of routes</h3>
+
+    <p class="body">In addition to the explicit routes you define for serving web pages or working with the database, Sails includes some additional routes of its own, named <span class="italics">shadow routes</span>.  Unlike explicit routes, which you write yourself, <span class="italics">shadow routes</span> are exposed automatically behind the scenes. Many web frameworks have a similar concept of automatic routing, specifically for assets.  For example, adding a file called <span><code class="codeintext">foo.jpg</code></span> to the folder configured as the web root for an Apache web server implicitly causes <span><code class="codeintext">GET</code></span> requests to <span><code class="codeintext">/foo.jpg</code></span> to respond with the contents of that file.  As you might expect, Sails provides a similar abstraction for static assets like images and client-side JavaScript files, sometimes called “asset routes”. These routes are exposed automatically, and map directly to any files in the configured web root folder (<span><code class="codeintext">.tmp/public/</code></span> by default).  We’ll examine asset routes extensively in Chapter 3.</p>
+
+    <p class="body">The framework also exposes a couple of other important shadow routes that we will cover in this book:</p>
+
+    <p class="listbulletcxspfirst">·   Blueprint routes automate the prototyping phase of back-end development by providing an easy way to work with blueprint actions through a conventional API. We’ll cover blueprints extensively in chapter 4.</p>
+
+    <p class="listbulletcxsplast">·   The cross-site request forgery (CSRF) token route is a built-in utility designed for use as part of an overall protection technique to prevent cross-site request forgery attacks. We’ll cover this shadow route when we show how to secure your applications against CSRF vulnerabilities in chapter 15.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Like any of the other “magic” features in Sails, you can use as much or as little as you like.  Every shadow route can be disabled via configuration, or overridden on a case-by-case basis by defining an explicit route with the same HTTP method and URL pattern.</p>
+    </div>
+
+    <h2 class="head" id="heading_id_16">1.7   Our back-end design philosophy</h2>
+
+    <p class="body">Now that you have a better understanding of both the components of a back-end API and how they function, it’s worth it to spend a moment on the overall approach we’ll take in this book. When you set out to build a web application, it's difficult to know exactly where to start. Conventional wisdom is mixed on the subject; some books suggest starting with UML diagrams and data modeling before you write a single line of code. More recently, the "Ship early, ship often" mantra (e.g. Facebook's "Move fast and break things" motto) is becoming increasingly popular. This approach suggests getting to a first prototype as quickly as possible.</p>
+
+    <p class="body">We’ve built many different startup products and enterprise tools, and in every case, we've found that the best place to begin is from the user's perspective. We call this a <span class="italics">front-end-first</span> approach to back-end design.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_12.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.12   The <span class="italics1">front-end-first</span>(FEF) approach to back-end development.</p>
+
+    <p class="body">Too often, development can get mired in “what-if” back-end programming. That is, programming the back-end to handle all of the things that the user <span class="italics">might</span> do, rather than figuring out what the front-end will actually <span class="italics">allow</span> them to do and implementing only those features. Without direction, you can waste a lot of time creating things that are either unnecessary or aren’t compatible with how the user will ultimately engage the front-end. Even worse: once created, back-end code must be maintained—whether it’s used or not! It’s critical to spend the time necessary to identify the requirements for each of the API endpoints you build.  Even if you think that an endpoint might be used in more ways down the road, the important thing is to optimize for the front-end you have <span class="italics">today</span>. It is always better to build the simplest, most specific API that meets your needs, even if it might need to be changed substantially someday as new features are added to the user interface.</p>
+
+    <p class="body">If you come from a design or UX background, this may sound familiar.  When designing user interfaces, we always prioritize the needs of human users before making decisions on the implementation.  Similarly, as back-end developers, it is our responsibility to make sure that user interaction drives back-end functionality, and not vice versa.</p>
+
+    <h3 class="head1" id="heading_id_17">1.7.1   Starting with just the front-end code</h3>
+
+    <p class="body">The easiest way to make sure you build exactly the back-end API you need is to build the front-end part of your app first.  Until you add the real back-end, this will feel more or less like a fake, interactive mockup.  But it captures the basic functionality of the interface you're trying to build, and it ensures that you’ve taken all of the requirements into account before you begin. For example, the signup form in Figure 1.13 inspired the design of the <span><code class="codeintext">POST /signup</code></span> endpoint we showed previously in Section 1.5.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_13.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.13 An interactive mockup of a signup form.  The fields in this form help determine the request parameters we should expect when designing the API endpoint to process it.</p>
+
+    <p class="body">This interactive mockup consists of the code necessary to drive the front-end user experience.  For websites and single page apps, this is HTML, CSS, images, and client-side JavaScript files.  For an iOS native app, it is the .nib files, Swift scripts, and other assets you need to compile your project in XCode.  The goal is to finalize the key pieces of the front-end of the user interface, since that will identify all of the requests that will need to be made from a particular screen, as well as the requirements of each request.  Figure 1.14 shows an annotated example of how we might design our API endpoints based on the requirements of this page.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_14.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.14   An annotated mockup showing the requests this user interface will send to our Sails app.</p>
+
+    <p class="body">Not only does this approach help you notice inconsistencies in requirements, and catch gaps in the feature set early in the process, it also allows you to punt on critical architectural decisions until you know more about how your application will work. Once you’ve created interactive mockups and used them to identify the requirements of your back-end, Sails provides tools that allow you to quickly transform those interactive mockups into working prototypes.</p>
+
+    <h3 class="head1" id="heading_id_18">1.7.2   Prototyping with blueprints</h3>
+
+    <p class="body">So far, we’ve focused on how you can create <span class="italics">your own</span> <span class="italics">custom</span> routes and controller/actions to create back-end APIs in Sails. Recall that in Section 1.5, we showed how we might combine an explicit route and a custom action to expose an API endpoint for handling new user signups. Underneath the covers, it’s hard to say exactly what this API endpoint might need to do; we don’t know enough details just by looking at the form in isolation.  It might send a welcome email, encrypt a password, or even send a confirmation text message.  But even without knowing all of the details, we can at least assume that it would need to create a new record in our database.</p>
+
+    <p class="body">Traditionally, in this scenario, front-end developers were forced to use set Timeouts, or to create a dictionary to “fake” a response with some JSON data.  This allowed developers to test loading spinners, and gave the user interface code some data to use temporarily until a back-end API endpoint similar to the one for the signup page was available. Fortunately, for many use cases, Sails blueprints make this kind of temporary, throwaway code unnecessary. Instead, front-end developers can just set up a quickset of API endpoints (a JSON CRUD API) around a particular resource, such as a “user”.  Those endpoints are then immediately available to use from front-end code, meaning that the front-end code can be finished and hooked up to the server ahead of any custom back-end work.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">JSON is called a lightweight data-interchange format. What that means for us is it’s a way to safely transfer data from the client to the server, and vice versa.  In Node.js or the browser, you can take almost any JavaScript value stored in memory (for example, a variable containing a dictionary with an email address, password, and username) and “stringify” it; converting it into a specially-encoded string.  That string can then be transported over the network from the back-end to the front-end, or vice versa.  On the receiving end, the JSON string is parsed back into the original JavaScript value.</p>
+    </div>
+
+    <p class="body">Since you can create them very quickly, blueprints are incredibly useful during the prototyping phase.  Instead of having to manually create the routes, controller actions, and model methods necessary to create an API before we even understand what it needs to do, we can use Sails’ blueprint API to supply similar functionality. To set up blueprints for our signup example, we need only issue a single command in the terminal window:</p><code class="codeb">~/sailsProject $ sails generate api user</code>
+
+    <p class="body">Then, the next time we start the Sails server with <span><code class="codeintext">sails lift</code></span>, we will have access to a JSON CRUD API around the <span><code class="codeintext">user</code></span> resource.  Table 1.3 shows the shadow routes and built-in controller actions that this exposes automatically.</p>
+
+    <p class="tablecaption pcalibre7">Table 1.3Shadow routes and built-in controller actions exposed by the blueprint API.</p>
+
+    <table cellpadding="0" cellspacing="0" class="msonormaltable" width="100%">
+      <tr class="calibre3">
+        <td char="12%" class="sgc24" rowspan="3" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">CRUD</p>
+
+            <p class="tablehead">Operation</p>
+          </div>
+        </td>
+
+        <td char="46%" class="sgc25" colspan="3" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Blueprint: shortcut route</p>
+          </div>
+        </td>
+
+        <td char="41%" class="sgc26" colspan="3" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Blueprint: RESTful route</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="28%" class="sgc27" colspan="2" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Route address</p>
+          </div>
+        </td>
+
+        <td char="17%" class="sgc28" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Target</p>
+          </div>
+        </td>
+
+        <td char="23%" class="sgc29" colspan="2" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Route address</p>
+          </div>
+        </td>
+
+        <td char="17%" class="sgc30" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Target</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="7%" class="sgc31" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">verb</p>
+          </div>
+        </td>
+
+        <td char="21%" class="sgc32 pcalibre7" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">path</p>
+          </div>
+        </td>
+
+        <td char="17%" class="sgc28" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Blueprint: action</p>
+          </div>
+        </td>
+
+        <td char="10%" class="sgc33" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">verb</p>
+          </div>
+        </td>
+
+        <td char="12%" class="sgc34" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">path</p>
+          </div>
+        </td>
+
+        <td char="17%" class="sgc30" valign="bottom">
+          <div class="sgc6">
+            <p class="tablehead">Blueprint: action</p>
+          </div>
+        </td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc35" valign="top">
+          <p class="tablebody">Read</p>
+        </td>
+
+        <td char="7%" class="sgc36" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="21%" class="sgc37" valign="top"><code class="tablecode">/user/find</code></td>
+
+        <td char="17%" class="sgc38" valign="top"><code class="tablecode">find</code></td>
+
+        <td char="10%" class="sgc39" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="12%" class="sgc40" valign="top"><code class="tablecode">/user</code></td>
+
+        <td char="17%" class="sgc41 pcalibre7" valign="top"><code class="tablecode">find</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc35" valign="top">
+          <p class="tablebody">Read</p>
+        </td>
+
+        <td char="7%" class="sgc36" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="21%" class="sgc37" valign="top"><code class="tablecode">/user/find/:id</code></td>
+
+        <td char="17%" class="sgc38" valign="top"><code class="tablecode">find</code></td>
+
+        <td char="10%" class="sgc39" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="12%" class="sgc40" valign="top"><code class="tablecode">/user/:id</code></td>
+
+        <td char="17%" class="sgc41 pcalibre7" valign="top"><code class="tablecode">find</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc35" valign="top">
+          <p class="tablebody">Create</p>
+        </td>
+
+        <td char="7%" class="sgc36" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="21%" class="sgc37" valign="top"><code class="tablecode">/user/create</code></td>
+
+        <td char="17%" class="sgc38" valign="top"><code class="tablecode">create</code></td>
+
+        <td char="10%" class="sgc39" valign="top"><code class="tablecode">POST</code></td>
+
+        <td char="12%" class="sgc40" valign="top"><code class="tablecode">/user</code></td>
+
+        <td char="17%" class="sgc41 pcalibre7" valign="top"><code class="tablecode">create</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc35" valign="top">
+          <p class="tablebody">Update</p>
+        </td>
+
+        <td char="7%" class="sgc36" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="21%" class="sgc37" valign="top"><code class="tablecode">/user/update/:id</code></td>
+
+        <td char="17%" class="sgc38" valign="top"><code class="tablecode">update</code></td>
+
+        <td char="10%" class="sgc39" valign="top"><code class="tablecode">PUT</code></td>
+
+        <td char="12%" class="sgc40" valign="top"><code class="tablecode">/user/:id</code></td>
+
+        <td char="17%" class="sgc41 pcalibre7" valign="top"><code class="tablecode">update</code></td>
+      </tr>
+
+      <tr class="calibre3">
+        <td char="12%" class="sgc24" valign="top">
+          <p class="tablebody">Delete</p>
+        </td>
+
+        <td char="7%" class="sgc42" valign="top"><code class="tablecode">GET</code></td>
+
+        <td char="21%" class="sgc43" valign="top"><code class="tablecode">/user/destroy/:id</code></td>
+
+        <td char="17%" class="sgc28" valign="top"><code class="tablecode">destroy</code></td>
+
+        <td char="10%" class="sgc44" valign="top"><code class="tablecode">DELETE</code></td>
+
+        <td char="12%" class="sgc45" valign="top"><code class="tablecode">/user/:id</code></td>
+
+        <td char="17%" class="sgc46" valign="top"><code class="tablecode">destroy</code></td>
+      </tr>
+    </table>
+
+    <p class="body">In chapter 4, we’ll examine what each blueprint action can do. For now, just note that each action corresponds to a CRUD operation. So instead of creating a custom route and controller action to handle form submissions from the signup page, we just ran a command on the terminal, and Sails took care of setting all that up for us.</p>
+
+    <p class="body">So why not use blueprints for everything?  The truth is, for most applications, CRUD alone is not enough, and you will need to write a custom controller action for most, if not all, of your endpoints. For example, our signup endpoint will eventually need to encrypt the user’s password, and as we mentioned above, we might also want it to send a welcome email (or someday, even a text message). Fortunately, when the time comes, overriding blueprint actions is just as easy as making your own custom controller action.  And in the mean time, your front-end code has gone from an interactive mockup to a full-fledged, server-driven prototype.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">You might have noticed that there is a subset of blueprint routes known as <span class="italics1">shortcut blueprint routes</span> (or just <span class="italics1">shortcut blueprints</span>). These are just more shadow routes that point to the same, built-in blueprint actions.  The only difference is that you can access all of them from your browser’s URL bar. Seems like a bad idea, right?  That’s why you should <span class="bold1">never</span> enable shortcut blueprints in your production application.</p>
+
+      <p class="sidebarc">What makes shortcut blueprints so insanely useful is that they allow you to quickly access and modify your data during development without needing to rely on a database-specific client like php MyAdmin. As we build our application throughout this book, we’ll take advantage of this Sails feature frequently.</p>
+    </div>
+
+    <h3 class="head1" id="heading_id_19">1.7.3   Finalizing your API</h3>
+
+    <p class="body">There comes a point when blueprint actions alone are not sufficient to meet the requirements of the front-end. Fortunately, transitioning to custom controller actions is easy: like we discussed earlier in this chapter, we just write code for the actions, and then define explicit routes that point at them. As you can see in Figure 1.14, the <span class="italics">implementation</span> of your Sails app doesn’t affect the <span class="italics">interface</span>.  In other words, as long as your custom controller actions are written to be compatible with the requests that your front-end sends, and the responses it expects, then your front-end code doesn’t need to change at all.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_15.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.15 As long as the expected request and response for an API endpoint remains consistent, front-end code doesn’t need to change.</p>
+
+    <p class="body">Remember: controller actions are just JavaScript functions. This makes them incredibly powerful, because they can “do” anything that a JavaScript function can do. But with such great power comes great responsibility. You’ll want to protect some of your actions, so that only certain logged-in users are allowed to run them. Fortunately, Sails provides a powerful feature for managing access to controller actions called <span class="bold">policies</span>. We’ll explore and implement policies in chapter 10.</p>
+
+    <h2 class="head" id="heading_id_20">1.8   Delivering front-end assets</h2>
+
+    <p class="body">Now that we understand how clients and servers communicate, and how we can design and build back-end APIs, we’ll turn our attention to the front-end itself. <span class="italics">Wait a second, isn’t Sails a back-end framework?</span> It is!  But for certain kinds of apps, the back-end is responsible for <span class="italics">delivering</span> front-end assets.  Whether or not that fits your Sails app depends upon the types of front-ends you’re building; or more specifically, the types of <span class="bold">user-agents</span> your application will need to support.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">A user-agent is any program that makes a request, such as browsers, spiders (web-based robots), command-line tools, custom applications, and mobile apps.</p>
+    </div>
+
+    <p class="body">When we use the term “front-end”, we’re talking about the user interface elements of your application. Figure 1.16 depicts the universe of common front-end user-agents for web applications.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_16.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.16 Examples of front-end user-agents used in web applications.</p>
+
+    <p class="body">If we were building a smart toaster, or a native mobile or desktop application, we could skip ahead to chapter 4and jump right in to building and integrating a stellar, stand-alone API with Sails. Why?  Because the front-end assets for Internet of Things (IoT), native mobile, and native desktop applications are not usually distributed on the web.  Instead, they are downloaded from an app store, or bundled on a piece of hardware. Therefore Sails can be blissfully unconcerned about their delivery.  In that case, as shown in figure 1.17, all your Sails app has to worry about is requests for data (like a high score list) and behavior (like sending a text message or processing a signup).</p>
+
+    <p class="body"> </p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_17.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.17 Sails used as a pure API with no responsibilities to delivering front-end assets.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">There are some exceptions: for example, apps built using a front-end “wrapper” framework like PhoneGap or Electron.  PhoneGap uses a browser within a native mobile app to display the UI. Some native app developers actually opt to deliver some or all front-end assets (e.g. HTML, CSS, and JavaScript) via Sails, simply because it allows for a greater degree of flexibility. In this case, treat the front-end as a browser user-agent, and treat the front-end as a single-page app.</p>
+    </div>
+
+    <p class="body">Once installed, native and IoT applications make normal requests to Sails endpoints that fulfill back-end requirements like storing and sharing data.</p>
+
+    <p class="body">On the other hand, browser user-agents rely upon some combination of HTML, CSS, and JavaScript for the front-end user interface. Instead of an app store, users download the front-end “app” (or webpage) by visiting a URL in their browser.  If you plan to build an app that will support web browsers, then you need to decide how each page or view in the app will be delivered and ultimately rendered. There are two basic approaches—Single Page Apps (SPAs) and Hybrid Web Applications. Figure 1.18 illustrates the two different kinds of requests you can expect to see when building a SPA.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_18.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.18  Typical front-end requests to the back-end using the SPA approach.</p>
+
+    <p class="body">This approach is not too different from the approach for native apps, since it relies on client-side rendering. The only real difference is that, in addition to exposing endpoints for fetching data and triggering back-end logic, Sails may also need to deliver static assets: files like images, HTML templates, client-side JavaScript, and style sheets. Using this approach, Sails delivers the initial HTML page as a static asset, and then client-side JavaScript (running in the browser) is responsible for making intermediate changes to the view via AJAX requests to the back-end API. Wholesale page navigation, if any, is managed by special client-side JavaScript code (sometimes called a “client-side router”).</p>
+
+    <p class="body">The second approach, a hybrid web application, relies (at least to some degree) on server-side rendering.  That means Sails is responsible for preparing personalized, dynamic web pages on the back-end from special templates called <span class="bold">views</span>, then delivering the personalized HTML to the browser. Figure 1.19 illustrates the kinds of requests you can expect to see if you are building a hybrid web application.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_19.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.19 Delivering personalized HTML and static assets to a hybrid web application.</p>
+
+    <p class="body">Using this approach, Sails provides the initial server-rendered view for some, or all, of the pages on a website. Client-side JavaScript <span class="italics">might</span> also update the DOM by making calls to the Sails app, however, most or all navigation between pages in a hybrid web application is handled by allowing users to navigate between different URLs in the browser, fetching freshly personalized HTML from the server each time.</p>
+
+    <p class="body">Our experience has shown, based upon many client projects, that when in doubt, the hybrid approach provides the best overall results. However, in an effort to give you a broad knowledge base, we’ll demonstrate both the SPA and hybrid approaches. We’ll start by building a SPA in chapter 3. When it comes time to incorporate user authentication, access control, and SEO in chapter 8, we’ll transition to the hybrid approach.</p>
+
+    <h2 class="head" id="heading_id_21">1.9   Front-end vs. back-end validations</h2>
+
+    <p class="body">We’ll be addressing security throughout the book, with some extra emphasis on the subject in Chapter 15. But in the mean time, there is an important security concept we need to focus on before we start building our application: who can we trust?  There are two basic “realms” in a web application: the front-end and the back-end. Each of these realms guarantees a different level of trustworthiness, and therefore requires a different degree of rigor when it comes to security, as depicted in figure 1.20.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/01_20.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 1.20 The two security “realms” of a web application.</p>
+
+    <p class="body">We’ll address the implications of this security reality as they come up periodically throughout the book.  For example, in chapter 7, we’ll introduce front-end validations to restrict users from creating a password with less than 6 characters. But since we can’t trust the front-end, it’s important to be aware of the possibility that the same user could maliciously use a tool like Postman or cURL to make <span class="italics">any conceivable</span> request from outside of the browser, thus completely bypassing whatever front-end validation we put in place.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Another example is a front-end that won’t let the user submit a form until she fills out a “required” field.  This is good UX, but your controller action on the back-end still needs to do its own check, since it can’t trust that the corresponding parameter will exist in the incoming request.</p>
+    </div>
+
+    <p class="body">If you’ve done any sort of back-end development before, this concept might be old hat to you, but it’s important enough that we wanted to address it up front.  If this is a new concept for you, just remember this:  we have to design our back-end applications under the assumption that any given request <span class="italics">might</span> be malicious, and could contain anything.</p>
+
+    <h2 class="head" id="heading_id_22">1.10   Realtime (WebSockets)</h2>
+
+    <p class="body">So far in this chapter, we’ve used the HTTP protocol to communicate between the user-agent (front-end) and the Sails server (back-end). For most traditional web applications, this is all you need.  The front-end is always the one to initiate requests, and whenever it receives a request, the back-end responds.  But for some apps that rely on features like chat (Slack), schedules (Nest thermostat), and realtime location tracking (Pokémon Go), this isn’t enough.</p>
+
+    <p class="body">Sails apps are capable of full-duplex real time communication between the client and server. Instead of always having to initiate requests itself, client-side code can establish and maintain a persistent connection to a Sails server, allowing your back-end code to send messages to individual clients, or to broadcast messages to whole segments of your user base, at any time.  In Chapter 2, when you generate a new Sails app, start it up, and open your home page in the browser for the first time, you’ll witness this behavior firsthand.</p>
+
+    <p class="body">Sails implements support for realtime messaging and persistent connections using Socket.io, a popular MIT-licensed open-source tool that helps ensure a wide array of legacy browser support, including Internet Explorer 7 and up. We’ll explore WebSockets extensively in chapter 14.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note that, in this book, we’ll use both the terms “sockets” and “WebSockets” to refer to a two-way, persistent communication channel between a Sails app and a client. Communicating with a Sails app via WebSockets is really a form of AJAX, in that it allows a web page to interact with the server without refreshing. However, sockets differ from traditional AJAX in two important ways: First, a socket can stay connected to the server for as long as the web page is open, allowing it to maintain state. Traditional AJAX requests, like all HTTP requests, are stateless. Second, because of the always-on nature of the connection, a Sails app can send data down to a socket at any time, whereas AJAX only allows the server to respond when a request is made.</p>
+    </div>
+
+    <h2 class="head" id="heading_id_23">1.11   Asynchronous programming</h2>
+
+    <p class="body">One of the highest hurdles for most new Node.js developers is learning how to write asynchronous code. Even if you are already familiar with AJAX callbacks, timeouts, and event handlers from client-side JavaScript, the sheer number of nested callbacks that show up when writing JavaScript on the server can be a bit intimidating at first.  And there are also new patterns to learn:concepts like asynchronous loops (async.each), asynchronous recursion (imagine building Dropbox in Node.js), and asynchronous conditionals (if/then/finally, or doing something asynchronous under some conditions, and something synchronous under others).</p>
+
+    <p class="body">In this book, we don’t expect you to have any past experience writing asynchronous functions.  We’ll cover that in depth throughout the coming chapters.  But before we start, it is a good idea to get familiar with what it means to use an asynchronous function, and what that looks like.</p>
+
+    <p class="body">Asynchronous JavaScript programming is very similar to web programming on the front-end. In a browser, you might want to trigger a function each time a button on the page is clicked. So you bind an <span class="italics">event handler</span>(aka <span class="italics">event listener</span>), which is just a callback function that will be executed whenever the button is clicked. Let’s take a look at an example using jQuery.</p>
+
+    <p class="codelistingcaption">Listing 1.1 A JQuery callback pattern</p><code class="codebcxspfirst">$('#my-button').click(function whenClicked (){  <span class="codeannotationcueballs1">❶ </span></code> <code class="codebcxspmiddle">  $.get('some3rdpartyAPI', function(data) {</code> <code class="codebcxspmiddle">    $('.result').html(data);</code> <code class="codebcxspmiddle">  });</code><code class="codebcxsplast">});</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> sets up a callback function (<span><code class="codeintext1">whenClicked</code></span>) that will run any time the DOM element identified by <span><code class="codeintext1">#my-button</code></span> is clicked.</p>
+
+    <p class="body">Listing 1.1 shows code that binds a callback as an event handler.  Whenever the user clicks on the specified button, the callback function (<span><code class="codeintext">whenClicked</code></span>) will run.</p>
+
+    <p class="body">Now let’s look on the back-end for something similar. Let’s say we want to create a user in a database.  The time it takes to create the record in a database can vary, and we don’t want every incoming request to our app to have to wait. Herein lies the beauty of Node.js, Sails, and server-side JavaScript in general: instead of blocking all incoming requests while the server communicates with the database, file system, or other 3<span class="superscript">rd</span> party APIs, Node.js keeps working, allowing other requests to be processed while it waits—granting Node.js apps a <span class="italics">huge</span> scalability and performance boost.</p>
+
+    <p class="body">But like everything in life, this comes with a price: instead of simply returning a value or throwing an error like normal code you might be used to, asynchronous function calls in Node.js expect you to provide a callback function.  When Node.js hears back from the database, whether good news or bad, Node.js triggers the callback function you provided. If something went wrong, the first argument (<span><code class="codeintext">err</code></span>) will be truthy. The pattern you’ll see repeatedly is something like listing 1.2.</p>
+
+    <p class="codelistingcaption">Listing 1.2 A typical Node asynchronous callback pattern.</p><code class="codebcxspfirst">  User.create({name: nikola}).exec(function userCreated(err, newUser) {</code> <code class="codebcxspmiddle">    if (err) {</code> <code class="codebcxspmiddle">console.log('the error is: ', err);</code> <code class="codebcxspmiddle">   return;</code> <code class="codebcxspmiddle"> }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    console.log("The result: ", newUser);</code> <code class="codebcxspmiddle">    return;</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">  });</code>
+
+    <p class="body">In this example, we want to create a user named “<span class="italics">nikola”</span>, then once the user record has been created, we want Sails to log a message to the console. We provide a callback function, <span><code class="codeintext">userCreated</code></span><span class="italics">,</span> which will be called once <span><code class="codeintext">User.create()</code></span> has finished.  If anything went wrong, our callback will receive a truthy <span><code class="codeintext">err</code></span>, which it will log to the console, then bail. Otherwise, everything worked out, so a different message will be shown with the result from <span><code class="codeintext">User.create()</code></span>.</p>
+
+    <p class="body">The important thing to recognize as a consumer of asynchronous functions in Node.js is that your “afterwards” callback will always have at least one argument: <span><code class="codeintext">err</code></span>.  And if the asynchronous function you’re calling has output (as is the case with <span><code class="codeintext">.create()</code></span>), then you can expect a second argument: <span><code class="codeintext">newUser</code></span>. Of course, you can name these arguments whatever you want—in fact, it is often useful to name the second argument something that represents the expected result. By convention, the first argument is typically named <span><code class="codeintext">err</code></span> and it contains what you would think – a JavaScript error instance, or at the very least some truthy value.  This allows you to simply check <span><code class="codeintext">if (err) {…}</code></span>, in order to find out if anything went wrong.</p>
+
+    <p class="body">This pattern differs considerably from traditional synchronous programming, where you would do something like listing 1.3.</p>
+
+    <p class="codelistingcaption">Listing 1.3 A synchronous function.</p><code class="codeb">var keys = Object.keys({name: ‘nikola’});</code>
+
+    <p class="body">In this example, when <span><code class="codeintext">Object.keys()</code></span> runs, the process is completely blocked until the JavaScript runtime can calculate an array consisting of all the keys from the specified dictionary.  In the mean time, no other code runs, no callbacks are fired, and no new requests are handled.  If everything works out, the synchronous instruction (aka function call), <span><code class="codeintext">Object.keys()</code></span>, returns the result (<span><code class="codeintext">[‘name’]</code></span>).  If something went wrong (if this was <span><code class="codeintext">Object.keys(null)</code></span>, for example), then <span><code class="codeintext">Object.keys</code></span> throws an error.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Possibly the most important thing to remember about writing code for Node.js is that throwing uncaught exceptions inside of any callback from an asynchronous function <span class="italics1">will cause your server to crash</span>.  So it is imperative that, when writing code inside an asynchronous callback, you wrap anything, which might throw in a try/catch block.</p>
+
+      <p class="sidebarc">But don’t worry! We’ll reiterate this again and again throughout the book to help drive the point home.  And once you’ve gotten used to this style of coding, you’ll protect yourself by instinct.  Eventually, you may even find, like we did, that writing code like this makes you a more efficient programmer (since it forces you to think about error conditions from the very beginning.)</p>
+    </div>
+
+    <p class="body">Finally, let’s take a look at one last example that puts it all together.  Listing 1.4 demonstrates what it looks like to use multiple asynchronous instructions (function calls) in a row.</p>
+
+    <p class="codelistingcaption">Listing 1.4  Nesting other functions in an asynchronous function.</p><code class="codebcxspfirst">  Request.get('http://some3rdpartyAPI.com/user', function(err, response) {</code> <code class="codebcxspmiddle">    if (err) {</code> <code class="codebcxspmiddle">console.log('the error is: ', err);</code> <code class="codebcxspmiddle">   return;</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    User.create({name: response.body.name}).exec(function(err, newUser) {</code> <code class="codebcxspmiddle">      if (err) {</code> <code class="codebcxspmiddle">console.log('the error is: ', err);</code> <code class="codebcxspmiddle">     return;</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      console.log('The new user record: ', newUser);</code> <code class="codebcxspmiddle">      // All done!</code> <code class="codebcxspmiddle">      return;</code> <code class="codebcxspmiddle">    });//&lt;/after creating new user&gt;</code> <code class="codebcxspmiddle">  });//&lt;/after receiving response to 3<span class="superscript">rd</span> party request&gt;</code> <code class="codebcxspmiddle"> </code><code class="codebcxsplast">// No code should go down here!</code>
+
+    <p class="body">Here, we’re doing a <span><code class="codeintext">GET</code></span> request to some other API-- <span><code class="codeintext">some3rdpartyAPI.com</code></span>. We don’t know when the response will come back, so we provide a callback that will be triggered when the request is completed. Then (in <span class="italics">that</span> callback), we create the user based upon the response we got back. Notice that instead of writing one line of code after another, when using asynchronous instructions, you’ll want to nest whatever comes next within the callback of the previous instruction.</p>
+
+    <p class="body">In Node.js, like in most programming languages, when writing synchronous instructions, time flows from top to bottom.  If you write two instructions, one on line 3 and one on line 4, then the instruction on line 3 will run first, followed by the instruction on line 4.  But when using asynchronous instructions, time flows from <span class="italics">left to right</span>.  If you write two asynchronous instructions, then the second instruction must be nested inside the callback of the first.</p>
+
+    <p class="body">New Node.js developers often refer to this as “callback hell”.  There are several strategies that some developers find helpful when attempting to mitigate the amount of nesting in Node.js code (promises, fibers, “await”, etc.).  There are also some trusted tricks and indispensible tools, such as an NPM package called <span class="italics">async.</span> We’ll cover some of our own tricks, as well as best practices for working with <span class="italics">async</span>, on a few occasions throughout the book.</p>
+
+    <p class="body">For now, bear in mind that like most hells, “callback hell” is subjective. Asynchronous callbacks are a reality of Node.js.  And until you have accumulated some serious experience working with them, they can feel a bit clumsy.  But you may find that, after a few months, you feel just as comfortable using them as you do writing traditional synchronous code.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We cannot stress enough how important it is to master the basic use of callbacks <span class="italics1">before</span> attempting to learn technologies like promises, async/await, or fibers.  We have seen and dealt with countless timing issues and memory leaks introduced in Node.js apps.  The vast majority of them could have been easily avoided by following this advice.  So please learn callbacks first.  It is far too easy to introduce bugs in a well-intentioned attempt to reduce the number of callbacks in your code.</p>
+
+      <p class="sidebarc">The examples in this book are designed to give you plenty of reps with callbacks.  If you follow along, you will be more than prepared to make an informed decision about whether to use callbacks or promisesin your own application.</p>
+    </div>
+
+    <p class="body">Okay, enough asynchronous programming theory. Even if your head is swimming with all of the new vocabulary, don’t despair! We promise, in a few chapters, you’ll look at asynchronous functions and marvel how much you know and how easy they are to use.</p>
+
+    <p class="body">That about wraps up our primer.  We’re almost ready to start building stuff! But first, in the final section of this chapter, we’ll outline the recurring scenario and example application that we’ll be using throughout the remainder of the book.</p>
+
+    <h2 class="head" id="heading_id_24">1.12   Meet Chad</h2>
+
+    <p class="body">This book would be boring if we just droned on and on about “feature this” and “feature that”. So in order to keep you on the edge of your seat (and to keep us motivated) we invented a fictional character—a friend named Chad. I know what you’re thinking: “Been there, done that. No more books about invisible friends.”  Don’t worry.  We won’t make a habit of it.</p>
+
+    <p class="body">Chad considers himself quite savvy in the ways of social and viral media.  He explained to us that he had a vision: “I’m going to build the most virally adopted web app in history.”  Clearly, what Chad lacks in development experience, he makes up for in confidence.  Normally, we avoid partnerships like these, but Chad is a nice guy.  He even referred us to a couple of clients, and he <span class="italics">is</span> letting us sleep in his house for a couple of weeks. Long story short, we agreed to help build his “vision.”  The only problem is Chad’s “vision” changes from week to week.  Currently the only thing he’s sure about is that “the app MUST include YouTube video clips.”</p>
+
+    <p class="body">Armed with those “detailed” requirements, we’re sure to build a prototype of something amazing.  We’ll pick back up on that in Chapter 3 when we explore static assets. But before bringing Chad into the mix, we need to get your environment ready and take Sails for a quick spin.</p>
+
+    <h2 class="head" id="heading_id_25">1.13   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   The heart of any web application back-end is in handling incoming requests.</p>
+
+    <p class="listbulletcxspmiddle">·   The anatomy of a back-end API, includes its routes and controller actions, which deliver on the requirements of an incoming request.</p>
+
+    <p class="listbulletcxspmiddle">·   The ORM in Sails, called Waterline, allows you to communicate with databases like MySQL or MongoDB using JavaScript.</p>
+
+    <p class="listbulletcxsplast">·   There are three common types of applications whose assets are delivered in different ways by Sails including native apps, SPAs, and hybrid web applications.</p>
+  </div>
+</body>
+</html>

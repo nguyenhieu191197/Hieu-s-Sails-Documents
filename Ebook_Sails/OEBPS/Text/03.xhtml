@@ -1,0 +1,589 @@
+<?xml version='1.0' encoding='utf-8'?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta content="Microsoft Word 12 (filtered)" name="Generator"/>
+    <title>Style A ReadMe</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link href="../../stylesheet.css" rel="stylesheet" type="text/css"/>
+<link href="../../page_styles.css" rel="stylesheet" type="text/css"/>
+</head>
+  <body class="calibre">
+  <div class="section">
+    <h1 class="tochead" id="heading_id_2">3    Using Static Assets</h1>
+
+    <p class="cosummaryhead">This chapter covers</p>
+
+    <p class="cosummarybulletcxspfirst">·   transitioning from server-rendered views to a static-asset SPA</p>
+
+    <p class="cosummarybulletcxspmiddle">·   examining the differences between server-rendering and client-side rendering</p>
+
+    <p class="cosummarybulletcxspmiddle">·   exploring how Sails uses asset routes</p>
+
+    <p class="cosummarybulletcxspmiddle">·   understanding the static asset pipeline</p>
+
+    <p class="cosummarybulletcxsplast">·   setting up “fake” responses and loading states for front-end requests</p>
+
+    <p class="body">Our development environment is installed and we’ve taken Sails for a quick spin. We’re now ready to get down to the business of creating an application. There are some initial questions we need to answer:</p>
+
+    <p class="listbulletcxspfirst">·   What types of user-agent will our application need to support?</p>
+
+    <p class="listbulletcxsplast">·   Will Sails be responsible for delivering front-end assets and if so how?</p>
+
+    <p class="body">This chapter will answer those questions and explore in detail ways Sails can deliver front-end assets in a web application. There are many great libraries and frameworks that work well with Sails. We chose jQuery as a proxy for client-side DOM manipulation tools and Angular as a proxy for client-side frameworks. In this chapter we’ll be using both to demonstrate how to integrate DOM manipulation tools like jQuery and client-side JavaScript frameworks into the static asset pipeline. Henceforth, the remaining chapters will focus on Angular on the front end.</p>
+
+    <p class="body">We have limited information from our new client Chad. He’s provided us with a name for our application– <span class="italics">Brushfir</span>e--and the following specifics: “I want a homepage and a videos page where I can add highly viewed YouTube clips.” Not exactly a requirements document, but it’ll suffice during our initial design phase.</p>
+
+    <p class="body">In chapter 1 we discussed particular user agents in support. Since Brushfire will support the browser as a user-agent, your next decision will be whether to implement the front end as a single page application (SPA) with Sails responding to requests as a stand-alone API, or as a hybrid application combining Sails server-rendered views, client-side JavaScript, and requests fulfilled by a Sails API.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Sails can supply a back-end API separate from the front end, hence the phrase “stand-alone API”. As mentioned in chapter 1, stand-alone APIs are typically used with native mobile, native desktop, Internet of Things (IoT), and SPA applications, where the front end of the application comes from a source other than Sails.</p>
+    </div>
+
+    <p class="body">Starting in this chapter we’re going to first build Brushfire using the SPA approach on the front end, then integrate with the stand-alone Sails API we’ll also develop. The SPA will use client-side routing and rendering for chapters 3 through 7. Starting with chapter 8, we’re going to transition Brushfire to use the hybrid web application approach that uses server-side routing and rendering for the front end. That way, you’ll have experience with both approaches depending upon your application’s requirements. You’ll also understand the pros and cons of each approach.</p>
+
+    <p class="body">In chapter 1 we also examined the general mechanics of integrating a SPA into the Sails ecosystem as depicted in figure 3.1.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_01.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.1 Delivering assets and endpoints to a Single Page Application.</p>
+
+    <p class="body">Using this approach <span class="codeannotationcueballs">① </span>  Sails or a content delivery network (CDN) delivers <span class="codeannotationcueballs">② </span>  the initial HTML view, JavaScript and CSS as static assets in response to a <span><code class="codeintext">GET</code></span> request to the root route-- slash (<span><code class="codeintext">/</code></span>). Then the JavaScript on the front end is responsible for making <span class="codeannotationcueballs">③ </span>  intermediate changes to the view, while also handling <span class="codeannotationcueballs">④ </span>  page navigation. Separate AJAX requests can be used to <span class="codeannotationcueballs">⑤ </span>  access the Sails back-end API. The second approach involves server-side rendering and routing, where Sails renders all of the application views on the back end, then delivers them to the browser user-agent to be displayed. With this approach page navigation requires a refresh of the entire page.</p>
+
+    <p class="body">In this chapter, we’ll focus on how to deliver HTML, CSS, and JavaScript assets, as well as the initial <span class="italics">entry point</span> of a SPA using the Sails <span class="italics">static-asset pipeline</span>. Before we get too far, let’s make sure we are on the same page (pun unintended) where we use the term “static-assets”. So what are static assets? You’re already familiar with accessing web pages (<span><code class="codeintext">.html</code></span>), images (<span><code class="codeintext">.png</code></span>, <span><code class="codeintext">.jpg</code></span>, etc.), JavaScript, (<span><code class="codeintext">.js</code></span>), and stylesheets (<span><code class="codeintext">.css</code></span>) as static assets from a browser. What makes something a “static asset” is not its file extension, but rather the fact that the content of the file doesn’t change between the request from the user-agent and the response from the Sails server. Instead of jabbering on about this in a theoretical way, let’s get our hands dirty with a real use. To begin, we’ll create our initial Brushfire project in Sails.</p>
+
+    <h2 class="head" id="heading_id_3">3.1   Introduction to static routing</h2>
+
+    <p class="body">In this section we’re going to generate a new Sails project. The end result of this process will create the necessary files and folders of a default Sails project, and will also install Sails itself. This makes the project a self-contained independent unit. It will be our blank canvas on which we can develop Brushfire. Create or move to the folder where Brushfire will live and from the terminal window type</p><code class="codeb">~ $ sails new brushfire</code>
+
+    <p class="body">Now move into the root of the project by typing</p><code class="codebcxspfirst">~ $ cd brushfire</code> <code class="codebcxsplast">~/brushfire $</code>
+
+    <p class="body">Finally, start the Sails server by typing</p><code class="codeb">~/brushfire $ sails lift</code>
+
+    <p class="body">To access the default homepage generated with each new Sails project, navigate your browser to <span><code class="codeintext">localhost:1337</code></span>. Your browser window should look similar to figure 3.2.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_02.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.2  After starting the Sails server and navigating to the root route of the project, Sails responds with the default home page.</p>
+
+    <p class="body">The request triggered a response that contained the necessary assets to display our home page. So where are our static assets located in the project? It’s really easy to find them in a Sails project because they’re in a folder named <span><code class="codeintext">brushfire/assets/</code></span>. By default in a new project, Sails creates a few sub-folders of <span><code class="codeintext">assets/</code></span> for convenience including <span><code class="codeintext">images/</code></span>, <span><code class="codeintext">js/</code></span>, and <span><code class="codeintext">styles/</code></span> as well as a <span><code class="codeintext">favicon.ico</code></span> file and a boilerplate <span><code class="codeintext">robots.txt</code></span> file.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The <span><code class="codeintext1">favicon.ico</code></span> file is the icon that can be displayed on a browser tab in Chrome and in other browsers in the address bar and task bar. The <span><code class="codeintext1">robots.txt</code></span> file is used to control how search engines index your live URLs.</p>
+    </div>
+
+    <p class="body">Our current homepage is not in the assets folder. Instead, by default, Sails created an explicit root route and a server-rendered homepage view when we created the project. We’ll explore both in the next section.</p>
+
+    <h3 class="head1" id="heading_id_4">3.1.1   The default homepage</h3>
+
+    <p class="body">Let’s explore the default behavior of the root route generated in a new Sails project. We learned in chapter 1 that Sails uses explicit routes and shadow routes to manage incoming requests. When Sails generates a new project, by default, it sets up an explicit route to handle <span><code class="codeintext">GET</code></span> requests to the root path (<span><code class="codeintext">/)</code></span>of a project. In Sublime, open <span><code class="codeintext">brushfire/config/routes.js</code></span> to see this default explicit route similar to listing 3.1.</p>
+
+    <p class="codelistingcaption">Listing 3.1   The Sails default root route</p><code class="codebcxspfirst">module.exports.routes = {</code> <code class="codebcxspmiddle">  '/': {</code> <code class="codebcxspmiddle">    view: 'homepage'</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">};</code>
+
+    <p class="body">A <span><code class="codeintext">GET</code></span> request to the root path (<span><code class="codeintext">/)</code></span>triggers a response that contains a server-render view of the home page as shown in the route in figure 3.3.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_03.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.3 In addition to an action, <span class="codeannotationcueballs">① </span>  an explicit route can have <span class="codeannotationcueballs">② </span>  a view as its <span class="codeannotationcueballs">③ </span>  target. When a request matches the <span class="codeannotationcueballs">④ </span>  root address of this route, the Sails server responds with a <span class="codeannotationcueballs">② </span>  view. In this case the view is the <span class="codeannotationcueballs">⑤ </span>  home page.</p>
+
+    <p class="body">This is new. In chapter 1 we observed <span class="codeannotationcueballs">① </span>  explicit routes that triggered actions as their target. Explicit routes can also contain server-rendered views as the target. We’ll learn more about these later, but for now we’ll use the single page app (SPA) approach for our front-end. Therefore, we need to change the default behavior of our Brushfire project from using explicit routes and server-rendered views to use <span class="italics">asset routes</span> and client-side rendering.</p>
+
+    <h3 class="head1" id="heading_id_5">3.1.2   Replacing the default homepage</h3>
+
+    <p class="body">We’re going to use a generator to modify our existing Sails project files changing Brushfire’s default behavior to use <span class="italics">asset routes</span> as the entry point for our application.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The entry point of an application means the response to a <span><code class="codeintext1">GET</code></span> request to the root route of a project.</p>
+    </div>
+
+    <p class="body">So there are a number of files that need to be changed in order to set this up. We could manually change those files or we can use a Sails <span class="italics">generator</span> to modify the files automatically. You’ve already used a generator without knowing it: <span><code class="codeintext">sails new</code></span>, the command we used to create the initial sails project is a generator. The <span><code class="codeintext">sails new</code></span> command generated the files and folders necessary to create a default project. Although beyond the scope of the book, you can create your own custom generators and then execute them via the <span><code class="codeintext">sails generate</code></span> command. For a complete list of available generators, visit <a class="pcalibre8 pcalibre5" href="http://sailsjs.org/documentation/concepts/extending-sails/generators/available-generators">http://sailsjs.org/documentation/concepts/extending-sails/generators/available-generators</a>. In this section we’ll install an existing generator.</p>
+
+    <p class="body">In chapter 2,we learned that NPM enables developers to easily share reusable JavaScript code via packages. Since this generator is implemented as an NPM package, we’ll use the npm command line application in the <span class="italics">terminal window</span> to install it from the npmjs.org registry. If the Sails server is running, type <span><code class="codeintext">ctrl-c</code></span> to stop the server and then type</p><code class="codeb">~/brushfire $ npm install sails-generate-static -save</code>
+
+    <div class="sgc3">
+      <p class="sidebarc">Earlier when we installed Sails we used the <span><code class="codeintext1">-g</code></span> or global argument to install Sails globally on the machine. That made Sails available from anywhere on your machine. Here, we’re installing the <span><code class="codeintext1">sails-generate-static</code></span> module locally.</p>
+    </div>
+
+    <p class="body">Executing this npm command installs the generator into <span><code class="codeintext">brushfire/node_modules/.</code></span></p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The <span><code class="codeintext1">brushfire/node_modules/</code></span> folder is the folder where all Brushfire dependency files are installed. This makes each project self contained and very portable.</p>
+    </div>
+
+    <p class="body">By using the <span><code class="codeintext">--save</code></span> parameter npm has also added the generator as a dependency in our <span><code class="codeintext">brushfire/package.json</code></span> file.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The <span><code class="codeintext1">brushfire/package.json</code></span> file has a section that contains the names and versions of all of your Brushfire module dependencies. Inevitably modules are upgraded with breaking changes. Having a file that tracks the working versions of the modules you use in your application is a lifesaver when it comes to debugging.</p>
+    </div>
+
+    <p class="body">Now that the module is installed we can use the generator by typing</p><code class="codeb">~/brushfire $ sails generate static</code>
+
+    <p class="body">The generator removes the explicit route in <span><code class="codeintext">brushfire/config/routes.js</code></span> and copies most of the contents of the current homepage located in the <span><code class="codeintext">brushfire/views/homepage.ejs</code></span> to a file located in <span><code class="codeintext">brushfire/assets/index.html</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We say most of the contents because some of the tags used in server-rendered views are not used in plain HTML. We’ll take a detailed look at these special tags in chapter 8.</p>
+    </div>
+
+    <p class="body">Head back to the terminal window and restart the Sails server by typing</p><code class="codeb">~/brushfire $ sails lift</code>
+
+    <p class="body">Refresh your browser, which should have <span><code class="codeintext">localhost:1337</code></span>in the URL navigation bar. Figure 3.4 illustrates the homepage before and after using the static generator.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_04.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.4  The homepage before and after running the static generator.</p>
+
+    <p class="body">Although the pages look similar there are three subtle but important differences. The first difference is not apparent from viewing each page. When your browser made a <span><code class="codeintext">GET</code></span> request to the root route, Sails tried to match it to an explicit route that contains the <span class="italics">route address</span> <span><code class="codeintext">'GET /'</code></span>. Instead, Sails used another type of route, an <span class="italics">asset</span> <span class="italics">route</span>, to deliver the home page located at <span><code class="codeintext">brushfire/assets/index.html</code></span>. Moving the contents of the homepage view to <span><code class="codeintext">brushfire/assets/index.html</code></span>, automatically created an asset route. Therefore a <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/</code></span>now responds with the contents of <span><code class="codeintext">brushfire/assets/index.html</code></span> a.k.a. the home page.</p>
+
+    <p class="body">The second difference is that the path to the homepage is not displayed like it was for the default server-rendered homepage. When Sails used the explicit route, the path was added to <span><code class="codeintext">brushfire/views/homepage.ejs</code></span> before the server responded with the view as shown in figure 3.5.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_05.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.5  Using a server rendered view, the path is added before the response is sent to the requesting user agent. Using a static asset, the index.html page is not changed between the request and response.</p>
+
+    <p class="body">Since we’re now using an asset route to deliver the entry point to Brushfire, the contents of <span><code class="codeintext">brushfire/assets/index.html</code></span> didn’t change between the request and the response. That is, the path was not added to <span><code class="codeintext">index.html</code></span> and therefore not displayed on the homepage like in the server-rendered view.</p>
+
+    <p class="body">The final difference is that, with the server-rendered approach the homepage was initially an EJS file before being rendered as <span><code class="codeintext">brushfire/views/homepage.html</code></span>. We’ll cover EJS and their use of tags to add data in chapter 8 on server-rendered views. For now let’s take a closer look at the asset pipeline.</p>
+
+    <h2 class="head" id="heading_id_6">3.2   The asset pipeline</h2>
+
+    <p class="body">In addition to responding to asset routes with static assets, the Sails server may also be called upon to perform some preprocessing tasks on these assets.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">I thought you said static assets don’t change?  They don’t change between the request and the response; however, there are some performance and utility tasks that can occur before a request/response transaction is initiated.</p>
+    </div>
+
+    <p class="body">These tasks are contained in the static-asset pipeline as illustrated in figure 3.6.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_06.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.6  The static-asset pipeline aggregates preprocessing tasks to assets.</p>
+
+    <p class="body">The asset pipeline bundled in Sails is a set of tasks configured with conventional defaults designed to make your project more consistent and productive. The entire frontend asset workflow is completely customizable but also provides some default tasks right out of the box. Sails also makes it easy to configure new tasks to fit your needs. A full list default tasks can be found at <a class="pcalibre8 pcalibre5" href="http://sailsjs.org/documentation/concepts/assets/default-tasks#?overview">http://sailsjs.org/documentation/concepts/assets/default-tasks#?overview</a>. We’re going to examine tasks in the order they come up in Brushfire including:</p>
+
+    <p class="listbulletcxspfirst">·   How Sails uses a <span><code class="codeintext">.tmp/</code></span> folder as an equivalent to the <span><code class="codeintext">public</code></span> folder on a typical web server.</p>
+
+    <p class="listbulletcxspmiddle">·   How the Sails asset pipeline uses Grunt to execute necessary pipeline tasks.</p>
+
+    <p class="listbulletcxspmiddle">·   Adding Brushfire front-end assets from a Github repository</p>
+
+    <p class="listbulletcxspmiddle">·   Integrating a Content Delivery Network (CDN) into the asset pipeline</p>
+
+    <p class="listbulletcxspmiddle">·   How naming a file <span><code class="codeintext">index.html</code></span> impacts how it’s accessed.</p>
+
+    <p class="listbulletcxspmiddle">·   Adding images to the asset pipeline.</p>
+
+    <p class="listbulletcxsplast">·   Understanding relative paths.</p>
+
+    <p class="body">First, we’ll look at where the asset files are actually served from with a Sails project.</p>
+
+    <h3 class="head1" id="heading_id_7">3.2.1   A quick look at the <span><code class="codeintext1">.tmp/</code></span> folder</h3>
+
+    <p class="body">With all of this talk of the assets folder, you might think Sails was serving up <span><code class="codeintext">brushfire/assets/index.html</code></span> from the <span><code class="codeintext">brushfire/assets/</code></span> folder. Out of the box, the Sails asset pipeline pulls files from <span><code class="codeintext">brushfire/assets/</code></span>, does transformations in the <span><code class="codeintext">brushfire/.tmp/</code></span> folder, and then dumps the final result in the <span><code class="codeintext">brushfire/.tmp/public/</code></span> folder.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The .tmp folder is a hidden file in the operating system. This means that if you search a folder using the <span><code class="codeintext1">ls</code></span> command, the file will not be returned. To list all files and folders including hidden folders you can use <span><code class="codeintext1">ls –a</code></span>.</p>
+    </div>
+
+    <p class="body">Separating <span><code class="codeintext">/assets</code></span> from <span><code class="codeintext">.tmp/public</code></span> enables Sails to perform different pipeline transformations that do handy things like compile LESS stylesheets.</p>
+
+    <p class="body">Let’s compare the <span><code class="codeintext">brushfire/assets/</code></span>folder and the <span><code class="codeintext">brushfire/.tmp/public/</code></span>folder in figure 3.7.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_07.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.7: The <span><code class="codeintext1">brushfire/assets/</code></span> folder sync’d with the <span><code class="codeintext1">brushfire/.tmp/public/</code></span> folder.</p>
+
+    <p class="body">Talking about this can only take us so far. To see how the files are automatically copied in action; make sure Sails is running via <span class="italics">sails lift</span>, and that both the <span><code class="codeintext">brushfire/assets/</code></span> and the <span><code class="codeintext">brushfire/.tmp/public/</code></span> folders are open in Sublime. Within Sublime, create an empty file named <span><code class="codeintext">brushfire/assets/videos.html</code></span>. You should see <span><code class="codeintext">videos.html</code></span> magically appear in the <span><code class="codeintext">brushfire/.tmp/public/ folder</code></span> similar to figure 3.8.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_08.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.8: The <span><code class="codeintext1">videos.html</code></span> file sync’d in both the <span><code class="codeintext1">assets/</code></span> and <span><code class="codeintext1">.tmp/public/</code></span> folder.</p>
+
+    <p class="body">How did <span><code class="codeintext">videos.html</code></span> suddenly appear in the <span><code class="codeintext">brushfire/.tmp/public/</code></span> folder?  The short answer is, Grunt copied it for us.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The ability to view the <span><code class="codeintext1">brushfire/.tmp/</code></span> folder in Sublime was great for this example, however, there’s a dark side. It’s very easy to confuse the two folders when editing your project. I’ve probably taken several years off Mike’s life asking him why a file hasn’t updated, only to find out that I was editing it in the <span><code class="codeintext1">brushfire/.tmp/</code></span> folder and the file was getting overwritten each time I restarted Sails. Bottom-line, do yourself a favor, and configure Sublime to ignore the <span><code class="codeintext1">.tmp/</code></span> folder.</p>
+    </div>
+
+    <p class="body">Okay, Grunt copied it for us, what is <span class="italics">Grunt</span>?</p>
+
+    <h3 class="head1" id="heading_id_8">3.2.2   Grunt: The other white meat</h3>
+
+    <p class="body"><span class="italics">Grunt</span> calls itself a “<span class="italics">JavaScript task runner”.  We think</span> that’s pretty accurate. It allows Sails to set up repetitive asset pipeline management tasks, which are then executed automatically or manually depending on the task. We saw earlier that there's a Grunt task which looks for changes in <span><code class="codeintext">brushfire/assets/</code></span> and syncs them to <span><code class="codeintext">brushfire/.tmp/public/</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc"><span class="italics1">Grunt</span> is also optional. If for some reason you enjoy doing manual repetitive tasks simply delete the <span><code class="codeintext1">brushfire/Gruntfile.js</code></span> from the root of your project. No more Grunt. When you restart Sails via <span><code class="codeintext1">sails lift</code></span> warnings that the “Gruntfile could not be found” and that “no grunt tasks will be run” are displayed in the terminal window.</p>
+    </div>
+
+    <h3 class="head1" id="heading_id_9">3.2.3   Putting it all together: Chad’s sweet homepage</h3>
+
+    <p class="body">Using the default project generated files is a good first step, but it’s time to get to the real work. Chad has a very specific vision laid out for the “sweet” home page. Let’s create custom assets that match the design mockups. In keeping with our <span class="italics">front-end-first</span> approach to design, let’s take a look at the mockups of Brushfire’s home page and video page for chapter 3. Because Brushfire currently has relatively few pages, we’ll display the mockups in the book as well as online.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">As the application grows over the next few chapters, the mockups will be available online to minimize their impact on the page count of the book.</p>
+    </div>
+
+    <p class="body">Navigate to <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/chapter-3/mockups.html">http://sailsinaction.github.io/chapter-3/mockups.html</a> to access the mockups for chapter 3. As shown in Figure 3.9, the mockup page contains thumbnails for each Brushfire page with a larger modal view that can be accessed by clicking on the thumbnail.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_09.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.9   Interactive mockups are an essential part of the front-end-first approach to development. Each chapter has an online hub that contains mockups. The home page mockup from the chapter 3 hub is pictured here.</p>
+
+    <p class="body">Based on Chad’s mockups, let’s add our own markup to the generated homepage in <span><code class="codeintext">brushfire/assets/index.html</code></span> Open <span><code class="codeintext">brushfire/assets/index.html</code></span> in Sublime and replace the current markup after the body tag with the HTML in listing 3.2.</p>
+
+    <p class="codelistingcaption">Listing 3.2   Adding markup to the homepage.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;body&gt;</code> <code class="codebcxspmiddle">&lt;div class="container-fluid"&gt;</code> <code class="codebcxspmiddle">&lt;!-- Creates the navbar --&gt;</code> <code class="codebcxspmiddle">&lt;nav class="navbar navbar-default navbar-inverse"&gt;</code> <code class="codebcxspmiddle">&lt;!-- This creates the mechanism for collapse button --&gt;</code> <code class="codebcxspmiddle">&lt;button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse"&gt;</code> <code class="codebcxspmiddle">&lt;!-- This controls the number of lines in the image when the nav collapse --&gt;</code> <code class="codebcxspmiddle">&lt;span class="icon-bar"&gt;&lt;/span&gt;</code> <code class="codebcxspmiddle">&lt;span class="icon-bar"&gt;&lt;/span&gt;</code> <code class="codebcxspmiddle">&lt;span class="icon-bar"&gt;&lt;/span&gt;</code> <code class="codebcxspmiddle">&lt;/button&gt;</code> <code class="codebcxspmiddle">&lt;!-- This is the brand on the left-hand side. --&gt;</code> <code class="codebcxspmiddle">&lt;a class="navbar-brand" href="/#"&gt; Brushfire&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;div class="collapse navbar-collapse"&gt;</code> <code class="codebcxspmiddle">&lt;ul class="nav navbar-nav"&gt;</code> <code class="codebcxspmiddle">&lt;li&gt;&lt;a href="/videos"&gt;Videos&lt;/a&gt;&lt;/li&gt;</code> <code class="codebcxspmiddle">&lt;/ul&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code> <code class="codebcxspmiddle">&lt;/nav&gt;</code> <code class="codebcxspmiddle">&lt;div class=" col-md-8 col-md-offset-2"&gt;</code> <code class="codebcxspmiddle">&lt;div class="jumbotron"&gt;</code> <code class="codebcxspmiddle">&lt;h1&gt;Chad's Viral Videos Emporium&lt;/h1&gt;</code> <code class="codebcxspmiddle">&lt;h2&gt;Viral Videos since 2015&lt;/h2&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code><code class="codebcxsplast">  ...</code>
+
+    <p class="body">This markup uses classes from the popular Bootstrap styling framework, which we’ll include in our project using a content delivery network (CDN) to deliver the dependencies.</p>
+
+    <h3 class="head1" id="heading_id_10">3.2.4   Using a CDN</h3>
+
+    <p class="body">It can be advantageous to host <span class="italics">static assets</span> on a CDN (<span class="bold">c</span>ontent <span class="bold">d</span>elivery <span class="bold">n</span>etwork) where distributed servers put the assets closer to the end-user. The goal of a CDN is deliver web assets as fast and reliably as possible. In this section, we’re using a CDN to host dependencies like jQuery, Angular, and Bootstrap. First let’s head over to <a class="pcalibre8 pcalibre5" href="http://getbootstrap.com/getting-started/#download">http://getbootstrap.com/getting-started/#download</a> and grab the link from the “Bootstrap CDN” section.</p>
+
+    <p class="body">As a sanity check, copy and paste the CDN link (in the <span><code class="codeintext">href</code></span>) in your browser’s URL bar to confirm that this is simply pointing to the minified Bootstrap CSS file<span class="italics">.</span> Next, let’s manually add the bootstrap CDN reference to the homepage markup so that it can benefit from Bootstrap styles. In Sublime, open <span><code class="codeintext">brushfire/assets/index.html</code></span> and place the link reference above the STYLES tags in listing 3.3.</p>
+
+    <p class="codelistingcaption">Listing 3.3  Adding a manual reference to the Bootstrap CDN.</p><code class="codebcxspfirst">  ...</code> <code class="codebcxspmiddle">&lt;link rel="stylesheet"  href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous"&gt;</code> <code class="codebcxspmiddle">&lt;!--STYLES--&gt;</code> <code class="codebcxspmiddle">&lt;!--STYLES END--&gt;</code> <code class="codebcxspmiddle">&lt;/head&gt;</code><code class="codebcxsplast">  ...</code>
+
+    <p class="body">Make sure Sails is running via <span><code class="codeintext">sails lift</code></span> and navigate to <span><code class="codeintext">localhost:1337</code></span>. With Bootstrap added as a dependency ,the page should look similar to figure 3.10.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_10.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.10  The homepage with Bootstrap styling added as a CDN dependency.</p>
+
+    <h3 class="head1" id="heading_id_11">3.2.5   Why index.html?</h3>
+
+    <p class="body">Sometimes you may want to link to a folder instead of directly to a file. As a convenience, files named <span><code class="codeintext">index.html</code></span> have a special status within the <span><code class="codeintext">brushfire/assets/</code></span> folder. If a request is made to a <span class="italics">sub-folder</span> of <span><code class="codeintext">brushfire/assets</code></span>, the Sails server will look for and display a file named <span><code class="codeintext">index.html</code></span> in that sub-folder. If <span><code class="codeintext">index.html</code></span> doesn’t exist, the server will respond with a <span><code class="codeintext">404</code></span> “not found” status.</p>
+
+    <p class="body">Let’s set up the videos page to see how this special status works. First, head back to the mockups section of chapter 3, and take a look at the <span class="italics">videos page</span> mockup depicted in figure 3.11.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_11.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.11  The videos page mockup from the Sails in action hub.</p>
+
+    <p class="body">Now return to the terminal window and create a new tab using the shortcut, <span class="italics">command + t</span> (on OS X). Next, move into the <span><code class="codeintext">brushfire/assets/</code></span> folder</p><code class="codeb">~/brushfire $ cd assets</code>
+
+    <p class="body">Create a new subfolder named <span><code class="codeintext">videos/</code></span>within <span><code class="codeintext">brushfire/assets</code></span></p><code class="codeb">~/brushfire/assets $ mkdir videos</code>
+
+    <p class="body">In Sublime, create a new file named <span><code class="codeintext">index.html</code></span> for our videos page and save it in <span><code class="codeintext">brushfire/assets/videos/</code></span>. You can access the HTML for the page from the following gist: <a class="pcalibre8 pcalibre5" href="https://gist.github.com/sailsinaction/b77772769f28112247bc">https://gist.github.com/sailsinaction/b77772769f28112247bc</a>.Copy the source from the gist into <span><code class="codeintext">brushfire/assets/videos/index.html</code></span>. Now, let’s see the videos page in action, which will also demonstrate the special status of <span><code class="codeintext">index.html</code></span>. Ensure that Sails is running, then navigate to <span><code class="codeintext">localhost:1337/videos</code></span> in the browser and you should see the videos page displayed.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_12.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.12  A <span><code class="codeintext1">GET</code></span> request to <span><code class="codeintext1">/videos</code></span> triggers a matching asset route, which displays <span><code class="codeintext1">index.html</code></span> from <span><code class="codeintext1">brushfire/assets/videos/index.html</code></span>.</p>
+
+    <p class="body">When the browser made a <span><code class="codeintext">GET</code></span> request to <span><code class="codeintext">/videos</code></span> on our behalf, Sails first looked for an explicit route that contained the route address <span><code class="codeintext">'GET /videos'.</code></span> Finding no matching explicit route, Sails then looked for an <span><code class="codeintext">index.html</code></span> file in the <span><code class="codeintext">brushfire/assets/videos/</code></span>folder. Since one exists, Sails displayed the videos page. Next, we’ll explore how Sails delivers images in the asset pipeline.</p>
+
+    <h3 class="head1" id="heading_id_12">3.2.6   An &lt;img&gt;is worth a thousand words</h3>
+
+    <p class="body">Based on the mockup, we need to add an image to the left of the logo in the navbar. We’ll use an image from the Sails website. Navigate your browser to <a class="pcalibre8 pcalibre5" href="https://placekitten.com/g/250/250">https://placekitten.com/g/250/250</a>. Right click on the image, save it in the <span><code class="codeintext">brushfire/assets/images/</code></span> folder, and name it <span><code class="codeintext">logo.png</code></span>. In Sublime, open <span><code class="codeintext">brushfire/assets/index.html</code></span> and add the following tags similar to listing 3.4<span class="italics">.</span></p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Each partial code listing is shown in context through a GitHub gist. For example, the listing 3.4 can be found at <a class="pcalibre8 pcalibre4 pcalibre5" href="https://gist.github.com/sailsinaction/628731cc9683256f8cc9">https://gist.github.com/sailsinaction/628731cc9683256f8cc9</a>. Each chapter has its own gist with a link on the chapter hub page similar to: <a class="pcalibre8 pcalibre4 pcalibre5" href="http://sailsinaction.github.io/chapter-3/">http://sailsinaction.github.io/chapter-3/</a>.</p>
+    </div>
+
+    <p class="codelistingcaption">Listing 3.4   Adding an image tag using a relative path in the homepage.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;!-- This is the brand on the left-hand side. --&gt;</code> <code class="codebcxspmiddle">&lt;a href="/#" class="pull-left"&gt;&lt;img height="29" char="25" <span class="codeannotationcueballs1">❶ </span>  src="images/logo.png" style="margin-top: 10px; margin-left: 10px;"&gt;&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;a class="navbar-brand" href="/#"&gt;Brushfire&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;div class="collapse navbar-collapse"&gt;</code> <code class="codebcxspmiddle">&lt;ul class="nav navbar-nav"&gt;</code> <code class="codebcxspmiddle">&lt;li&gt;&lt;a href="/videos"&gt;Videos&lt;/a&gt;&lt;/li&gt;</code> <code class="codebcxspmiddle">&lt;/ul&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> : added the image via an image tag using a relative path</p>
+
+    <p class="body">With the Sails server running via <span class="italics">sails lift</span>, navigate your browser to <span><code class="codeintext">localhost:1337</code></span>and you should see something similar to figure 3.13.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_13.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.13  Our homepage with an image in the navbar using a relative path.</p>
+
+    <h3 class="head1" id="heading_id_13">3.2.7   Relative paths</h3>
+
+    <p class="body">The logic behind relative paths is not very intuitive so let’s dig a bit deeper. Earlier, we used <span><code class="codeintext">images/logo.png</code></span> as the source path for the <span><code class="codeintext">img</code></span> tag in the navigation bar. This is a <span class="italics">relative</span> path. That is, <span><code class="codeintext">images/logo.png</code></span> will be appended to the location of the page that contains the <span><code class="codeintext">img</code></span> tag, <span><code class="codeintext">brushfire/assets/index.html</code></span>. So in this case <span><code class="codeintext">images/logo.png</code></span> will be appended to <span><code class="codeintext">brushfire/assets/</code></span>, resolving to <span><code class="codeintext">brushfire/assets/images/logo.png</code></span>.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">For those of you really paying attention, you might be asking:“since we’re syncing these files to <span><code class="codeintext1">brushfire/.tmp/public</code></span>, doesn’t the path ultimately resolve to <span><code class="codeintext1">brushfire/.tmp/public/images/logo.png</code></span>?” And the answer is yes. However, since we’re hiding the <span><code class="codeintext1">.tmp</code></span> folder, we’re looking at this from the perspective of <span><code class="codeintext1">brushfire/assets</code></span> being the asset root route.</p>
+    </div>
+
+    <p class="body">But using a relative path can be problematic. Let’s look at another example to show you what we mean. In Sublime, open <span><code class="codeintext">brushfire/assets/videos/index.html</code></span> and add the same <span><code class="codeintext">img</code></span> tag to the videos page similar to listing 3.5.</p>
+
+    <p class="codelistingcaption">Listing 3.5   Adding an image tag using a relative path in the videos page.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;!-- This is the brand on the left-hand side. --&gt;</code> <code class="codebcxspmiddle">&lt;a href="/#" class="pull-left"&gt;&lt;img height="29" char="25" <span class="codeannotationcueballs1">❶ </span>  src="images/logo.png" style="margin-top: 10px; margin-left: 10px;"&gt;&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;a class="navbar-brand" href="/#"&gt;Brushfire&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;div class="collapse navbar-collapse"&gt;</code> <code class="codebcxspmiddle">&lt;ul class="nav navbar-nav"&gt;</code> <code class="codebcxspmiddle">&lt;li&gt;&lt;a href="/videos"&gt;Videos&lt;/a&gt;&lt;/li&gt;</code> <code class="codebcxspmiddle">&lt;/ul&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code><code class="codebcxsplast">      ...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">❶ </span> : added the image via an image tag using a relative path</p>
+
+    <p class="codeannotationcxsplast"> </p>
+
+    <p class="body">Make sure Sails is running via <span><code class="codeintext">sails lift</code></span> and navigate your browser to <span><code class="codeintext">localhost:1337/videos</code></span>. You should see a broken image link in your browser similar to figure 3.14.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_14.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.14  The source path within the image tag used a relative path which didn’t exist and results in a broken link.</p>
+
+    <p class="body">Why did the image tag break?  This time the <span><code class="codeintext">img</code></span> tag is located in <span><code class="codeintext">brushfire/assets/videos/index.html</code></span>. The source path <span><code class="codeintext">images/logo.png</code></span> gets appended to <span><code class="codeintext">brushfire/assets/videos/</code></span>resolving ultimately to <span><code class="codeintext">brushfire/assets/videos/images/logo.png</code></span>. Since that path doesn’t exist we get the broken link.</p>
+
+    <p class="body">The solution is to add a leading <span class="italics">“/”</span> (slash) in front of the source path. Placing a leading “/” (slash) before the folder name changes the relative path to an <span class="italics">absolute</span> path. That is, the source path <span><code class="codeintext">/images/logo.png</code></span> will now be appended to the <span class="italics">asset root</span> or <span class="italics">web root</span> folder. Since the web root folder is <span><code class="codeintext">brushfire/assets/</code></span>, this will resolve to <span><code class="codeintext">brushfire/assets/images/logo.png</code></span>, which will display the image properly. Let’s propogate this change to the videos page in <span><code class="codeintext">brushfire/assets/videos/index.html</code></span> similar to listing 3.6.</p>
+
+    <p class="codelistingcaption">Listing 3.6  Adding an image tag using an absolute path to in the videos page.</p><code class="codebcxspfirst">        ...</code> <code class="codebcxspmiddle">&lt;!-- This is the brand on the left-hand side. --&gt;</code> <code class="codebcxspmiddle">&lt;a href="/#" class="pull-left"&gt;&lt;img height="29" char="25" <span class="codeannotationcueballs1">❶ </span>  src="/images/logo.png" style="margin-top: 10px; margin-left: 10px;"&gt;&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;a class="navbar-brand" href="/#"&gt;Brushfire&lt;/a&gt;</code> <code class="codebcxspmiddle">&lt;div class="collapse navbar-collapse"&gt;</code> <code class="codebcxspmiddle">&lt;ul class="nav navbar-nav"&gt;</code> <code class="codebcxspmiddle">&lt;li&gt;&lt;a href="/videos"&gt;Videos&lt;/a&gt;&lt;/li&gt;</code> <code class="codebcxspmiddle">&lt;/ul&gt;</code> <code class="codebcxspmiddle">&lt;/div&gt;</code><code class="codebcxsplast">      ...</code>
+
+    <p class="codeannotation pcalibre7"><span class="codeannotationcueballs2">❶ </span> : added the image via an image tag using an absolute path</p>
+
+    <h2 class="head" id="heading_id_14">3.3   Managing scripts and stylesheets</h2>
+
+    <p class="body">It’s often better to have all of your dependencies available locally while developing an application. For example, it allows you to develop without the dependence of an Internet connection. You also get to take advantage of another aspect of the Sails asset pipeline called the <span class="italics">Sails linker</span>. The Sails linker will automatically add CSS and JavaScript file links to the asset folder, which can save a lot of time compared to manually adding them. To illustrate how sails-linker works we’ll trade out our Bootstrap CDN link for a local copy of the Bootstrap library.</p>
+
+    <p class="body">To do this, first remove the CDN links from <span><code class="codeintext">brushfire/assets/index.html</code></span> and <span><code class="codeintext">brushfire/assets/videos/index.html</code></span>. Next, go back to <a class="pcalibre8 pcalibre5" href="http://getbootstrap.com/getting-started/#download">http://getbootstrap.com/getting-started/ - download</a> and download the bootstrap distribution ZIP file. Uncompress the ZIP file and copy the <span><code class="codeintext">bootstrap.min.css</code></span> and <span><code class="codeintext">bootstrap.css.map</code></span> files into the <span><code class="codeintext">brushfire/assets/styles/</code></span> folder. Make sure Sails is running via <span class="italics">sails lift</span> and navigate to <span class="italics">localhost:1337</span>. The home page doesn’t seem to have changed, butlet’s take a closer look at the page source.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_15.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.15  The page source reveals the reference links to the bootstrap and importer.css files.</p>
+
+    <p class="body">In the page source we can now see the links to <span><code class="codeintable">brushfire/assets/styles/bootstrap.min.cssandbrushfire/assets/styles/importer.css</code></span>. But how did these files get linked to the home page? (<span class="italics">hint</span>: insert grunting sound). That’s correct, another Grunt task to the rescue. In fact, we’ve grouped a special collection of Grunt tasks into the asset pipeline we call the <span class="italics">sails-linker</span>.</p>
+
+    <h3 class="head1" id="heading_id_15">3.3.1   Automatically injecting &lt;script&gt; and &lt;link&gt; tags</h3>
+
+    <p class="body">The Sails “linker” is one of the most powerful utilities in the built-in asset pipeline. It’s one of the Grunt tasks: <span><code class="codeintext">brushfire/tasks/config/sails-linker.js</code></span>. Instead of having to manually insert <span><code class="codeintext">&lt;script&gt; </code></span>or <span><code class="codeintext">&lt;link&gt; </code></span>tags for file dependencies like jQuery or Bootstrap, sails-linker automatically injects them for us. All you have to do is add some special sails-linker tags in the files where you want the dependencies added. For example, any files with a <span><code class="codeintext">.css</code></span> extension placed in <span><code class="codeintext">brushfire/assets/styles</code></span> will automatically be linked to any page that contains the special Sails linker tags</p><code class="codebcxspfirst">&lt;!--STYLES--&gt;                        </code> <code class="codebcxsplast">&lt;!--STYLES END--&gt;</code>
+
+    <div class="sgc3">
+      <p class="sidebarc">As long as the Sails server is running, the injection takes place automatically via a <span><code class="codeintext1">watch</code></span>Grunt task that monitors any changes to the <span><code class="codeintext1">brushfire/assets</code></span> folder and updates any link as needed.</p>
+    </div>
+
+    <p class="body">The same is true for files with a <span><code class="codeintext">.js</code></span> extension placed in the <span><code class="codeintext">brushfire/assets/js/</code></span> folder. The script tags for those JavaScript files will be automatically included on any page with the Sails linker tags</p><code class="codebcxspfirst">&lt;!--SCRIPTS--&gt;                       </code> <code class="codebcxsplast">&lt;!--SCRIPTS END--&gt;</code>
+
+    <div class="sgc3">
+      <p class="sidebarc">The Sails linker also takes HTML files from the <span><code class="codeintext1">/assets/templates</code></span> folder and precompiles underscore templates into a JST file. These precompiled templates are placed in <span><code class="codeintext1">/.tmp/public/jst.js</code></span>. We won’t be using precompiled templates in Brushfire.</p>
+    </div>
+
+    <p class="body">This is another concept that is better understood via an illustration. Figure 3.16 illustrates what happened when we added the <span><code class="codeintext">bootstrap.min.css</code></span> file to <span><code class="codeintext">brushfire/assets/styles</code></span>.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_16.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.16  <span class="codeannotationcueballs">① </span>  By default, an <span><code class="codeintext1">importer.less</code></span> file is generated for each new Sails project. We’ll see later how <span><code class="codeintext1">importer.less</code></span> is compiled into <span><code class="codeintext1">importer.css</code></span>. What’s important here is that the compiled <span class="codeannotationcueballs">② </span>  <span><code class="codeintext1">importer.css</code></span> file was injected into <span><code class="codeintext1">brushfire/assets/index.html</code></span> because it contains the special Sailslinker tags. After we added <span class="codeannotationcueballs">③ </span>  <span><code class="codeintext1">bootstrap.min.css</code></span> to the <span><code class="codeintext1">brushfire/assets/styles</code></span> folder, a <span class="codeannotationcueballs">④ </span>  link was also automatically added to <span><code class="codeintext1">brushfire/assets/index.html</code></span> for the <span><code class="codeintext1">bootstrap.min.css</code></span> file.</p>
+
+    <p class="body">When we added <span><code class="codeintext">bootstrap.min.css</code></span> to the <span><code class="codeintext">brushfire/assets/styles/</code></span>folder, Sailslinker inserted a reference to it <span class="codeannotationcueballs">④ </span>  in <span><code class="codeintext">brushfire/assets/index.html</code></span>. This makes it much easier to maintain dependencies on the front end, because you don’t have to remember to manually add them. A quick look at the home page reveals that a script has also been added to the page.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_17.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.17  The page source reveals the reference script tag to the <span><code class="codeintext1">sails.io.js</code></span> file.</p>
+
+    <p class="body">By default, <span><code class="codeintext">sails.io.js</code></span> is generated by each project.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">We’ll be exploring <span><code class="codeintext1">sails.io.js</code></span> in chapter 14 when we learn about web sockets. For now just know that any file added to <span><code class="codeintext1">brushfire/assets/js/</code></span> will be linked to in HTML files that contain the special <span><code class="codeintext1">&lt;!—SCRIPTS--&gt;</code></span> tags.</p>
+    </div>
+
+    <p class="body">Figure 3.18 illustrates how <span><code class="codeintext">&lt;script&gt;</code></span> tags were added to the homepage in the same way<span><code class="codeintext">&lt;link&gt;</code></span> tags we’re added earlier by sails-linker.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_18.png"/><br class="calibre1"/></p>
+
+    <p class="body"> </p>
+
+    <p class="figureacaption">Figure 3.18  <span class="codeannotationcueballs">① </span>  By default, a <span><code class="codeintext1">sails.io.js</code></span> file <span class="codeannotationcueballs">① </span>  is generated by each project and placed in the <span><code class="codeintext1">brushfire/assets/js</code></span> folder. <span class="codeannotationcueballs">② </span>  sails-linker inserts a reference to it in <span class="codeannotationcueballs">③ </span>  <span><code class="codeintext1">brushfire/assets/index.html</code></span>.</p>
+
+    <p class="body">So <span><code class="codeintext">sails.io.js</code></span> located in the <span><code class="codeintext">brushfire/assets/js/</code></span>was automatically added as a dependency via the <span><code class="codeintext">&lt;script&gt;</code></span>tag by sails-linker.</p>
+
+    <h3 class="head1" id="heading_id_16">3.3.2   Built-in LESS support</h3>
+
+    <p class="body">For those of you who are CSS experts the following may disturb you. I recommend averting your eyes when viewing Irl’s styles or rather his lack of style. We could use plain-ole CSS for our styles. However, we’re fans of LESS. We like the way we get benefits from LESS without having to change much of how you use CSS. By default, a file named <span><code class="codeintext">importer.less</code></span> was created in the <span><code class="codeintext">brushfire/assets/styles/</code></span> folder. In order for LESS files to be compiled and included automatically in the markup, you must first import them via <span><code class="codeintext">importer.less</code></span>. The imported LESS files are then compiled and included in the order they’re listed each time the Sails server is started. So mixins, variables, etc. should be imported first so that they can be accessed by subsequent LESS stylesheets.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">If <span><code class="codeintext1">mixins</code></span> and <span><code class="codeintext1">variables</code></span> are foreign to you, we’ll give you what you need to know to use them as they come up in the project.</p>
+    </div>
+
+    <p class="body">So let’s add some styles to a <span><code class="codeintext">.css</code></span> file and then import that file into LESS. In Sublime, create a new file named <span><code class="codeintext">brushfire/assets/styles/custom.css</code></span> and add the styles in listing 3.7.</p>
+
+    <p class="codelistingcaption">Listing 3.7 Adding an external CSS file to brushfire/assets/styles.</p><code class="codebcxspfirst">/* Center the logo*/</code> <code class="codebcxspmiddle">img {</code> <code class="codebcxspmiddle">  width: 100px;</code> <code class="codebcxspmiddle">  margin: 30px auto 0px auto;</code> <code class="codebcxspmiddle">  display: block;</code> <code class="codebcxspmiddle">}</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">/* Center the heading */</code> <code class="codebcxspmiddle">.jumboHeading {</code> <code class="codebcxspmiddle">  text-align: center;</code> <code class="codebcxspmiddle">  padding: 20px 0;</code> <code class="codebcxspmiddle">  font-size: 2.5em;</code> <code class="codebcxspmiddle">}</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">/* Center the heading */</code> <code class="codebcxspmiddle">.jumboSubHeading {</code> <code class="codebcxspmiddle">  text-align: center;</code> <code class="codebcxspmiddle">}</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">/* Don't display bullet points in list */</code> <code class="codebcxspmiddle">.the-list-of-videos {</code> <code class="codebcxspmiddle">  li {</code> <code class="codebcxspmiddle">    list-style-type: none;</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">}</code>
+
+    <p class="body">Next, open <span><code class="codeintext">brushfire/assets/importer.less</code></span> in Sublime and add</p><code class="codeb">@import 'custom.less';</code>
+
+    <p class="body">Make sure Sails is running via <span class="italics">sails lift</span> and navigate your browser to <span class="italics">localhost:1337</span>.The homepage should look similar to figure 3.19.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_19.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.19  The home page with the new styles in <span><code class="codeintext1">custom.less</code></span>.</p>
+
+    <p class="body"> If you take a look at the page source you’ll see that <span><code class="codeintext">importer.less</code></span> has been compiled into <span><code class="codeintext">importer.css</code></span>. As a sanity check, click on the path to importer.css, and, as expected, you’ll find the styles we just added as plain ole CSS.</p>
+
+    <h2 class="head" id="heading_id_17">3.4   Front-end first API design</h2>
+
+    <p class="body">We’re now ready to start preparing and designing the back-end. In chapter 1, we emphasized the importance of identifying the requests made by each page in your application in order to guide backend development. Traditionally, requests can be “faked” on the front-end using a combination of techniques. It’s useful to explore this traditional approach before we demonstrate, in chapter 4, how you can now start with prototyping an actual back end at this phase of development using Blueprints. First, we’ll identify the requests for each page of Brushfire. Then we’ll use an array of dictionaries to simulate back-end responses to each request.</p>
+
+    <h3 class="head1" id="heading_id_18">3.4.1   Identifying back-end requirements</h3>
+
+    <p class="body">Navigate back to the chapter 3 mockups, <a class="pcalibre8 pcalibre5" href="http://sailsinaction.github.io/chapter-3/mockups.html">http://sailsinaction.github.io/chapter-3/mockups.html</a>, and check out both the <span class="italics">home page with requests</span> and the <span class="italics">videos page with requests</span> mockups. The home page has two endpoints, which both make requests using anchor tags that are satisfied by asset routes. Therefore, the home page does not have any additional requirements for our back end.</p>
+
+    <p class="body">As shown in figure 3.20, however, the videos page has two requests that require us to simulate back-end responses—one for video submissions, and the other to load the initial video list.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_20.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.20  The video page has two requests, one for new video submissions and the other for the initial videos of the page.</p>
+
+    <p class="body">Each request requires a visual mechanism for a loading state and an ability to add a new video to the page after a submission.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Since we’re faking the response, we won’t implement the error states until we start making AJAX requests in the next chapter.</p>
+    </div>
+
+    <h2 class="head" id="heading_id_19">3.5   Using Sails with jQuery</h2>
+
+    <p class="body">Integrating jQuery as a dependency is easy. Head over to <a class="pcalibre8 pcalibre5" href="http://jquery.com/">http://jquery.com/</a> and download the latest production/compressed version of jQuery. Copy that file into the <span><code class="codeintext">brushfire/assets/js/dependencies/</code></span>folder, name it <span><code class="codeintext">jquery.min.js</code></span>, and you’re done. The jQuery library will now be added automatically to <span><code class="codeintext">brushfire/assets/index.html</code></span> and <span><code class="codeintext">brushfire/assets/videos/index.html</code></span>. We’re also going to use a popular JavaScript utility library called <span class="italics">lodash.js</span>. Navigate to <a class="pcalibre8 pcalibre5" href="https://raw.githubusercontent.com/lodash/lodash/4.5.0/dist/lodash.core.min.js">https://raw.githubusercontent.com/lodash/lodash/4.5.0/dist/lodash.core.min.js</a> and copy the contents of the page to a new file in <span><code class="codeintext">brushfire/assets/js/dependencies/lodash.js</code></span><span class="italics">.</span></p>
+
+    <h3 class="head1" id="heading_id_20">3.5.1   Example: listing data with jQuery</h3>
+
+    <p class="body">Currently we have the initial videos hard-coded in the mark-up. Instead, we’ll load them from an array using jQuery. Let’s first alter our markup a bit to account for the classes we’ll need in order to select elements with jQuery. In Sublime, open <span><code class="codeintext">brushfire/assets/videos/index.html</code></span> and alter the list of videos section to reflect the code in listing 3.8.</p>
+
+    <p class="codelistingcaption">Listing 3.8Adding classes to make selecting elements easier in jQuery.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;!-- LIST OF VIDEOS --&gt;</code> <code class="codebcxspmiddle">&lt;section class="the-list-of-videos col-md-12"&gt;</code> <code class="codebcxspmiddle">&lt;div class="loading"&gt;Loading videos...&lt;/div&gt;</code> <code class="codebcxspmiddle">&lt;ul&gt;</code> <code class="codebcxspmiddle">&lt;!-- VIDEO DATA INSERTED HERE AS HTML --&gt;</code> <code class="codebcxspmiddle">&lt;/ul&gt;</code> <code class="codebcxspmiddle">&lt;/section&gt;</code><code class="codebcxsplast">...</code>
+
+    <p class="body">Notice that we added an element for our loading state. We also removed the static YouTube video iframes which will be replaced by dynamic loading iframes via jQuery.</p>
+
+    <p class="body">Next, we’ll create a new file for the jQuery code that will load the video list. In Sublime, create a new file named <span><code class="codeintext">brushfire/assets/js/videos-page.js</code></span> and add the jQuery in listing 3.9.</p>
+
+    <p class="codelistingcaption">Listing 3.9 Adding jQuery to load the video list.</p><code class="codebcxspfirst">$(function whenDomIsReady(){</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  $('.the-list-of-videos .loading').show();     <span class="codeannotationcueballs1">① </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  setTimeout(function afterRetrievingVideos() { <span class="codeannotationcueballs1">② </span></code> <code class="codebcxspmiddle">    var videos = [{</code> <code class="codebcxspmiddle">      title: 'FUNNY BABY VIDEOS',</code> <code class="codebcxspmiddle">      src: 'https://www.youtube.com/embed/_FvTVWjLiHM'</code> <code class="codebcxspmiddle">    }, {</code> <code class="codebcxspmiddle">      title: 'Justin Bieber - Baby ft. Ludacris',</code> <code class="codebcxspmiddle">      src: 'https://www.youtube.com/embed/kffacxfA7G4'</code> <code class="codebcxspmiddle">    }, {</code> <code class="codebcxspmiddle">      title: 'Charlie bit my finger - again !',</code> <code class="codebcxspmiddle">      src: 'https://www.youtube.com/embed/_OBlgSz8sSM'</code> <code class="codebcxspmiddle">    }];</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $('.the-list-of-videos .loading').hide();   <span class="codeannotationcueballs1">③ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    var videosHtml = _.reduce(videos, function(html, video){ <span class="codeannotationcueballs1">④ </span></code> <code class="codebcxspmiddle">      html += '&lt;li class="video"&gt;' +</code> <code class="codebcxspmiddle">        '  &lt;h2&gt;' + video.title + '&lt;/h2&gt;' +</code> <code class="codebcxspmiddle">        '  &lt;iframe width="640" height="390" src="' + video.src + '" frameborder="0" allowfullscreen&gt;&lt;/iframe&gt;' +</code> <code class="codebcxspmiddle">        '&lt;/li&gt;';</code> <code class="codebcxspmiddle">      return html;</code> <code class="codebcxspmiddle">    }, '');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $('.the-list-of-videos ul').replaceWith(videosHtml); <span class="codeannotationcueballs1">⑤ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  }, 750);</code><code class="codebcxsplast">});</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">① </span> : display the loading spinner</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">② </span> : simulate a delay in fetching the fake data</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">③ </span> : hide the loading spinner</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">④ </span> : merge simulated data with an inline template</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">⑤ </span> : insert videos into the DOM</p>
+
+    <p class="body">Our intent is to add a loading state, and to simulate a response from the back end when the page loads. To accomplish this, when the page loads we’ll first display the loading spinner <span class="codeannotationcueballs">① </span> . We’ll then simulate a delay <span class="codeannotationcueballs">② </span>  in fetching the fake data so we can see the loading spinner in action. After receiving a simulated “response” from the back-end we’ll hide <span class="codeannotationcueballs">③ </span>  the loading spinner. Next, we’ll merge <span class="codeannotationcueballs">④ </span>  our simulated data with an inline template using the <span class="italics">lodash</span> library.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">The <span class="italics1">_.reduce()</span> method is very handy for iterating through an array. It reduces the array of dictionaries to a value (merging our markup with the fake data)with the accumulated result being our list of videos.</p>
+    </div>
+
+    <p class="callout"><span class="callouthead">Note</span>  this approach is just as an example-- you should be HTML-escaping user input to prevent a possible script injection attack. Even better would be the use of a more structured front-end framework on top of (or in lieu of) jQuery. We’ll be using Angular for Brushfire. We’ll also be discussing XSS attacks and their prevention in chapters 8 and 15.</p>
+
+    <p class="body">Finally, we’ll insert <span class="codeannotationcueballs">⑤ </span>  the videos into the DOM.</p>
+
+    <h3 class="head1" id="heading_id_21">3.5.2   Example: jQuery form</h3>
+
+    <p class="body">For the videos list page, we needed to add a couple of classes in order to select elements via jQuery. The <span class="italics">submit video form</span> doesn’t require any additional classes, but do want to perform the following tasks:</p>
+
+    <p class="listbulletcxspfirst">·   enable the loading state and disable the submit button to prevent double submissions</p>
+
+    <p class="listbulletcxspmiddle">·   harvest the <span><code class="codeintext">title</code></span> and <span><code class="codeintext">src</code></span> of the YouTube video from the form</p>
+
+    <p class="listbulletcxspmiddle">·   extract the YouTube <span><code class="codeintext">ID</code></span> of the video.</p>
+
+    <p class="listbulletcxspmiddle">·   add the new video title and iframe to the DOM</p>
+
+    <p class="listbulletcxsplast">·   disable the loading state and enable the submit button.</p>
+
+    <p class="body">Head back to Sublime and open <span><code class="codeintext">brushfire/assets/js/videos-page.js</code></span> and replace the current source with the following code in listing 3.10.</p>
+
+    <p class="body"> </p>
+
+    <p class="codelistingcaption">Listing 3.10 Adding jQuery to process the submit video form.</p><code class="codebcxspfirst">$(function whenDomIsReady(){</code> <code class="codebcxspmiddle">  ...</code> <code class="codebcxspmiddle">  $('.submit-video-form').submit(function (e){ <span class="codeannotationcueballs1">① </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    e.preventDefault();</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    var newVideo = {</code> <code class="codebcxspmiddle">      title: $('.submit-video-form input[name="title"]').val(), <span class="codeannotationcueballs1">② </span></code> <code class="codebcxspmiddle">      src: $('.submit-video-form input[name="src"]').val()</code> <code class="codebcxspmiddle">    };</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $('.submit-video-form input').val('');      <span class="codeannotationcueballs1">③ </span></code> <code class="codebcxspmiddle">    $('.submit-video-form button').text('Submitting...');</code> <code class="codebcxspmiddle">    $('.submit-video-form button').prop('disabled', true);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    var parser = document.createElement('a');</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  parser.href = newVideo.src</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">  var youtubeID = parser.search.substring(parser.search.indexOf("=")+1, parser.search.length);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    newVideo.src = 'https://www.youtube.com/embed/'+youtubeID;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    setTimeout(function (){</code> <code class="codebcxspmiddle">      var newVideoHtml = '&lt;li class="video"&gt;'+  <span class="codeannotationcueballs1">④ </span></code> <code class="codebcxspmiddle">      '  &lt;h2&gt;' + newVideo.title + '&lt;/h2&gt;'+</code> <code class="codebcxspmiddle">      '  &lt;iframe width="640" height="390" src="'+newVideo.src+'" frameborder="0" allowfullscreen&gt;&lt;/iframe&gt;'+</code> <code class="codebcxspmiddle">      '&lt;/li&gt;';</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      $('.the-list-of-videos').prepend(newVideoHtml); <span class="codeannotationcueballs1">⑤ </span></code> <code class="codebcxspmiddle">      $('.submit-video-form button').text('Submit Video');</code> <code class="codebcxspmiddle">      $('.submit-video-form button').prop('disabled', false);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    }, 750);</code><code class="codebcxsplast">  });</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">① </span> : bind a "submit" event <span class="codeannotationcueballs2">① </span>  on our submit-video-form</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">② </span> : harvest the data out of the form</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">③ </span> : clear data and display the loading state</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">④ </span> : simulate a delay in fetching the fake data</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">⑤ </span> : insert the HTML</p>
+
+    <p class="body">First we’ll bind a "submit" event <span class="codeannotationcueballs">① </span>  on our submit-video-form and prevent the default browser form handling -- this is 2016 after all. Next, we’ll harvest the data from the form in the DOM <span class="codeannotationcueballs">② </span> . Now that we have the data from the input fields, we can clear them out and display the loading state <span class="codeannotationcueballs">③ </span> . We also want to disable the submit button to prevent double posting while loading. Since we only need the YouTube <span><code class="codeintext">ID</code></span>, we need to parse the URL provided for the <span><code class="codeintext">ID</code></span>. Like we did for the video list, we can simulate the delay <span class="codeannotationcueballs">④ </span>  our eventual request will cause which gives us a chance to see the loading state. Next, insert the HTML <span class="codeannotationcueballs">⑤ </span> for the newly added video into the DOM. Then we’ll hide the loading state and re-enable the submit button.</p>
+
+    <p class="body">Although not completely bulletproof, we have enough here for a user to submit a YouTube URL to Brushfire, and for Brushfire to display the submission. The video page is also back-end ready with loading states and simulated delays to aid in testing those states. We’re going to postpone the creation of the error state until we actually make a request. With the Sails server running via <span class="italics">sails lift</span>, navigate to <i>localhost:1337/videos</i>. The videos page is rendered with the video list. Open a second browser tab and navigate to <a class="pcalibre8 pcalibre5" href="http://youtube.com">http://youtube.com</a>.Search for a video and then select and copy the URL of that video into the form on the sub videos page. Add a title and click <span class="italics">Submit Video</span>. The new video will be added before the first video on the page similar to Figure 3.21.</p>
+
+    <p class="figurea"><img alt="" class="pcalibre" src="../Images/03_21.png"/><br class="calibre1"/></p>
+
+    <p class="figureacaption">Figure 3.21  The added video from the video-submit-form using jQuery.</p>
+
+    <p class="body">Now that we know how to do this using jQuery, we’ll transition our front-end to use Angular to do the same thing.</p>
+
+    <h2 class="head" id="heading_id_22">3.6   Using Sails with Angular</h2>
+
+    <p class="body">Adding Angular as a dependency is as easy as it was with jQuery. Head over to <a class="pcalibre8 pcalibre5" href="https://angularjs.org/">https://angularjs.org/</a> and download the latest stable uncompressed version of Angular. Copy that file into <span><code class="codeintext">brushfire/assets/js/dependencies/</code></span> and you’re done. Angular will now be added as a dependency to any page that contains the sails-linker tags.</p>
+
+    <h3 class="head1" id="heading_id_23">3.6.1   Example: listing data with Angular</h3>
+
+    <p class="body">We’re going to continue to load the video list from an array. First we’ll change the mark-up and add the necessary Angular files to display the list of videos. Open <span><code class="codeintext">brushfire/assets/videos/index.html</code></span> in Sublime and replace the markup in the <span class="italics">list of videos</span> section similar to listing 3.11.</p>
+
+    <p class="codelistingcaption">Listing 3.11Adding Angular markup to load the video list.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;body ng-app="brushfire_videosPage" ng-controller="PageCtrl"&gt; <span class="codeannotationcueballs1">① </span></code> <code class="codebcxspmiddle">...</code> <code class="codebcxspmiddle">&lt;!-- LIST OF VIDEOS --&gt;</code> <code class="codebcxspmiddle">&lt;section class="the-list-of-videos col-md-12"&gt;</code> <code class="codebcxspmiddle">&lt;div class="loading" ng-if="videosLoading"&gt;Loading videos...&lt;/div&gt;</code> <code class="codebcxspmiddle">&lt;ul&gt;</code> <code class="codebcxspmiddle">&lt;li class="video" ng-repeat="video in videos" ng-if="!videosLoading"&gt;</code> <code class="codebcxspmiddle">&lt;h2&gt;{{video.title}}&lt;/h2&gt;</code> <code class="codebcxspmiddle">&lt;iframe width="640" height="390" ng-src="{{video.src}}" frameborder="0" allowfullscreen&gt;</code> <code class="codebcxspmiddle">&lt;/iframe&gt;</code> <code class="codebcxspmiddle">&lt;/li&gt;</code> <code class="codebcxspmiddle">&lt;/ul&gt;</code> <code class="codebcxspmiddle">&lt;/section&gt;</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">① </span> : add <span><code class="codeintext1">ng-app</code></span> and <span><code class="codeintext1">ng-controller</code></span> to the <span><code class="codeintext1">body</code></span> tag</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">② </span> : add <span><code class="codeintext1">ng-if</code></span> to toggle the <span class="italics1">Loading videos…</span> indicator</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">③ </span> : add <span><code class="codeintext1">ng-if</code></span> that toggles whether the video list is displayed</p>
+
+    <p class="body">First <span class="codeannotationcueballs">① </span>  we’ll add the standard Angular <span><code class="codeintext">ng-app</code></span> and <span><code class="codeintext">ng-controller</code></span> directives to the <span><code class="codeintext">body</code></span> tag. Next, <span class="codeannotationcueballs">② </span>  we’ll add an <span><code class="codeintext">ng-if</code></span> directive to toggle the “Loading videos…” indicator. The Boolean value of this directive toggles whether the loading indicator is displayed. Lastly <span class="codeannotationcueballs">③ </span>  we’ll add another <span><code class="codeintext">ng-if</code></span> directive that toggles whether the video list is displayed.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Note: that we’re displaying the video list via the ng-repeat directive which iterates through a $scope variable named <span><code class="codeintext1">videos</code></span>.</p>
+    </div>
+
+    <p class="body">Next, let’s create the necessary Angular code to simulate a request that fetches the initial list of videos.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">Since this book is primarily about the back end we won’t be teaching you Angular, however, we wanted to show a few examples to get you comfortable with integrating it with Sails.</p>
+    </div>
+
+    <p class="body">In Sublime, open <span><code class="codeintext">brushfire/assets/js/videos-page.js</code></span> and replace the jQuery code with the following Angular code in listing 3.12.</p>
+
+    <p class="codelistingcaption">Listing 3.12  Adding the Angular code to list videos in the videos page.</p><code class="codebcxspfirst">angular.module('brushfire_videosPage', [])</code> <code class="codebcxspmiddle">.config(function($sceDelegateProvider) {      <span class="codeannotationcueballs1">① </span></code> <code class="codebcxspmiddle">  $sceDelegateProvider.resourceUrlWhitelist([</code> <code class="codebcxspmiddle">    'self',</code> <code class="codebcxspmiddle">    '*://www.youtube.com/**'</code> <code class="codebcxspmiddle">  ]);</code> <code class="codebcxspmiddle">});</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">angular.module('brushfire_videosPage').controller('PageCtrl', [  <span class="codeannotationcueballs1">② </span></code> <code class="codebcxspmiddle">            '$scope', '$timeout',</code> <code class="codebcxspmiddle">  function ( $scope ,  $timeout ){</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $scope.videosLoading = true; <span class="codeannotationcueballs1">③ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    $timeout(function afterRetrievingVideos (){ <span class="codeannotationcueballs1">④ </span></code> <code class="codebcxspmiddle">      var _videos = [{</code> <code class="codebcxspmiddle">title: 'FUNNY BABY VIDEOS',</code> <code class="codebcxspmiddle">      src: 'https://www.youtube.com/embed/_FvTVWjLiHM'</code> <code class="codebcxspmiddle">      }, {</code> <code class="codebcxspmiddle">        title: 'Justin Bieber - Baby ft. Ludacris',</code> <code class="codebcxspmiddle">        src: 'https://www.youtube.com/embed/kffacxfA7G4'</code> <code class="codebcxspmiddle">      }, {</code> <code class="codebcxspmiddle">        title: 'Charlie bit my finger - again !',</code> <code class="codebcxspmiddle">        src: 'https://www.youtube.com/embed/_OBlgSz8sSM'</code> <code class="codebcxspmiddle">      }];</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      $scope.videosLoading = false; <span class="codeannotationcueballs1">⑤ </span></code> <code class="codebcxspmiddle">      $scope.videos = _videos; <span class="codeannotationcueballs1">⑥ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">    }, 750);       <span class="codeannotationcueballs1">⑦ </span></code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">]);</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">① </span> : whitelist <a class="pcalibre8 pcalibre4 pcalibre5" href="http://www.youtube.com">www.youtube.com</a>  in the <span><code class="codeintext1">.config</code></span> function</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">② </span> : Create a controller and pass in <span><code class="codeintext1">$scope</code></span> and <span><code class="codeintext1">$timeout</code></span></p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">③ </span> : simulate the delay in the request to the back end</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">⑤ </span> : hide the loading spinner</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">⑥ </span> : add the returned videos into the DOM</p>
+
+    <p class="body">When the module first loads, <span class="codeannotationcueballs">① </span>  it’s necessary to white list “www.youtube.com” in the <span><code class="codeintext">.config</code></span> function or errors will occur.</p>
+
+    <div class="sgc3">
+      <p class="sidebarc">This is an issue with the use of an iFrame in Angular, see <a class="pcalibre8 pcalibre4 pcalibre5" href="https://docs.angularjs.org/api/ng/provider/$sceDelegateProvider">https://docs.angularjs.org/api/ng/provider/$sceDelegateProvider</a>.</p>
+    </div>
+
+    <p class="body">Create a controller <span class="codeannotationcueballs">② </span>  and pass in two dictionaries: $scope and $timeout. We’ll use Angular’s <span><code class="codeintext">$timeout</code></span> <span class="codeannotationcueballs">③ </span>  to simulate the delay we can get from a request to the back end. Adjusting the amount of this timeout is useful for being able to see the loading states in action. Next, we’ll display <span class="codeannotationcueballs">③ </span>  a loading spinner by setting the value of the <span><code class="codeintext">videosLoading</code></span> parameter to <span><code class="codeintext">true</code></span>, which connects to the <span><code class="codeintext">ng-if</code></span> directive in <span><code class="codeintext">assets/videos/index.html</code></span>. Then we’ll simulate a delay <span class="codeannotationcueballs">④ </span>  in the back end request while declaring an array that will contain our fake video titles and URLs.  After the simulated response delay, <span class="codeannotationcueballs">⑤ </span>  we’ll hide the loading spinner. Finally, <span class="codeannotationcueballs">⑥ </span>  we’ll add the returned videos to the DOM through the magic of two-way data binding. We can also increase the delay in <span class="codeannotationcueballs">⑦ </span>  <span><code class="codeintext">$timeout</code></span>. Let’s see this in action. Make sure Sails is running via <span class="italics">sails lift</span> and navigate to <span><code class="codeintext">localhost:1337/videos</code></span>.</p>
+
+    <p class="body">When the page loads, the video list is displayed, however, the string interpolation <span><code class="codeintext">{{video.title}}</code></span> can flash briefly on some browsers before the actual titles are displayed. This is easy to fix with yet another Angular directive – <span><code class="codeintext">ng-cloak</code></span>. This directive insures that an Angular <span><code class="codeintext">HTML</code></span> template isn’t in its raw (un-compiled) form until the page loads. In Sublime, open <span><code class="codeintext">brushfire/assets/videos/index.html</code></span> and add <span><code class="codeintext">ng-cloak</code></span> to the body tag in listing 3.13.</p>
+
+    <p class="codelistingcaption">Listing 3.13 Adding <span><code class="codeintext1">ng-cloak</code></span> to the body tag in the videos page.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;!--STYLES--&gt;</code> <code class="codebcxspmiddle">&lt;!--STYLES END--&gt;</code> <code class="codebcxspmiddle">&lt;/head&gt;</code> <code class="codebcxspmiddle">&lt;body ng-app="brushfire_videosPage" ng-controller="PageCtrl" ng-cloak&gt;</code> <code class="codebcxspmiddle">&lt;div class="container-fluid"&gt;</code><code class="codebcxsplast">...</code>
+
+    <p class="body">The directive has a corresponding bit of styling, so open <span><code class="codeintext">brushfire/assets/styles/custom.less</code></span> and add the styles in listing 3.14.</p>
+
+    <p class="codelistingcaption">Listing 3.14 Adding ng-cloak styles to custom.less.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">[ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {</code> <code class="codebcxspmiddle">  display: none !important;</code> <code class="codebcxspmiddle">}</code><code class="codebcxsplast">...</code>
+
+    <h3 class="head1" id="heading_id_24">3.6.2   Example: Angular form</h3>
+
+    <p class="body">In order to process the <span class="italics">submit video form</span> and display the videos list we need to add some markup to the video page. In Sublime, open <span><code class="codeintext">brushfire/assets/videos/index.html</code></span> and replace the current markup under <span><code class="codeintext">&lt;!-- SUBMIT NEW VIDEO --&gt;</code></span>with this new markup in listing 3.15.</p>
+
+    <p class="codelistingcaption">Listing 3.15Adding Angular markup to process the submit video form.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">&lt;!-- SUBMIT NEW VIDEO --&gt;</code> <code class="codebcxspmiddle">&lt;section class="the-submit-video-form col-md-4"&gt;</code> <code class="codebcxspmiddle">&lt;h3&gt;See something missing?&lt;/h3&gt;</code> <code class="codebcxspmiddle">&lt;form ng-submit="submitNewVideo()"&gt;  <span class="codeannotationcueballs1">① </span></code> <code class="codebcxspmiddle">&lt;input class="form-control" type="text"ng-model="newVideoTitle" ng-disabled="busySubmittingVideo" name="title"placeholder="e.g. My video title"/&gt;   <span class="codeannotationcueballs1">② </span></code> <code class="codebcxspmiddle">&lt;input class="form-control" type="text" ng-model="newVideoSrc"ng-disabled="busySubmittingVideo" name="src" placeholder="e.g. <a class="pcalibre8 pcalibre5" href="https://www.youtube.com/embed/Kdgt1ZHkvnM%22/">https://www.youtube.com/embed/Kdgt1ZHkvnM"/</a>&gt;   <span class="codeannotationcueballs1">③ </span></code> <code class="codebcxspmiddle">&lt;button class="btn btn-success" type="submit"ng-disabled="busySubmittingVideo"&gt;{{busySubmittingVideo?'Submitting...':'Submit Video'}}</code> <code class="codebcxspmiddle">&lt;/button&gt;  <span class="codeannotationcueballs1">④ </span></code> <code class="codebcxspmiddle">&lt;/form&gt;</code> <code class="codebcxspmiddle">&lt;/section&gt;</code><code class="codebcxsplast">...</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">① </span> : add an <span class="italics1">ng-submit</span> directive</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">② </span> : add the <span><code class="codeintext1">ng-model</code></span> directive to the title input element</p>
+
+    <p class="codeannotationcxspmiddle"><span class="codeannotationcueballs2">③ </span> : add the <span><code class="codeintext1">ng-model</code></span> directive to the <span><code class="codeintext1">src</code></span> input element</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">④ </span> : add the loading state</p>
+
+    <p class="body">Add an <span><code class="codeintext">ng-submit</code></span> directive <span class="codeannotationcueballs">①  </span> to the form to submit it the Angular way. Next, we’ll add the <span><code class="codeintext">ng-model</code></span> directive <span class="codeannotationcueballs">② </span>  to the <span><code class="codeintext">title</code></span> input element which connects the values to our <span><code class="codeintext">$scope</code></span>. We also added the <span><code class="codeintext">ng-disabled</code></span> directive to prevent changing the field while it’s being submitted. Similarly, we’ll add the <span><code class="codeintext">ng-model</code></span> directive <span class="codeannotationcueballs">③ </span>  to the <span><code class="codeintext">src</code></span> input element which connects the values to our <span><code class="codeintext">$scope</code></span>. We also added the <span><code class="codeintext">ng-disabled</code></span> directive to prevent changes to the field while it’s being submitted. Finally, we’ll add the loading state <span class="codeannotationcueballs">④ </span>  to the button element when <span><code class="codeintext">busySubmittingVideo</code></span> is set to <span><code class="codeintext">true</code></span>. We also added the <span><code class="codeintext">ng-disabled</code></span> directive to prevent multiple submissions while the form is being processed.</p>
+
+    <p class="body">Now that the submission form markup is prepared for Angular we need to update the Angular controller to reflect the new submit video form. Head back to Sublime, open <span><code class="codeintext">brushfire/assets/js/video-pages.js</code></span>, and add the code in listing 3.16.</p>
+
+    <p class="codelistingcaption">Listing 3.16 Adding the Angular code for submitting a new video.</p><code class="codebcxspfirst">...</code> <code class="codebcxspmiddle">$scope.submitNewVideo = function() {             <span class="codeannotationcueballs1">① </span></code> <code class="codebcxspmiddle">      if ($scope.busySubmittingVideo) {          <span class="codeannotationcueballs1">② </span></code> <code class="codebcxspmiddle">        return;</code> <code class="codebcxspmiddle">      }</code> <code class="codebcxspmiddle">      var _newVideo = {                          <span class="codeannotationcueballs1">③ </span></code> <code class="codebcxspmiddle">        title: $scope.newVideoTitle,</code> <code class="codebcxspmiddle">        src: $scope.newVideoSrc,</code> <code class="codebcxspmiddle">      };</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      var parser = document.createElement('a');  <span class="codeannotationcueballs1">④ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      parser.href = _newVideo.src</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      var youtubeID = parser.search.substring(parser.search.indexOf("=") + 1, parser.search.length);</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      _newVideo.src = 'https://www.youtube.com/embed/' + youtubeID;</code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      $scope.busySubmittingVideo = true;         <span class="codeannotationcueballs1">⑤ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      $timeout(function() {                      <span class="codeannotationcueballs1">⑥ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        $scope.videos.unshift(_newVideo);        <span class="codeannotationcueballs1">⑦ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        $scope.busySubmittingVideo = false;      <span class="codeannotationcueballs1">⑧ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">        $scope.newVideoTitle = '';               <span class="codeannotationcueballs1">⑨ </span></code> <code class="codebcxspmiddle">        $scope.newVideoSrc = '';                 <span class="codeannotationcueballs1">⑨ </span></code> <code class="codebcxspmiddle"> </code> <code class="codebcxspmiddle">      }, 750);</code> <code class="codebcxspmiddle">    }</code> <code class="codebcxspmiddle">  }</code><code class="codebcxsplast">]);</code>
+
+    <p class="codeannotationcxspfirst"><span class="codeannotationcueballs2">③ </span> : Harvest the data out of the form</p>
+
+    <p class="codeannotationcxsplast"><span class="codeannotationcueballs2">⑤ </span> : set <span><code class="codeintext1">busySubmittingVideo</code></span> to true so we display a loading state</p>
+
+    <p class="body">When new video is submitted, our form's "submit" event is bound to this function via <span class="codeannotationcueballs">① </span>  <span><code class="codeintext">ng-submit="submitNewVideo($event)</code></span> in the HTML. We’ll also add a <span class="codeannotationcueballs">② </span>  little "spin-lock" to prevent double-submission because disabling the submit button still allows double-post if a user submits using the ENTER key. Harvest the data out of the form <span class="codeannotationcueballs">③  </span>, and, thanks to <span><code class="codeintext">ng-model</code></span> it's already in the <span><code class="codeintext">$scope object</code></span>. Since we only need the YouTube <span><code class="codeintext">ID</code></span>, we need to parse the URL provided for the <span><code class="codeintext">ID</code></span>. To do this <span class="codeannotationcueballs">④ </span>  first create a placeholder anchor element and assign the entered URL to the attribute <span><code class="codeintext">parser.href</code></span>. Next parse the URL using some string methods until only the YouTube <span><code class="codeintext">ID</code></span> remains. Update the <span><code class="codeintext">src</code></span> attribute of the <span><code class="codeintext">_newVideo</code></span> dictionary with the correct <span><code class="codeintext">embed Path</code></span>. Next, <span class="codeannotationcueballs">⑤ </span> set <span><code class="codeintext">busySubmittingVideo</code></span> to true so we display a loading state and also disable form submission. Simulate a delay <span class="codeannotationcueballs">⑥ </span>  then <span class="codeannotationcueballs">⑦ </span>  insert HTML for the newly added video on the <span><code class="codeintext">videos</code></span> array of the <span><code class="codeintext">$scope</code></span>. This will update the new values in the DOM. Next, <span class="codeannotationcueballs">⑧ </span>  hide the loading state and re-enable form submission. Finally, <span class="codeannotationcueballs">⑨ </span>  clear out form inputs.</p>
+
+    <p class="body">With the Sails server running via <span><code class="codeintext">sails lift</code></span>, navigate your browser to <i>localhost:1337/videos</i>. The video lists hould be displayed. Open a second browser tab and navigate to <a class="pcalibre8 pcalibre5" href="http://youtube.com">http://youtube.com</a>. Copy another YouTube video URL and use it to submit your updated form on the videos page. The new video is added before to the first video.</p>
+
+    <h2 class="head" id="heading_id_25">3.7   Summary</h2>
+
+    <p class="listbulletcxspfirst">·   Server-rendered views combine back-end data with EJS before being sent via a response to are questing user-agent.</p>
+
+    <p class="listbulletcxspmiddle">·   Sails uses asset routes to respond to requests for static assets.</p>
+
+    <p class="listbulletcxspmiddle">·   The asset pipeline allows you to perform tasks for file concatenation, minification, dynamic linking, and more. The asset pipeline speeds up development by automating what would otherwise be manual tasks.</p>
+
+    <p class="listbulletcxsplast">·   It’s important to set up loading states via a framework like jQuery and Angular to simulate requests.</p>
+  </div>
+</body>
+</html>
